@@ -75,4 +75,4 @@ Run-Git "branch -M main"
 Write-Host "Push vers main..."
 Run-Git "push -u origin main"
 
-Write-Host "✨ Premier push effectué avec succès !"
+Write-Host "✨ Push effectué avec succès !"
