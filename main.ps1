@@ -13,6 +13,9 @@ switch ($command) {
     "createrepo" { 
         & "$env:USERPROFILE\he-tools\createrepo.ps1" @remainingArgs
     }
+    "backup" {
+        & "$env:USERPROFILE\he-tools\backup.ps1" @remainingArgs
+    }
     "heian" {
         & "$env:USERPROFILE\he-tools\heian.ps1"
     }

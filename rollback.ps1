@@ -1,4 +1,4 @@
-# Commande rollback - Annule le dernier commit en gardant les fichiers modifiés
+﻿# Commande rollback - Annule le dernier commit en gardant les fichiers modifiés
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::InputEncoding = [System.Text.Encoding]::UTF8
 
