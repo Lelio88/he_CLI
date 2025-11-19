@@ -145,6 +145,6 @@ Write-Host ""
 Write-Host "Documentation complete : https://github.com/Lelio88/he_CLI" -ForegroundColor Magenta
 Write-Host "Signaler un bug : https://github.com/Lelio88/he_CLI/issues" -ForegroundColor Magenta
 Write-Host ""
-Write-Host "Made with love by Heian Enterprise" -ForegroundColor Red
+Write-Host "Made with love by Lelio B" -ForegroundColor Red
 Write-Host "Version 1.0.0 - 2025-11-19" -ForegroundColor DarkGray
 Write-Host ""
