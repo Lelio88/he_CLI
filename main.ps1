@@ -32,6 +32,9 @@ switch ($command) {
     "selfupdate" {
         & "$env:USERPROFILE\he-tools\install.ps1"
     }
+    "matrix"{
+        & "$env:USERPROFILE\he-tools\matrix.ps1"
+    }
     "heian" {
         & "$env:USERPROFILE\he-tools\heian.ps1"
     }
