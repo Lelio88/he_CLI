@@ -1,11 +1,11 @@
-﻿# Commande logcommit - Affiche l'historique des commits avec graphe ASCII
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-[Console]::InputEncoding = [System.Text.Encoding]::UTF8
-
-param(
+﻿param(
     [Parameter(Mandatory=$false, Position=0)]
     [int]$limit = 20
 )
+
+# Commande logcommit - Affiche l'historique des commits avec graphe ASCII
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::InputEncoding = [System.Text.Encoding]::UTF8
 
 Write-Host ""
 Write-Host "========================================================================" -ForegroundColor Cyan
@@ -49,14 +49,14 @@ if ($totalCommits) {
 Write-Host "========================================================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Afficher le graphe des commits
+# Afficher le graphe des commits (SANS PAGER pour éviter le blocage)
 try {
     if ($limit -gt 0) {
-        # Avec limite
-        git log --oneline --graph --all --decorate -n $limit --color=always
+        # Avec limite - utiliser --no-pager pour afficher directement
+        git --no-pager log --oneline --graph --all --decorate -n $limit --color=always
     } else {
-        # Sans limite (tous les commits)
-        git log --oneline --graph --all --decorate --color=always
+        # Sans limite (tous les commits) - utiliser --no-pager
+        git --no-pager log --oneline --graph --all --decorate --color=always
     }
     
     if ($LASTEXITCODE -ne 0) {
@@ -92,7 +92,7 @@ if ($currentBranch) {
 # Afficher les informations du dernier commit
 Write-Host "Dernier commit :" -ForegroundColor Yellow
 Write-Host ""
-git log -1 --pretty=format:"%C(yellow)Hash    : %h%Creset%n%C(cyan)Auteur  : %an <%ae>%Creset%n%C(green)Date    : %ar (%ad)%Creset%n%C(white)Message : %s%Creset%n" --date=format:"%Y-%m-%d %H:%M:%S" 2>$null
+git --no-pager log -1 --pretty=format:"%C(yellow)Hash    : %h%Creset%n%C(cyan)Auteur  : %an <%ae>%Creset%n%C(green)Date    : %ar (%ad)%Creset%n%C(white)Message : %s%Creset%n" --date=format:"%Y-%m-%d %H:%M:%S" 2>$null
 
 Write-Host ""
 Write-Host "========================================================================" -ForegroundColor Cyan

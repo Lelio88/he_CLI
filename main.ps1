@@ -4,7 +4,11 @@
 $command = $args[0]
 
 # Les arguments restants (tout sauf la commande)
-$remainingArgs = $args[1..($args.Length - 1)]
+if ($args.Length -gt 1) {
+    $remainingArgs = $args[1..($args.Length - 1)]
+} else {
+    $remainingArgs = @()
+}
 
 switch ($command) {
     "fastpush" { 
