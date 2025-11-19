@@ -1,6 +1,12 @@
 ﻿param(
-    [Parameter(Mandatory=$true)]
-    [string] $RepoName
+    [Parameter(Mandatory=$true, Position=0)]
+    [string] $RepoName,
+    
+    [Parameter(Mandatory=$false)]
+    [switch] $pr,
+    
+    [Parameter(Mandatory=$false)]
+    [switch] $pu
 )
 
 # Configuration complète de l'encodage
@@ -83,6 +89,46 @@ if (-not $githubUser) {
 Write-Host "👤 Utilisateur: $githubUser"
 Write-Host ""
 
+# Déterminer si le repo doit être public ou privé
+$isPublic = $true
+
+if ($pr -and $pu) {
+    Write-Host "❌ Erreur: Vous ne pouvez pas utiliser -pr et -pu en même temps"
+    exit 1
+}
+
+if ($pr) {
+    $isPublic = $false
+    Write-Host "🔒 Le repository sera privé"
+} elseif ($pu) {
+    $isPublic = $true
+    Write-Host "🌍 Le repository sera public"
+} else {
+    # Demander à l'utilisateur
+    Write-Host "❓ Voulez-vous que le repo soit public ou privé ?"
+    Write-Host "   Tapez 'pu' pour public ou 'pr' pour privé"
+    Write-Host ""
+    
+    do {
+        $choice = Read-Host "Votre choix (pu/pr)"
+        $choice = $choice.Trim().ToLower()
+        
+        if ($choice -eq "pu") {
+            $isPublic = $true
+            Write-Host "🌍 Le repository sera public"
+            break
+        } elseif ($choice -eq "pr") {
+            $isPublic = $false
+            Write-Host "🔒 Le repository sera privé"
+            break
+        } else {
+            Write-Host "❌ Choix invalide. Veuillez taper 'pu' ou 'pr'"
+        }
+    } while ($true)
+}
+
+Write-Host ""
+
 # IMPORTANT : Initialiser Git AVANT de créer le repo sur GitHub
 Write-Host "📦 Initialisation du dépôt local..."
 
@@ -113,7 +159,11 @@ Write-Host ""
 Write-Host "🔨 Création du repository GitHub '$RepoName'..."
 
 # Créer le repo sur GitHub avec gh CLI
-gh repo create $RepoName --public --source=. --remote=origin --push=false
+if ($isPublic) {
+    gh repo create $RepoName --public --source=. --remote=origin --push=false
+} else {
+    gh repo create $RepoName --private --source=. --remote=origin --push=false
+}
 
 if ($LASTEXITCODE -ne 0) {
     throw "Erreur lors de la création du repository sur GitHub"
