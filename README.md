@@ -6,7 +6,6 @@ Un outil CLI puissant pour gérer vos projets Git et GitHub avec simplicité. Cr
 
 ### 📦 Gestion des repositories
 - 🔨 **createrepo** - Créez un nouveau repository GitHub et faites votre premier push en une seule commande
-- 📤 **startpush** - Poussez votre code vers un repository GitHub existant
 - ⚡ **fastpush** - Push rapide avec message de commit personnalisable
 
 ### 🔄 Synchronisation et commits
@@ -18,6 +17,7 @@ Un outil CLI puissant pour gérer vos projets Git et GitHub avec simplicité. Cr
 - 💾 **backup** - Créez une archive ZIP complète du projet avec numérotation automatique
 
 ### 🎨 Utilitaires
+- 🔄 **selfupdate** - Mettez à jour HE CLI vers la dernière version automatiquement
 - 🎨 **heian** - Affichez le logo Heian Enterprise avec style
 - ❓ **help** - Obtenez de l'aide sur toutes les commandes disponibles
 
@@ -59,6 +59,22 @@ git clone https://github.com/Lelio88/he_CLI.git
 
 4. Redémarrez votre terminal
 
+## 🔄 Mise à jour
+
+Pour mettre à jour HE CLI vers la dernière version, utilisez simplement :
+
+```bash
+he selfupdate
+```
+
+Ou alternativement, réexécutez la commande d'installation :
+
+```powershell
+irm https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.ps1 | iex
+```
+
+**Pas besoin de redémarrer le terminal après une mise à jour !**
+
 ## 🎯 Utilisation
 
 ### `he createrepo` - Créer un nouveau repository
@@ -85,21 +101,6 @@ he createrepo mon-projet-prive -pr
 6. ✅ Crée le repository sur GitHub
 7. ✅ Fait le premier push
 
-### `he startpush` - Pousser vers un repo existant
-
-Poussez votre code vers un repository GitHub existant :
-
-```bash
-he startpush https://github.com/username/repo.git
-```
-
-**Ce que fait cette commande :**
-1. ✅ Initialise Git si nécessaire
-2. ✅ Configure le remote origin
-3. ✅ Ajoute tous les fichiers
-4. ✅ Crée le commit "initial commit"
-5. ✅ Pousse vers la branche main
-
 ### `he fastpush` - Push rapide avec message personnalisé
 
 Poussez rapidement vers un repository avec un message de commit personnalisé :
@@ -114,6 +115,13 @@ he fastpush https://github.com/username/repo.git -m "Mon message de commit"
 # Sans message (utilise "initial commit" par défaut)
 he fastpush https://github.com/username/repo.git
 ```
+
+**Ce que fait cette commande :**
+1. ✅ Initialise Git si nécessaire
+2. ✅ Configure le remote origin
+3. ✅ Ajoute tous les fichiers
+4. ✅ Crée le commit avec votre message
+5. ✅ Pousse vers la branche main
 
 ### `he update` - Synchronisation automatique
 
@@ -193,6 +201,22 @@ he backup
 
 **Format du nom :** `projet_2025-01-19_14-30-45_#1.zip`
 
+### `he selfupdate` - Mettre à jour HE CLI
+
+Mettez à jour HE CLI vers la dernière version disponible :
+
+```bash
+he selfupdate
+```
+
+**Ce que fait cette commande :**
+1. ✅ Télécharge la dernière version depuis GitHub
+2. ✅ Remplace tous les fichiers par les versions les plus récentes
+3. ✅ Affiche les nouvelles fonctionnalités disponibles
+4. ✅ Pas besoin de redémarrer le terminal
+
+**💡 Astuce :** Exécutez `he selfupdate` régulièrement pour bénéficier des dernières améliorations !
+
 ### `he heian` - Logo stylé
 
 Affichez le logo Heian Enterprise dans votre terminal :
@@ -218,12 +242,12 @@ he_CLI/
 ├── he.cmd              # Point d'entrée de la commande
 ├── main.ps1            # Router principal
 ├── createrepo.ps1      # Script de création de repo
-├── startpush.ps1       # Script de push vers repo existant
 ├── fastpush.ps1        # Script de push rapide avec message
 ├── update.ps1          # Script de synchronisation automatique
 ├── logcommit.ps1       # Script d'affichage de l'historique
 ├── rollback.ps1        # Script d'annulation de commit
 ├── backup.ps1          # Script de sauvegarde
+├── selfupdate.ps1      # Script de mise à jour
 ├── heian.ps1           # Script d'affichage du logo
 ├── help.ps1            # Script d'aide
 └── README.md           # Ce fichier
@@ -271,6 +295,19 @@ he rollback
 he update "Correction du bug"
 ```
 
+### Workflow de maintenance
+
+```bash
+# 1. Mettez à jour HE CLI régulièrement
+he selfupdate
+
+# 2. Créez des backups avant les grosses modifications
+he backup
+
+# 3. Vérifiez l'historique si besoin
+he logcommit
+```
+
 ## 🐛 Résolution des problèmes
 
 ### Les caractères accentués ne s'affichent pas correctement
@@ -295,6 +332,13 @@ Si un conflit se produit lors du `he update` :
 2. `git add .`
 3. `git commit -m "resolve conflicts"`
 4. `he update`
+
+### La mise à jour échoue
+
+Si `he selfupdate` échoue :
+1. Vérifiez votre connexion Internet
+2. Essayez manuellement : `irm https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.ps1 | iex`
+3. Ouvrez une issue sur GitHub avec le message d'erreur
 
 ### L'installation échoue
 
@@ -325,6 +369,9 @@ he backup
 
 # Voir l'historique
 he logcommit
+
+# Mettre à jour HE CLI
+he selfupdate
 ```
 
 ## 💡 Astuces et conseils
@@ -334,6 +381,7 @@ he logcommit
 - 📊 Vérifiez l'historique avec `he logcommit` avant de rollback
 - ⚡ Utilisez `he fastpush` pour les pushs rapides sans configuration
 - 🔒 Le flag `-d` sur `he rollback` évite les confirmations
+- 🆕 Exécutez `he selfupdate` régulièrement pour avoir les dernières fonctionnalités
 
 ## 📝 Licence
 
@@ -346,6 +394,17 @@ MIT License - Utilisez librement !
 ## 🌟 Contribuer
 
 Les contributions sont les bienvenues ! N'hésitez pas à ouvrir une issue ou une pull request.
+
+## 📋 Changelog
+
+### Version actuelle
+- ✨ Ajout de `he selfupdate` - Mise à jour automatique
+- ✨ Ajout de `he backup` - Sauvegarde en ZIP avec numérotation
+- ✨ Ajout de `he createrepo` - Création de repository améliorée
+- ✨ Ajout de `he fastpush` - Push rapide avec message personnalisé
+- ✨ Ajout de `he logcommit` - Historique avec graphe ASCII
+- ✨ Ajout de `he rollback` - Annulation de commit
+- ✨ Ajout de `he update` - Synchronisation complète automatique
 
 ---
 
