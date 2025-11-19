@@ -12,7 +12,7 @@ Un outil en ligne de commande puissant et simple pour gérer vos projets GitHub 
 ### 📜 Historique et gestion
 - **rollback** - Annulez le dernier commit en gardant les fichiers modifiés
 - **logcommit** - Affichez l'historique des commits avec un graphe ASCII coloré
-- **backupzip** - Créez une archive ZIP de votre projet avec numérotation automatique
+- **backup** - Créez une archive ZIP de votre projet avec numérotation automatique
 
 ### 🔄 Maintenance
 - **selfupdate** - Mettez à jour HE CLI vers la dernière version
@@ -172,12 +172,12 @@ he logcommit 0
 
 ---
 
-### `he backupzip` - Sauvegarder le projet
+### `he backup` - Sauvegarder le projet
 
 Créez une archive ZIP complète de votre projet avec numérotation automatique :
 
 ```bash
-he backupzip
+he backup
 ```
 
 **Format du nom :** `<nom-projet>_<date>_<heure>_#<numéro>.zip`
@@ -253,7 +253,7 @@ he_CLI/
 ├── update.ps1          # Commit + Pull + Push automatique
 ├── rollback.ps1        # Annulation du dernier commit
 ├── logcommit.ps1       # Historique des commits
-├── backupzip.ps1       # Sauvegarde en ZIP
+├── backup.ps1       # Sauvegarde en ZIP
 ├── selfupdate.ps1      # Mise à jour du CLI
 ├── heian.ps1           # Logo Heian Enterprise
 ├── matrix.ps1          # Effet Matrix
@@ -305,7 +305,7 @@ he fastpush "wip: travail en cours"
 he fastpush "feat: nouvelle fonction"
 
 # Fin de journée (synchronisation complète)
-he backupzip  # Sauvegarde locale
+he backup  # Sauvegarde locale
 he update -m "chore: fin de journée"
 ```
 
@@ -334,7 +334,7 @@ he fastpush "feat: première version"
 he selfupdate
 
 # Sauvegarder avant une grosse modification
-he backupzip
+he backup
 
 # Voir l'historique
 he logcommit
@@ -349,7 +349,7 @@ he logcommit
 | `update` | Commit + Pull + Push | Synchronisation complète |
 | `rollback` | Annuler dernier commit | Corriger un commit |
 | `logcommit` | Voir l'historique | Consulter l'historique |
-| `backupzip` | Sauvegarder en ZIP | Fin de journée |
+| `backup` | Sauvegarder en ZIP | Fin de journée |
 | `selfupdate` | Mettre à jour HE CLI | Nouvelle version |
 | `heian` | Logo stylé | Pour le fun |
 | `matrix` | Effet Matrix | Pause café |

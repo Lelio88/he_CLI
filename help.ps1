@@ -66,7 +66,7 @@ Write-Host "       he logcommit 0                   " -ForegroundColor White -No
 Write-Host "(tous les commits)" -ForegroundColor DarkGray
 Write-Host ""
 
-Write-Host "  he backupzip" -ForegroundColor Green
+Write-Host "  he backup" -ForegroundColor Green
 Write-Host "     Cree une archive ZIP du projet avec numerotation automatique" -ForegroundColor Gray
 Write-Host ""
 
@@ -114,7 +114,7 @@ Write-Host "    2. he update -m \"feat: nouvelle fonctionnalite\"" -ForegroundCo
 Write-Host ""
 
 Write-Host "  Fin de journee :" -ForegroundColor Cyan
-Write-Host "    1. he backupzip" -ForegroundColor Gray
+Write-Host "    1. he backup" -ForegroundColor Gray
 Write-Host "    2. he update -m \"chore: fin de journee\"" -ForegroundColor Gray
 Write-Host ""
 
@@ -136,7 +136,7 @@ Write-Host ""
 Write-Host "  - Utilisez 'he fastpush' pour les modifs rapides en solo" -ForegroundColor Gray
 Write-Host "  - Utilisez 'he update' en fin de journee ou en equipe" -ForegroundColor Gray
 Write-Host "  - 'he rollback' garde vos fichiers intacts, pas de panique" -ForegroundColor Gray
-Write-Host "  - 'he backupzip' cree des sauvegardes numerotees (#1, #2...)" -ForegroundColor Gray
+Write-Host "  - 'he backup' cree des sauvegardes numerotees (#1, #2...)" -ForegroundColor Gray
 Write-Host "  - 'he selfupdate' pour avoir les dernieres fonctionnalites" -ForegroundColor Gray
 Write-Host "  - 'he matrix' pour impressionner vos collegues !" -ForegroundColor Gray
 Write-Host ""

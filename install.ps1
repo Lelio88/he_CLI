@@ -46,7 +46,7 @@ $files = @(
     "update.ps1",
     "rollback.ps1",
     "logcommit.ps1",
-    "backupzip.ps1",
+    "backup.ps1",
     "selfupdate.ps1",
     "heian.ps1",
     "matrix.ps1",
