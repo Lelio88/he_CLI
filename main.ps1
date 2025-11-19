@@ -7,5 +7,6 @@
 
 switch ($command) {
     "startpush" { & "$env:USERPROFILE\he-tools\startpush.ps1" @parameters }
+    "firstpush" { & "$env:USERPROFILE\he-tools\firstpush.ps1" @parameters }
     default     { Write-Host "Commande inconnue : $command" }
 }
