@@ -1,11 +1,11 @@
-# Script d'installation de HE CLI - Heian Enterprise Command Line Interface
+# Script d'installation de HE CLI - HE Command Line Interface
 # Encodage UTF-8
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::InputEncoding = [System.Text.Encoding]::UTF8
 
 Write-Host ""
 Write-Host "============================================================================" -ForegroundColor Cyan
-Write-Host "  Installation de HE CLI - Heian Enterprise Command Line Interface" -ForegroundColor Cyan
+Write-Host "  Installation de HE CLI - HE Command Line Interface" -ForegroundColor Cyan
 Write-Host "============================================================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -178,6 +178,6 @@ Write-Host "  he selfupdate" -ForegroundColor White
 Write-Host ""
 Write-Host "============================================================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "Made with love by Heian Enterprise" -ForegroundColor Magenta
+Write-Host "Made with love by Lelio B" -ForegroundColor Magenta
 Write-Host "Version 1.0.0 - 2025-11-19" -ForegroundColor DarkGray
 Write-Host ""

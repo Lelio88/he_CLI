@@ -1,4 +1,4 @@
-# 🚀 HE CLI - Heian Enterprise Command Line Interface
+# 🚀 HE CLI - HE Command Line Interface
 
 Un outil en ligne de commande puissant et simple pour gérer vos projets GitHub avec style !
 

@@ -3,7 +3,7 @@
 
 Write-Host ""
 Write-Host "===============================================================" -ForegroundColor Cyan
-Write-Host "  HE CLI - Heian Enterprise Command Line Interface" -ForegroundColor Cyan
+Write-Host "  HE CLI - HE Command Line Interface" -ForegroundColor Cyan
 Write-Host "===============================================================" -ForegroundColor Cyan
 Write-Host ""
 
