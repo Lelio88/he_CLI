@@ -16,6 +16,9 @@ switch ($command) {
     "backup" {
         & "$env:USERPROFILE\he-tools\backup.ps1" @remainingArgs
     }
+    "logcommit" {
+        & "$env:USERPROFILE\he-tools\logcommit.ps1" @remainingArgs
+    }
     "heian" {
         & "$env:USERPROFILE\he-tools\heian.ps1"
     }
