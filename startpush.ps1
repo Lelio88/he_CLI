@@ -3,10 +3,7 @@
     [string] $RepoUrl
 )
 
-# Configuration complète de l'encodage
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-[Console]::InputEncoding = [System.Text.Encoding]::UTF8
-$PSDefaultParameterValues['*:Encoding'] = 'utf8'
 
 # Fonction Git PRO avec découpage correct des arguments
 function Run-Git {
