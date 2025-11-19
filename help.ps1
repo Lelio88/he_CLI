@@ -88,6 +88,13 @@ Write-Host ""
 Write-Host "=== UTILITAIRES ===" -ForegroundColor Magenta
 Write-Host ""
 
+Write-Host "  he selfupdate" -ForegroundColor Green
+Write-Host "     Met a jour HE CLI vers la derniere version" -ForegroundColor Gray
+Write-Host ""
+Write-Host "     Exemple :" -ForegroundColor DarkGray
+Write-Host "       he selfupdate" -ForegroundColor White
+Write-Host ""
+
 Write-Host "  he heian" -ForegroundColor Green
 Write-Host "     Affiche le logo Heian Enterprise avec style" -ForegroundColor Gray
 Write-Host ""
@@ -119,6 +126,10 @@ Write-Host "    2. Modifier les fichiers" -ForegroundColor Gray
 Write-Host "    3. he update \"Correction\"" -ForegroundColor White
 Write-Host ""
 
+Write-Host "  Mise a jour de HE CLI :" -ForegroundColor Cyan
+Write-Host "    he selfupdate" -ForegroundColor White
+Write-Host ""
+
 Write-Host "===============================================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "CONSEILS :" -ForegroundColor Yellow
@@ -128,6 +139,7 @@ Write-Host "  - GitHub CLI sera installe automatiquement si necessaire" -Foregro
 Write-Host "  - Vous devez etre authentifie sur GitHub (gh auth login)" -ForegroundColor Gray
 Write-Host "  - Les backups sont sauvegardes dans le dossier backups/" -ForegroundColor Gray
 Write-Host "  - Utilisez -d sur rollback pour eviter les confirmations" -ForegroundColor Gray
+Write-Host "  - Utilisez selfupdate pour mettre a jour HE CLI facilement" -ForegroundColor Gray
 Write-Host ""
 Write-Host "===============================================================" -ForegroundColor Cyan
 Write-Host ""

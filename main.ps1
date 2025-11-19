@@ -29,6 +29,9 @@ switch ($command) {
     "update" {
         & "$env:USERPROFILE\he-tools\update.ps1" @remainingArgs
     }
+    "selfupdate" {
+        & "$env:USERPROFILE\he-tools\install.ps1"
+    }
     "heian" {
         & "$env:USERPROFILE\he-tools\heian.ps1"
     }
