@@ -1,4 +1,9 @@
-﻿# Commande rollback - Annule le dernier commit en gardant les fichiers modifiés
+﻿param(
+    [Parameter(Mandatory=$false)]
+    [switch]$d
+)
+
+# Commande rollback - Annule le dernier commit en gardant les fichiers modifiés
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::InputEncoding = [System.Text.Encoding]::UTF8
 
@@ -78,8 +83,8 @@ if ($stagedCount -gt 0) {
     Write-Host ""
     
     # Afficher les fichiers en staging
-    git diff --cached --name-status | ForEach-Object {
-        $parts = $_ -split '\s+'
+git diff --cached --name-status | ForEach-Object {
+        $parts = $_ -split '\s+' 
         $status = $parts[0]
         $file = $parts[1]
         
@@ -100,6 +105,74 @@ if ($stagedCount -gt 0) {
     Write-Host ""
 } else {
     Write-Host "Aucun fichier en staging." -ForegroundColor Gray
+    Write-Host ""
+}
+
+Write-Host "========================================================================" -ForegroundColor Cyan
+Write-Host ""
+
+# Demander si l'utilisateur veut aussi modifier l'espace distant GitHub
+$pushToGitHub = $false
+
+if ($d) {
+    # Si le flag -d est présent, accepter automatiquement
+    $pushToGitHub = $true
+    Write-Host "Flag -d detecte : Modification automatique de l'espace distant GitHub activee." -ForegroundColor Green
+    Write-Host ""
+} else {
+    # Sinon, demander à l'utilisateur
+    Write-Host "Veux-tu aussi modifier l'espace distant GitHub ?" -ForegroundColor Yellow
+    Write-Host "ATTENTION : Cela va reecrire l'historique distant (git push --force)" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Reponse par defaut : " -ForegroundColor Gray -NoNewline
+    Write-Host "Oui" -ForegroundColor Green
+    Write-Host ""
+    
+    $pushConfirmation = Read-Host "Modifier l'espace distant ? (o/n) [defaut: o]"
+    
+    # Si l'utilisateur appuie juste sur Entrée (chaîne vide) ou répond "o/O/oui/OUI", on pousse
+    if ([string]::IsNullOrWhiteSpace($pushConfirmation) -or 
+        $pushConfirmation -eq "o" -or 
+        $pushConfirmation -eq "O" -or 
+        $pushConfirmation -eq "oui" -or 
+        $pushConfirmation -eq "OUI") {
+        $pushToGitHub = $true
+    }
+}
+
+if ($pushToGitHub) {
+    Write-Host ""
+    Write-Host "Modification de l'espace distant GitHub en cours..." -ForegroundColor Yellow
+    
+    # Obtenir la branche actuelle
+    $currentBranch = git branch --show-current 2>$null
+    
+    if ([string]::IsNullOrWhiteSpace($currentBranch)) {
+        Write-Host ""
+        Write-Host "Erreur : Impossible de determiner la branche actuelle !" -ForegroundColor Red
+        Write-Host ""
+    } else {
+        # Exécuter le push forcé
+        git push --force origin $currentBranch 2>&1 | Out-Null
+        
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "Espace distant GitHub modifie avec succes !" -ForegroundColor Green
+            Write-Host "Le commit a ete supprime de GitHub sur la branche '$currentBranch'." -ForegroundColor Green
+        } else {
+            Write-Host ""
+            Write-Host "Erreur : Impossible de modifier l'espace distant !" -ForegroundColor Red
+            Write-Host "Verifiez que vous avez les droits d'ecriture sur le depot." -ForegroundColor Yellow
+            Write-Host "Ou essayez manuellement : git push --force origin $currentBranch" -ForegroundColor Yellow
+        }
+    }
+    Write-Host ""
+} else {
+    Write-Host ""
+    Write-Host "Espace distant GitHub non modifie." -ForegroundColor Yellow
+    Write-Host "Le commit existe toujours sur GitHub." -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "Pour le supprimer plus tard, utilisez :" -ForegroundColor Gray
+    Write-Host "  git push --force" -ForegroundColor White
     Write-Host ""
 }
 
