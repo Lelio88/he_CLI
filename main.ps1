@@ -1,3 +1,4 @@
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 param(
     [string]$command,
     [string[]]$args
