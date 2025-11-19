@@ -24,15 +24,6 @@ $installPath = "$env:USERPROFILE\he-tools"
 Write-Host "Dossier d'installation : $installPath" -ForegroundColor White
 Write-Host ""
 
-# Vérifier si c'est une mise à jour
-$isUpdate = Test-Path $installPath
-if ($isUpdate) {
-    Write-Host "MISE A JOUR DETECTEE" -ForegroundColor Cyan
-    Write-Host "Une version de HE CLI est deja installee." -ForegroundColor Yellow
-    Write-Host "Les fichiers seront remplaces par la derniere version." -ForegroundColor Yellow
-    Write-Host ""
-}
-
 # Créer le dossier s'il n'existe pas
 if (-not (Test-Path $installPath)) {
     Write-Host "[1/5] Creation du dossier d'installation..." -ForegroundColor Yellow
@@ -50,30 +41,28 @@ $repoUrl = "https://raw.githubusercontent.com/Lelio88/he_CLI/main"
 $files = @(
     "he.cmd",
     "main.ps1",
-    "backup.ps1",
     "createrepo.ps1",
     "fastpush.ps1",
-    "heian.ps1",
-    "help.ps1",
-    "logcommit.ps1",
+    "update.ps1",
     "rollback.ps1",
+    "logcommit.ps1",
+    "backupzip.ps1",
     "selfupdate.ps1",
-    "update.ps1"
+    "heian.ps1",
+    "matrix.ps1",
+    "help.ps1"
 )
 
 $downloadSuccess = $true
-$downloadedCount = 0
-$totalFiles = $files.Count
 
 foreach ($file in $files) {
     try {
         $url = "$repoUrl/$file"
         $destination = Join-Path $installPath $file
         
-        Write-Host "      [$($downloadedCount + 1)/$totalFiles] Telechargement de $file..." -ForegroundColor Gray
+        Write-Host "      Telechargement de $file..." -ForegroundColor Gray
         Invoke-WebRequest -Uri $url -OutFile $destination -ErrorAction Stop
         Write-Host "      $file telecharge" -ForegroundColor Green
-        $downloadedCount++
     }
     catch {
         Write-Host "      Erreur lors du telechargement de $file : $_" -ForegroundColor Red
@@ -88,8 +77,6 @@ if (-not $downloadSuccess) {
     exit 1
 }
 
-Write-Host ""
-Write-Host "      $downloadedCount/$totalFiles fichiers telecharges avec succes" -ForegroundColor Green
 Write-Host ""
 
 # Vérifier si Git est installé
@@ -144,47 +131,53 @@ Write-Host ""
 
 # Afficher le résultat
 Write-Host "============================================================================" -ForegroundColor Cyan
-if ($isUpdate) {
-    Write-Host "  Mise a jour terminee avec succes !" -ForegroundColor Green
-} else {
-    Write-Host "  Installation terminee avec succes !" -ForegroundColor Green
-}
+Write-Host "  Installation terminee avec succes !" -ForegroundColor Green
 Write-Host "============================================================================" -ForegroundColor Cyan
 Write-Host ""
-
-if ($isUpdate) {
-    Write-Host "NOUVELLES FONCTIONNALITES DISPONIBLES :" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "  - he backup       : Sauvegarde automatique du projet en ZIP" -ForegroundColor Cyan
-    Write-Host "  - he createrepo   : Creation de repository amelioree" -ForegroundColor Cyan
-    Write-Host "  - he fastpush     : Push rapide avec message personnalise" -ForegroundColor Cyan
-    Write-Host "  - he logcommit    : Historique des commits avec graphe" -ForegroundColor Cyan
-    Write-Host "  - he rollback     : Annulation du dernier commit" -ForegroundColor Cyan
-    Write-Host "  - he update       : Synchronisation complete (commit+pull+push)" -ForegroundColor Cyan
-    Write-Host "  - he selfupdate   : Mise a jour automatique de HE CLI" -ForegroundColor Cyan
-    Write-Host ""
-    Write-Host "Tapez 'he help' pour voir toutes les commandes !" -ForegroundColor Magenta
-    Write-Host ""
-} else {
-    Write-Host "Prochaines etapes :" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "  1. Redemarrez votre terminal pour que les changements prennent effet" -ForegroundColor White
-    Write-Host "  2. Tapez 'he help' pour voir toutes les commandes disponibles" -ForegroundColor White
-    Write-Host "  3. Tapez 'he heian' pour voir le logo Heian Enterprise" -ForegroundColor White
-    Write-Host ""
-}
-
+Write-Host "Prochaines etapes :" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "  1. Redemarrez votre terminal pour que les changements prennent effet" -ForegroundColor White
+Write-Host "  2. Tapez 'he help' pour voir toutes les commandes disponibles" -ForegroundColor White
+Write-Host "  3. Tapez 'he heian' pour voir le logo Heian Enterprise" -ForegroundColor White
+Write-Host "  4. Tapez 'he matrix' pour un effet special !" -ForegroundColor White
+Write-Host ""
 Write-Host "Commandes principales :" -ForegroundColor Yellow
-Write-Host "  - he createrepo <nom> [-pr|-pu] : Creer un nouveau repo et pusher" -ForegroundColor Gray
-Write-Host "  - he fastpush <url> [-m]         : Push rapide avec message" -ForegroundColor Gray
-Write-Host "  - he update [message]            : Synchroniser avec GitHub" -ForegroundColor Gray
-Write-Host "  - he backup                      : Sauvegarder le projet en ZIP" -ForegroundColor Gray
-Write-Host "  - he logcommit [nombre]          : Voir l'historique des commits" -ForegroundColor Gray
-Write-Host "  - he rollback [-d]               : Annuler le dernier commit" -ForegroundColor Gray
-Write-Host "  - he selfupdate                  : Mettre a jour HE CLI" -ForegroundColor Gray
-Write-Host "  - he help                        : Afficher l'aide complete" -ForegroundColor Gray
 Write-Host ""
-Write-Host "Documentation complete : https://github.com/Lelio88/he_CLI" -ForegroundColor Magenta
+Write-Host "  GESTION DE REPOSITORY :" -ForegroundColor Cyan
+Write-Host "    he createrepo <nom> [-pr|-pu]  - Creer un nouveau repo" -ForegroundColor Gray
+Write-Host "    he fastpush [message]          - Push rapide (add+commit+push)" -ForegroundColor Gray
+Write-Host "    he update [-m <message>]       - Commit + Pull + Push complet" -ForegroundColor Gray
 Write-Host ""
-Write-Host "Made with love by Lelio B" -ForegroundColor Red
+Write-Host "  HISTORIQUE ET GESTION :" -ForegroundColor Cyan
+Write-Host "    he rollback                    - Annuler le dernier commit" -ForegroundColor Gray
+Write-Host "    he logcommit [nombre]          - Voir l'historique des commits" -ForegroundColor Gray
+Write-Host "    he backupzip                   - Sauvegarder le projet en ZIP" -ForegroundColor Gray
+Write-Host ""
+Write-Host "  MAINTENANCE :" -ForegroundColor Cyan
+Write-Host "    he selfupdate                  - Mettre a jour HE CLI" -ForegroundColor Gray
+Write-Host ""
+Write-Host "  FUN ET UTILITAIRES :" -ForegroundColor Cyan
+Write-Host "    he heian                       - Afficher le logo" -ForegroundColor Gray
+Write-Host "    he matrix                      - Effet Matrix" -ForegroundColor Gray
+Write-Host "    he help                        - Afficher l'aide" -ForegroundColor Gray
+Write-Host ""
+Write-Host "============================================================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Quick Start :" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "  # Creer un nouveau projet" -ForegroundColor Gray
+Write-Host "  mkdir mon-projet && cd mon-projet" -ForegroundColor White
+Write-Host "  he createrepo mon-projet -pu" -ForegroundColor White
+Write-Host ""
+Write-Host "  # Modifications rapides" -ForegroundColor Gray
+Write-Host "  # ... modifier des fichiers ..." -ForegroundColor White
+Write-Host "  he fastpush \"feat: nouvelle fonctionnalite\"" -ForegroundColor White
+Write-Host ""
+Write-Host "  # Mettre a jour HE CLI" -ForegroundColor Gray
+Write-Host "  he selfupdate" -ForegroundColor White
+Write-Host ""
+Write-Host "============================================================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Made with love by Heian Enterprise" -ForegroundColor Magenta
+Write-Host "Version 1.0.0 - 2025-11-19" -ForegroundColor DarkGray
 Write-Host ""
