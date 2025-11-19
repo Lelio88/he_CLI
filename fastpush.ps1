@@ -1,6 +1,12 @@
 ﻿param(
     [Parameter(Mandatory=$true)]
-    [string] $RepoUrl
+    [string] $RepoUrl,
+    
+    [Parameter(Mandatory=$false)]
+    [switch] $m,
+    
+    [Parameter(Mandatory=$false)]
+    [string] $Message = ""
 )
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -16,6 +22,26 @@ function Run-Git {
 
     if ($LASTEXITCODE -ne 0) {
         throw "Erreur lors de : git $cmd"
+    }
+}
+
+# Gestion du message de commit
+$commitMessage = "initial commit"
+
+if ($m) {
+    if ([string]::IsNullOrWhiteSpace($Message)) {
+        # Mode interactif : demander le message
+        do {
+            $userMessage = Read-Host "Entrez votre message de commit"
+            if ([string]::IsNullOrWhiteSpace($userMessage)) {
+                Write-Host "❌ Le message ne peut pas être vide. Réessayez." -ForegroundColor Red
+            }
+        } while ([string]::IsNullOrWhiteSpace($userMessage))
+        
+        $commitMessage = $userMessage
+    } else {
+        # Message fourni directement
+        $commitMessage = $Message
     }
 }
 
@@ -40,8 +66,8 @@ Run-Git "remote add origin $RepoUrl"
 Write-Host "Ajout des fichiers..."
 Run-Git "add ."
 
-Write-Host "Création du commit..."
-Run-Git 'commit -m "initial commit"'
+Write-Host "Création du commit : '$commitMessage'..."
+Run-Git "commit -m `"$commitMessage`""
 
 Write-Host "Forçage de la branche main..."
 Run-Git "branch -M main"
