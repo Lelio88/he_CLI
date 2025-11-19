@@ -136,6 +136,22 @@ Write-Host "📦 Initialisation du dépôt local..."
 if (-not (Test-Path ".git")) {
     Run-Git "init"
     Write-Host "✅ Dépôt Git initialisé"
+} else {
+    Write-Host "✅ Dépôt Git déjà initialisé"
+    
+    # Vérifier si un remote origin existe déjà
+    $originExists = git remote | Select-String -Pattern "^origin$" -Quiet
+    
+    if ($originExists) {
+        Write-Host "🔧 Suppression de l'ancien remote origin..."
+        git remote remove origin
+        
+        if ($LASTEXITCODE -ne 0) {
+            throw "Erreur lors de la suppression du remote origin"
+        }
+        
+        Write-Host "✅ Ancien remote supprimé"
+    }
 }
 
 Write-Host "📝 Ajout des fichiers..."
@@ -150,7 +166,12 @@ if (-not $status) {
 }
 
 Write-Host "💾 Création du commit..."
-Run-Git 'commit -m "initial commit"'
+git commit -m "initial commit" 2>&1 | Out-Null
+
+if ($LASTEXITCODE -ne 0) {
+    # Si le commit échoue (probablement rien à commiter), on continue quand même
+    Write-Host "⚠️  Aucun changement à commiter ou commit déjà effectué"
+}
 
 Write-Host "🌿 Configuration de la branche main..."
 Run-Git "branch -M main"
@@ -158,11 +179,11 @@ Run-Git "branch -M main"
 Write-Host ""
 Write-Host "🔨 Création du repository GitHub '$RepoName'..."
 
-# Créer le repo sur GitHub avec gh CLI
+# Créer le repo sur GitHub avec gh CLI (sans ajouter de remote automatiquement)
 if ($isPublic) {
-    gh repo create $RepoName --public --source=. --remote=origin --push=false
+    gh repo create $RepoName --public --push=false 2>&1 | Out-Null
 } else {
-    gh repo create $RepoName --private --source=. --remote=origin --push=false
+    gh repo create $RepoName --private --push=false 2>&1 | Out-Null
 }
 
 if ($LASTEXITCODE -ne 0) {
@@ -170,6 +191,11 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "✅ Repository créé sur GitHub"
+
+# Ajouter manuellement le remote
+Write-Host "🔗 Ajout du remote origin..."
+$repoUrl = "https://github.com/$githubUser/$RepoName.git"
+Run-Git "remote add origin $repoUrl"
 
 Write-Host "🚀 Push vers main..."
 Run-Git "push -u origin main"
