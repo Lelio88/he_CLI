@@ -1,11 +1,23 @@
 # 🚀 HE CLI - Heian Enterprise Command Line Interface
 
-Un outil en ligne de commande puissant et simple pour gérer vos projets GitHub avec style !
+Un outil CLI puissant pour gérer vos projets Git et GitHub avec simplicité. Créez des repos, synchronisez votre code, gérez vos commits et créez des backups en une seule commande !
 
 ## ✨ Fonctionnalités
 
-- 🔨 **firstpush** - Créez un nouveau repository GitHub et faites votre premier push en une seule commande
+### 📦 Gestion des repositories
+- 🔨 **createrepo** - Créez un nouveau repository GitHub et faites votre premier push en une seule commande
 - 📤 **startpush** - Poussez votre code vers un repository GitHub existant
+- ⚡ **fastpush** - Push rapide avec message de commit personnalisable
+
+### 🔄 Synchronisation et commits
+- 🔄 **update** - Synchronisation automatique complète (commit + pull + push)
+- 📊 **logcommit** - Affichez l'historique des commits avec un graphe ASCII élégant
+- ⏮️ **rollback** - Annulez le dernier commit en gardant les fichiers modifiés
+
+### 💾 Sauvegarde
+- 💾 **backup** - Créez une archive ZIP complète du projet avec numérotation automatique
+
+### 🎨 Utilitaires
 - 🎨 **heian** - Affichez le logo Heian Enterprise avec style
 - ❓ **help** - Obtenez de l'aide sur toutes les commandes disponibles
 
@@ -49,19 +61,19 @@ git clone https://github.com/Lelio88/he_CLI.git
 
 ## 🎯 Utilisation
 
-### `he firstpush` - Créer un nouveau repository
+### `he createrepo` - Créer un nouveau repository
 
 Créez un nouveau repository GitHub et faites votre premier push automatiquement :
 
 ```bash
 # Mode interactif (demande si public ou privé)
-he firstpush mon-nouveau-projet
+he createrepo mon-nouveau-projet
 
 # Créer un repository public
-he firstpush mon-projet-public -pu
+he createrepo mon-projet-public -pu
 
 # Créer un repository privé
-he firstpush mon-projet-prive -pr
+he createrepo mon-projet-prive -pr
 ```
 
 **Ce que fait cette commande :**
@@ -88,6 +100,99 @@ he startpush https://github.com/username/repo.git
 4. ✅ Crée le commit "initial commit"
 5. ✅ Pousse vers la branche main
 
+### `he fastpush` - Push rapide avec message personnalisé
+
+Poussez rapidement vers un repository avec un message de commit personnalisé :
+
+```bash
+# Mode interactif (demande le message)
+he fastpush https://github.com/username/repo.git -m
+
+# Avec message direct
+he fastpush https://github.com/username/repo.git -m "Mon message de commit"
+
+# Sans message (utilise "initial commit" par défaut)
+he fastpush https://github.com/username/repo.git
+```
+
+### `he update` - Synchronisation automatique
+
+Synchronisez automatiquement votre projet avec GitHub (commit + pull + push) :
+
+```bash
+# Mode interactif (demande le message de commit)
+he update
+
+# Avec message de commit direct
+he update "Ajout de nouvelles fonctionnalités"
+```
+
+**Ce que fait cette commande :**
+1. ✅ Vérifie les fichiers modifiés
+2. ✅ Ajoute et commit les changements
+3. ✅ Pull les derniers changements depuis GitHub
+4. ✅ Push les commits vers GitHub
+5. ✅ Gère automatiquement les conflits éventuels
+
+### `he logcommit` - Historique des commits
+
+Affichez l'historique de vos commits avec un graphe visuel :
+
+```bash
+# Afficher les 20 derniers commits (par défaut)
+he logcommit
+
+# Afficher les 50 derniers commits
+he logcommit 50
+
+# Afficher tous les commits
+he logcommit 0
+```
+
+**Affiche :**
+- 📊 Graphe ASCII des branches et commits
+- 📈 Statistiques de la branche actuelle
+- 📝 Détails du dernier commit
+- 🔢 Nombre total de commits
+
+### `he rollback` - Annuler le dernier commit
+
+Annulez le dernier commit tout en gardant vos fichiers modifiés :
+
+```bash
+# Mode interactif (demande confirmation)
+he rollback
+
+# Mode automatique (sans confirmation)
+he rollback -d
+```
+
+**Ce que fait cette commande :**
+1. ✅ Affiche le commit qui sera annulé
+2. ✅ Demande confirmation (sauf avec -d)
+3. ✅ Annule le commit (git reset --soft HEAD~1)
+4. ✅ Garde les fichiers en staging
+5. ✅ Propose de modifier l'espace distant GitHub (avec --force)
+
+**⚠️ Note :** Le flag `-d` accepte automatiquement toutes les confirmations.
+
+### `he backup` - Sauvegarde du projet
+
+Créez une archive ZIP complète de votre projet :
+
+```bash
+he backup
+```
+
+**Ce que fait cette commande :**
+1. ✅ Crée un dossier `backups/` dans votre projet
+2. ✅ Génère un fichier ZIP avec date, heure et numéro
+3. ✅ Exclut automatiquement `.git/`, `node_modules/`, `backups/`, etc.
+4. ✅ Affiche la taille et le nombre de fichiers sauvegardés
+5. ✅ Numérote automatiquement les backups (#1, #2, #3...)
+
+**Format du nom :** `projet_2025-01-19_14-30-45_#1.zip`
+
 ### `he heian` - Logo stylé
 
 Affichez le logo Heian Enterprise dans votre terminal :
@@ -112,11 +217,58 @@ he_CLI/
 ├── install.bat         # Script d'installation batch
 ├── he.cmd              # Point d'entrée de la commande
 ├── main.ps1            # Router principal
-├── firstpush.ps1       # Script de création de repo
+├── createrepo.ps1      # Script de création de repo
 ├── startpush.ps1       # Script de push vers repo existant
-├── heian.ps1          # Script d'affichage du logo
-├── help.ps1           # Script d'aide
-└── README.md          # Ce fichier
+├── fastpush.ps1        # Script de push rapide avec message
+├── update.ps1          # Script de synchronisation automatique
+├── logcommit.ps1       # Script d'affichage de l'historique
+├── rollback.ps1        # Script d'annulation de commit
+├── backup.ps1          # Script de sauvegarde
+├── heian.ps1           # Script d'affichage du logo
+├── help.ps1            # Script d'aide
+└── README.md           # Ce fichier
+```
+
+## 📚 Workflows recommandés
+
+### Workflow quotidien
+
+```bash
+# 1. Travaillez sur votre code...
+
+# 2. Synchronisez avec GitHub
+he update "Description de vos modifications"
+
+# 3. Créez une sauvegarde locale (optionnel)
+he backup
+```
+
+### Workflow de création de projet
+
+```bash
+# 1. Créez votre projet localement
+mkdir mon-projet
+cd mon-projet
+
+# 2. Créez le repository GitHub
+he createrepo mon-projet -pu
+
+# 3. Travaillez sur votre code...
+
+# 4. Synchronisez régulièrement
+he update "Premiers changements"
+```
+
+### Workflow de correction d'erreur
+
+```bash
+# 1. Vous avez fait un mauvais commit ? Annulez-le
+he rollback
+
+# 2. Modifiez vos fichiers
+
+# 3. Recommitez correctement
+he update "Correction du bug"
 ```
 
 ## 🐛 Résolution des problèmes
@@ -136,6 +288,14 @@ Vérifiez que :
 - Le nom du repository n'existe pas déjà
 - Vous avez une connexion Internet
 
+### Conflit lors du update
+
+Si un conflit se produit lors du `he update` :
+1. Éditez les fichiers en conflit
+2. `git add .`
+3. `git commit -m "resolve conflicts"`
+4. `he update`
+
 ### L'installation échoue
 
 Si l'installation automatique échoue :
@@ -154,8 +314,26 @@ he help
 
 # Créer votre premier projet
 cd mon-projet
-he firstpush mon-premier-repo -pu
+he createrepo mon-premier-repo -pu
+
+# Travailler et synchroniser
+# ... modifier vos fichiers ...
+he update "Mes modifications"
+
+# Créer une sauvegarde
+he backup
+
+# Voir l'historique
+he logcommit
 ```
+
+## 💡 Astuces et conseils
+
+- 🔄 Utilisez `he update` régulièrement pour rester synchronisé
+- 💾 Créez des backups avant les grosses modifications avec `he backup`
+- 📊 Vérifiez l'historique avec `he logcommit` avant de rollback
+- ⚡ Utilisez `he fastpush` pour les pushs rapides sans configuration
+- 🔒 Le flag `-d` sur `he rollback` évite les confirmations
 
 ## 📝 Licence
 
