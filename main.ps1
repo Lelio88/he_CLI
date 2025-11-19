@@ -7,11 +7,11 @@ $command = $args[0]
 $remainingArgs = $args[1..($args.Length - 1)]
 
 switch ($command) {
-    "startpush" { 
-        & "$env:USERPROFILE\he-tools\startpush.ps1" @remainingArgs
+    "fastpush" { 
+        & "$env:USERPROFILE\he-tools\fastpush.ps1" @remainingArgs
     }
-    "firstpush" { 
-        & "$env:USERPROFILE\he-tools\firstpush.ps1" @remainingArgs
+    "createrepo" { 
+        & "$env:USERPROFILE\he-tools\createrepo.ps1" @remainingArgs
     }
     "heian" {
         & "$env:USERPROFILE\he-tools\heian.ps1"

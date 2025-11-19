@@ -52,7 +52,7 @@ if (-not $ghInstalled) {
     
     Write-Host "✅ GitHub CLI installé avec succès"
     Write-Host "⚠️  Veuillez redémarrer votre terminal pour que les changements prennent effet."
-    Write-Host "   Puis relancez la commande: he firstpush $RepoName"
+    Write-Host "   Puis relancez la commande: he createrepo $RepoName"
     exit 0
 }
 
