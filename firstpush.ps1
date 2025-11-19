@@ -92,19 +92,22 @@ Write-Host ""
 # Déterminer si le repo doit être public ou privé
 $isPublic = $true
 
+# Vérifier les flags
 if ($pr -and $pu) {
     Write-Host "❌ Erreur: Vous ne pouvez pas utiliser -pr et -pu en même temps"
     exit 1
 }
 
 if ($pr) {
+    # Flag -pr détecté
     $isPublic = $false
     Write-Host "🔒 Le repository sera privé"
 } elseif ($pu) {
+    # Flag -pu détecté
     $isPublic = $true
     Write-Host "🌍 Le repository sera public"
 } else {
-    # Demander à l'utilisateur
+    # Aucun flag : demander à l'utilisateur
     Write-Host "❓ Voulez-vous que le repo soit public ou privé ?"
     Write-Host "   Tapez 'pu' pour public ou 'pr' pour privé"
     Write-Host ""
