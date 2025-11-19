@@ -20,6 +20,9 @@ switch ($command) {
     "backup" {
         & "$env:USERPROFILE\he-tools\backup.ps1" @remainingArgs
     }
+    "rollback" {
+        & "$env:USERPROFILE\he-tools\rollback.ps1" @remainingArgs
+    }
     "logcommit" {
         & "$env:USERPROFILE\he-tools\logcommit.ps1" @remainingArgs
     }
