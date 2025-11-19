@@ -26,6 +26,9 @@ switch ($command) {
     "logcommit" {
         & "$env:USERPROFILE\he-tools\logcommit.ps1" @remainingArgs
     }
+    "update" {
+        & "$env:USERPROFILE\he-tools\update.ps1" @remainingArgs
+    }
     "heian" {
         & "$env:USERPROFILE\he-tools\heian.ps1"
     }
