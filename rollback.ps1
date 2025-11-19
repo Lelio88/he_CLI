@@ -1,4 +1,4 @@
-﻿param(
+param(
     [Parameter(Mandatory=$false)]
     [switch]$d
 )
@@ -37,18 +37,33 @@ git log -1 --pretty=format:"%C(yellow)Commit : %h%Creset%n%C(cyan)Auteur : %an%C
 Write-Host ""
 Write-Host ""
 
-# Demander confirmation
-Write-Host "Attention : Cette operation va annuler le dernier commit." -ForegroundColor Yellow
-Write-Host "Les fichiers modifies seront gardes intacts (git reset --soft HEAD~1)." -ForegroundColor Gray
-Write-Host ""
-
-$confirmation = Read-Host "Voulez-vous continuer ? (o/n)"
-
-if ($confirmation -ne "o" -and $confirmation -ne "O" -and $confirmation -ne "oui" -and $confirmation -ne "OUI") {
+# Demander confirmation pour annuler le commit
+if ($d) {
+    # Si le flag -d est présent, accepter automatiquement
+    Write-Host "Flag -d detecte : Confirmation automatique activee." -ForegroundColor Green
     Write-Host ""
-    Write-Host "Operation annulee par l'utilisateur." -ForegroundColor Yellow
+} else {
+    # Sinon, demander à l'utilisateur
+    Write-Host "Attention : Cette operation va annuler le dernier commit." -ForegroundColor Yellow
+    Write-Host "Les fichiers modifies seront gardes intacts (git reset --soft HEAD~1)." -ForegroundColor Gray
     Write-Host ""
-    exit 0
+    Write-Host "Reponse par defaut : " -ForegroundColor Gray -NoNewline
+    Write-Host "Oui" -ForegroundColor Green
+    Write-Host ""
+    
+    $confirmation = Read-Host "Voulez-vous continuer ? (o/n) [defaut: o]"
+    
+    # Si l'utilisateur appuie juste sur Entrée (chaîne vide) ou répond "o/O/oui/OUI", on continue
+    if (-not ([string]::IsNullOrWhiteSpace($confirmation) -or 
+        $confirmation -eq "o" -or 
+        $confirmation -eq "O" -or 
+        $confirmation -eq "oui" -or 
+        $confirmation -eq "OUI")) {
+        Write-Host ""
+        Write-Host "Operation annulee par l'utilisateur." -ForegroundColor Yellow
+        Write-Host ""
+        exit 0
+    }
 }
 
 Write-Host ""
@@ -84,7 +99,7 @@ if ($stagedCount -gt 0) {
     
     # Afficher les fichiers en staging
 git diff --cached --name-status | ForEach-Object {
-        $parts = $_ -split '\s+' 
+        $parts = $_ -split '\s+'
         $status = $parts[0]
         $file = $parts[1]
         
@@ -99,7 +114,7 @@ git diff --cached --name-status | ForEach-Object {
             default { $color = "Gray"; $statusText = $status }
         }
         
-        Write-Host "  [$statusText] " -ForegroundColor $color -NoNewline
+        Write-Host "  [{$statusText}] " -ForegroundColor $color -NoNewline
         Write-Host "$file" -ForegroundColor Gray
     }
     Write-Host ""
