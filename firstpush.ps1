@@ -89,6 +89,24 @@ if (-not $githubUser) {
 Write-Host "👤 Utilisateur: $githubUser"
 Write-Host ""
 
+# Vérifier si le repository existe déjà sur GitHub
+Write-Host "🔎 Vérification de l'existence du repository..."
+$repoExists = gh repo view "$githubUser/$RepoName" 2>$null
+
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "❌ Le repository '$RepoName' existe déjà sur GitHub !"
+    Write-Host "🔗 URL: https://github.com/$githubUser/$RepoName"
+    Write-Host ""
+    Write-Host "💡 Suggestions :"
+    Write-Host "   - Choisissez un autre nom de repository"
+    Write-Host "   - Supprimez l'ancien repository sur GitHub"
+    Write-Host "   - Utilisez 'he startpush https://github.com/$githubUser/$RepoName.git' pour pusher vers le repo existant"
+    exit 1
+}
+
+Write-Host "✅ Le nom '$RepoName' est disponible"
+Write-Host ""
+
 # Déterminer si le repo doit être public ou privé
 $isPublic = $true
 
