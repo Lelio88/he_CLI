@@ -1,8 +1,9 @@
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 param(
     [Parameter(Mandatory=$true)]
     [string] $RepoUrl
 )
+
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 # Fonction Git PRO avec découpage correct des arguments
 function Run-Git {
