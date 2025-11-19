@@ -13,7 +13,15 @@ switch ($command) {
     "firstpush" { 
         & "$env:USERPROFILE\he-tools\firstpush.ps1" @remainingArgs
     }
+    "heian" {
+        & "$env:USERPROFILE\he-tools\heian.ps1"
+    }
+    "help" {
+        & "$env:USERPROFILE\he-tools\help.ps1"
+    }
     default { 
-        Write-Host "Commande inconnue : $command" 
+        Write-Host "❌ Commande inconnue : $command" -ForegroundColor Red
+        Write-Host ""
+        Write-Host "Tapez 'he help' pour voir les commandes disponibles" -ForegroundColor Yellow
     }
 }
