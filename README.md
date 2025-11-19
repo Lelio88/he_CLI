@@ -4,20 +4,33 @@ Un outil en ligne de commande puissant et simple pour gérer vos projets GitHub 
 
 ## ✨ Fonctionnalités
 
-- 🔨 **firstpush** - Créez un nouveau repository GitHub et faites votre premier push en une seule commande avec "inital commit" comme message
-- 📤 **startpush** - Poussez votre code vers un repository GitHub existant avec "inital commit" comme message
+- 🔨 **firstpush** - Créez un nouveau repository GitHub et faites votre premier push en une seule commande
+- 📤 **startpush** - Poussez votre code vers un repository GitHub existant
 - 🎨 **heian** - Affichez le logo Heian Enterprise avec style
 - ❓ **help** - Obtenez de l'aide sur toutes les commandes disponibles
 
 ## 📦 Installation
 
-### Prérequis
+### Installation automatique (recommandée)
 
-- Windows PowerShell
-- Git installé
-- GitHub CLI (sera installé automatiquement si nécessaire)
+**Option 1 : PowerShell (une ligne)**
 
-### Étapes d'installation
+Ouvrez PowerShell et exécutez :
+
+```powershell
+irm https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.ps1 | iex
+```
+
+**Option 2 : Fichier batch**
+
+1. Téléchargez le fichier [install.bat](https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.bat)
+2. Double-cliquez dessus pour lancer l'installation
+
+**Après l'installation :**
+- Redémarrez votre terminal
+- Tapez `he help` pour commencer !
+
+### Installation manuelle
 
 1. Clonez ce repository :
 ```bash
@@ -95,6 +108,8 @@ he help
 
 ```
 he_CLI/
+├── install.ps1         # Script d'installation PowerShell
+├── install.bat         # Script d'installation batch
 ├── he.cmd              # Point d'entrée de la commande
 ├── main.ps1            # Router principal
 ├── firstpush.ps1       # Script de création de repo
@@ -120,6 +135,27 @@ Vérifiez que :
 - Vous êtes authentifié sur GitHub CLI (`gh auth status`)
 - Le nom du repository n'existe pas déjà
 - Vous avez une connexion Internet
+
+### L'installation échoue
+
+Si l'installation automatique échoue :
+1. Vérifiez votre connexion Internet
+2. Essayez l'installation manuelle
+3. Ouvrez une issue sur GitHub avec le message d'erreur
+
+## 🚀 Quick Start
+
+```bash
+# Installer HE CLI
+irm https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.ps1 | iex
+
+# Redémarrer le terminal, puis :
+he help
+
+# Créer votre premier projet
+cd mon-projet
+he firstpush mon-premier-repo -pu
+```
 
 ## 📝 Licence
 
