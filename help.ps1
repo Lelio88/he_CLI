@@ -85,7 +85,7 @@ Write-Host "     Affiche le logo Heian Enterprise avec style" -ForegroundColor G
 Write-Host ""
 
 Write-Host "  he matrix" -ForegroundColor Green
-Write-Host "     Effet Matrix dans votre terminal (Ctrl+C pour quitter)" -ForegroundColor Gray
+Write-Host "     ???" -ForegroundColor Gray
 Write-Host ""
 
 Write-Host "  he help" -ForegroundColor Green
@@ -138,13 +138,13 @@ Write-Host "  - Utilisez 'he update' en fin de journee ou en equipe" -Foreground
 Write-Host "  - 'he rollback' garde vos fichiers intacts, pas de panique" -ForegroundColor Gray
 Write-Host "  - 'he backupzip' cree des sauvegardes numerotees (#1, #2...)" -ForegroundColor Gray
 Write-Host "  - 'he selfupdate' pour avoir les dernieres fonctionnalites" -ForegroundColor Gray
-Write-Host "  - 'he matrix' pour impressionner vos collegues !" -ForegroundColor Gray
+Write-Host "  - 'he matrix' pour entrer dans le terrier du lapin blanc" -ForegroundColor Gray
 Write-Host ""
 Write-Host "===============================================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Documentation complete : https://github.com/Lelio88/he_CLI" -ForegroundColor Magenta
 Write-Host "Signaler un bug : https://github.com/Lelio88/he_CLI/issues" -ForegroundColor Magenta
 Write-Host ""
-Write-Host "Made with love by Heian Enterprise" -ForegroundColor Red
+Write-Host "Made with love by Lelio B" -ForegroundColor Red
 Write-Host "Version 1.0.0 - 2025-11-19" -ForegroundColor DarkGray
 Write-Host ""
