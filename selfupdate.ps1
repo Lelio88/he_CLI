@@ -12,8 +12,14 @@ Write-Host "Telechargement de la derniere version depuis GitHub..." -ForegroundC
 Write-Host ""
 
 try {
-    # Télécharger et exécuter le script d'installation
+    # Créer un fichier temporaire pour le script d'installation
+    $tempInstallScript = Join-Path ([System.IO.Path]::GetTempPath()) "he_install_update_$([guid]::NewGuid().ToString()).ps1"
+    
+    # Télécharger le script d'installation
     $updateScript = Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.ps1" -UseBasicParsing -ErrorAction Stop
+    
+    # Sauvegarder dans le fichier temporaire
+    Set-Content -Path $tempInstallScript -Value $updateScript.Content -Encoding UTF8
     
     Write-Host "Script de mise a jour telecharge avec succes" -ForegroundColor Green
     Write-Host ""
@@ -21,7 +27,12 @@ try {
     Write-Host ""
     
     # Exécuter le script d'installation
-    Invoke-Expression $updateScript.Content
+    & $tempInstallScript
+    
+    # Nettoyer le fichier temporaire
+    if (Test-Path $tempInstallScript) {
+        Remove-Item -Path $tempInstallScript -Force -ErrorAction SilentlyContinue
+    }
 }
 catch {
     Write-Host ""
@@ -34,7 +45,13 @@ catch {
     Write-Host "  - Que GitHub est accessible" -ForegroundColor Gray
     Write-Host ""
     Write-Host "Ou essayez manuellement :" -ForegroundColor Yellow
-    Write-Host "  irm https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.ps1 | iex" -ForegroundColor White
+    
+    if ($IsWindows -or $env:OS -eq "Windows_NT") {
+        Write-Host "  irm https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.ps1 | iex" -ForegroundColor White
+    } else {
+        Write-Host "  curl -fsSL https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.sh | bash" -ForegroundColor White
+    }
+    
     Write-Host ""
     exit 1
 }
