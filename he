@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# HE CLI - Shell wrapper for Linux/macOS
+# This script launches PowerShell Core (pwsh) with the main.ps1 script
+
+# Get the directory where this script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Check if pwsh is installed
+if ! command -v pwsh &> /dev/null; then
+    echo "❌ PowerShell Core (pwsh) is not installed."
+    echo ""
+    echo "Please install PowerShell Core:"
+    echo "  - Ubuntu/Debian: https://learn.microsoft.com/powershell/scripting/install/install-ubuntu"
+    echo "  - macOS: brew install --cask powershell"
+    echo "  - Other: https://github.com/PowerShell/PowerShell"
+    exit 1
+fi
+
+# Launch main.ps1 with pwsh, passing all arguments
+exec pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File "$SCRIPT_DIR/main.ps1" "$@"

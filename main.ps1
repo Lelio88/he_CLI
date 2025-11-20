@@ -10,36 +10,39 @@ if ($args.Length -gt 1) {
     $remainingArgs = @()
 }
 
+# Get the directory where this script is located (cross-platform)
+$scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
+
 switch ($command) {
     "fastpush" { 
-        & "$env:USERPROFILE\he-tools\fastpush.ps1" @remainingArgs
+        & (Join-Path $scriptPath "fastpush.ps1") @remainingArgs
     }
     "createrepo" { 
-        & "$env:USERPROFILE\he-tools\createrepo.ps1" @remainingArgs
+        & (Join-Path $scriptPath "createrepo.ps1") @remainingArgs
     }
     "backup" {
-        & "$env:USERPROFILE\he-tools\backup.ps1" @remainingArgs
+        & (Join-Path $scriptPath "backup.ps1") @remainingArgs
     }
     "rollback" {
-        & "$env:USERPROFILE\he-tools\rollback.ps1" @remainingArgs
+        & (Join-Path $scriptPath "rollback.ps1") @remainingArgs
     }
     "logcommit" {
-        & "$env:USERPROFILE\he-tools\logcommit.ps1" @remainingArgs
+        & (Join-Path $scriptPath "logcommit.ps1") @remainingArgs
     }
     "update" {
-        & "$env:USERPROFILE\he-tools\update.ps1" @remainingArgs
+        & (Join-Path $scriptPath "update.ps1") @remainingArgs
     }
     "selfupdate" {
-        & "$env:USERPROFILE\he-tools\install.ps1"
+        & (Join-Path $scriptPath "install.ps1")
     }
     "matrix"{
-        & "$env:USERPROFILE\he-tools\matrix.ps1"
+        & (Join-Path $scriptPath "matrix.ps1")
     }
     "heian" {
-        & "$env:USERPROFILE\he-tools\heian.ps1"
+        & (Join-Path $scriptPath "heian.ps1")
     }
     "help" {
-        & "$env:USERPROFILE\he-tools\help.ps1"
+        & (Join-Path $scriptPath "help.ps1")
     }
     default { 
         Write-Host "❌ Commande inconnue : $command" -ForegroundColor Red
