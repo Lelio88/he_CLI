@@ -10,13 +10,17 @@ Un outil en ligne de commande puissant et simple pour gérer vos projets GitHub 
   - [📑 Table des matières](#-table-des-matières)
   - [✨ Fonctionnalités](#-fonctionnalités)
   - [💻 Compatibilité](#-compatibilité)
+  - [📋 Prérequis](#-prérequis)
+    - [Windows](#windows)
+    - [Linux/macOS](#linuxmacos)
   - [📦 Installation](#-installation)
     - [🐧 Linux / 🍎 macOS](#-linux---macos)
-    - [🪟 Windows](#-windows)
+      - [Installation automatique (recommandée)](#installation-automatique-recommandée)
     - [Installation manuelle](#installation-manuelle)
+      - [Installation manuelle](#installation-manuelle-1)
   - [🗑️ Désinstallation](#️-désinstallation)
     - [🐧 Linux / 🍎 macOS](#-linux---macos-1)
-    - [🪟 Windows](#-windows-1)
+    - [🪟 Windows](#-windows)
   - [🎯 Commandes](#-commandes)
     - [`createrepo` - Créer un repository](#createrepo---créer-un-repository)
     - [`fastpush` - Push rapide](#fastpush---push-rapide)
@@ -52,19 +56,16 @@ HE CLI est compatible avec :
 - **Linux** : Toutes les distributions avec PowerShell Core (pwsh) installé
 - **macOS** : Toutes les versions avec PowerShell Core (pwsh) installé
 
-### Prérequis
+## 📋 Prérequis
 
-#### Windows
-- PowerShell 5.1+ (préinstallé sur Windows 10/11)
-- Git
+### Windows
+- PowerShell 5.1 ou supérieur (inclus par défaut dans Windows 10/11)
+- PowerShell 7+ recommandé pour de meilleures performances
 
-#### Linux / macOS
-- **PowerShell Core (pwsh)** - [Guide d'installation](https://learn.microsoft.com/powershell/scripting/install/installing-powershell)
-  - Ubuntu/Debian : [Instructions](https://learn.microsoft.com/powershell/scripting/install/install-ubuntu)
-  - macOS : `brew install --cask powershell`
-- Git
-  - Ubuntu/Debian : `sudo apt install git`
-  - macOS : `brew install git` ou préinstallé avec Xcode
+### Linux/macOS
+- **PowerShell Core (pwsh)** est requis pour exécuter HE CLI
+- ✅ **Le script d'installation peut l'installer automatiquement pour vous !**
+- Distributions supportées : Ubuntu, Debian, Fedora, RHEL, CentOS, Arch Linux, macOS
 
 ---
 
@@ -86,13 +87,18 @@ Le script vous demandera où installer HE CLI :
 
 Redémarrez votre terminal, puis tapez `he help` pour commencer !
 
-#### Installation manuelle
+### Installation manuelle
 
-1. Clonez ce repository
-2. Copiez les fichiers dans `/usr/local/bin` ou `~/.local/bin`
-3. Rendez le script `he` exécutable : `chmod +x he`
-4. Assurez-vous que le répertoire est dans votre PATH
-5. Redémarrez votre terminal
+```bash
+# Cloner le repository
+git clone https://github.com/Lelio88/he_CLI.git
+cd he_CLI
+
+# Rendre le script exécutable
+chmod +x install.sh
+
+# Lancer l'installation
+./install.sh
 
 ### 🪟 Windows
 
