@@ -68,12 +68,13 @@ Write-Host "Creation de l'archive : $zipName" -ForegroundColor Yellow
 Write-Host ""
 
 # Obtenir tous les fichiers à sauvegarder (exclure le dossier backups et .git)
+$sep = [System.IO.Path]::DirectorySeparatorChar
 $filesToBackup = Get-ChildItem -Path (Get-Location) -Recurse -File | Where-Object {
-    $_.FullName -notlike "*\backups\*" -and
-    $_.FullName -notlike "*\.git\*" -and
-    $_.FullName -notlike "*\node_modules\*" -and
-    $_.FullName -notlike "*\obj\*" -and
-    $_.FullName -notlike "*\bin\*"
+    $_.FullName -notlike "*${sep}backups${sep}*" -and
+    $_.FullName -notlike "*${sep}.git${sep}*" -and
+    $_.FullName -notlike "*${sep}node_modules${sep}*" -and
+    $_.FullName -notlike "*${sep}obj${sep}*" -and
+    $_.FullName -notlike "*${sep}bin${sep}*"
 }
 
 $totalFiles = ($filesToBackup | Measure-Object).Count
