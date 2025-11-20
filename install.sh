@@ -252,9 +252,9 @@ install_to_directory() {
 }
 
 # Try to install to /usr/local/bin first (requires sudo)
-echo "Le CLI peut être installé dans :"
-echo "  1. /usr/local/bin (système, nécessite sudo)"
-echo "  2. ~/.local/bin (utilisateur, pas de sudo)"
+echo "The CLI can be installed in:"
+echo "  1. /usr/local/bin (system-wide, requires sudo)"
+echo "  2. ~/.local/bin (user only, no sudo required)"
 echo ""
 read -p "Voulez-vous installer dans /usr/local/bin avec sudo ? [O/n] " -n 1 -r
 echo ""
