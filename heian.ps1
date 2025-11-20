@@ -41,7 +41,7 @@ Write-Host "███████╗██║ ╚████║   ██║   �
 Write-Host " ======" -ForegroundColor Cyan
 Write-Host "======  " -ForegroundColor Cyan -NoNewline
 Write-Host "╚══════╝╚═╝  ╚═══╝   ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝╚═╝╚══════╝╚══════╝" -ForegroundColor DarkYellow -NoNewline
-Write-Host " ======" -ForegroundColor Cyan
+Write-Host "      ======" -ForegroundColor Cyan
 Write-Host "======                                                                                 ======" -ForegroundColor Cyan
 Write-Host "=============================================================================================" -ForegroundColor Cyan
 Write-Host "=============================================================================================" -ForegroundColor DarkCyan
