@@ -3,67 +3,138 @@
 # Compatible PowerShell Core (pwsh)
 # ============================================
 
+# Vérification des droits administrateur sur Windows
+if ($PSVersionTable.Platform -eq "Win32NT" -or $IsWindows) {
+    $currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+    $isAdmin = $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    
+    if (-not $isAdmin) {
+        Write-Host "`n⚠️  ATTENTION : Ce script nécessite des droits administrateur pour fonctionner correctement.`n" -ForegroundColor Yellow
+        Write-Host "Certaines opérations (DISM, SFC, CHKDSK, etc.) seront ignorées.`n" -ForegroundColor Yellow
+        
+        $response = Read-Host "Voulez-vous relancer le script en tant qu'administrateur ? (O/N)"
+        if ($response -eq "O" -or $response -eq "o") {
+            Start-Process pwsh -Verb RunAs -ArgumentList "-NoExit", "-Command", "& '$PSCommandPath'"
+            exit
+        }
+        Write-Host "`nContinuation sans droits administrateur...`n" -ForegroundColor Yellow
+    }
+}
+
 Write-Host "`n===== MAINTENANCE CROSS-PLATFORM =====`n"
 
-# Détection OS
-$OS = $PSVersionTable.OS
+# Détection OS corrigée
+$isWindows = $false
 
-if ($OS -match "Windows") {
-    Write-Host "=> Système détecté : Windows`n"
+# Méthode 1 : Variable automatique PowerShell Core (la plus fiable)
+if (Test-Path variable:global:IsWindows) {
+    $isWindows = $IsWindows
+}
+# Méthode 2 : Variable d'environnement Windows
+elseif ($env:OS -eq "Windows_NT") {
+    $isWindows = $true
+}
+# Méthode 3 : Platform Win32NT
+elseif ($PSVersionTable.Platform -eq "Win32NT") {
+    $isWindows = $true
+}
+# Méthode 4 : PowerShell Desktop = Windows
+elseif ($PSVersionTable.PSEdition -eq "Desktop") {
+    $isWindows = $true
+}
+# Méthode 5 : Test de chemin système
+elseif (Test-Path "C:\Windows\System32") {
+    $isWindows = $true
+}
+
+if ($isWindows) {
+    Write-Host "=> Système détecté : Windows`n" -ForegroundColor Green
+
+    # Vérification admin pour les commandes critiques
+    $currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+    $isAdmin = $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
     # 1. Mise à jour sources winget
     Write-Host "--- Mise à jour des sources Winget ---"
     winget source update
 
-    # 2. Nettoyage winget
-    Write-Host "`n--- Nettoyage des caches Winget ---"
-    winget clean
-
-    # 3. Réparation winget
-    Write-Host "`n--- Réparation Winget ---"
-    winget repair
-
-    # 4. Mise à jour des applications
+    # 2. Mise à jour des applications
     Write-Host "`n--- Mise à jour des applications ---"
     winget upgrade --all --silent
 
-    # 5. DISM
-    Write-Host "`n--- DISM / RestoreHealth ---"
-    DISM /Online /Cleanup-Image /RestoreHealth
+    # 3. DISM (nécessite admin)
+    if ($isAdmin) {
+        Write-Host "`n--- DISM / RestoreHealth ---"
+        DISM /Online /Cleanup-Image /RestoreHealth
+    } else {
+        Write-Host "`n--- DISM / RestoreHealth [IGNORÉ - Droits admin requis] ---" -ForegroundColor Yellow
+    }
 
-    # 6. SFC
-    Write-Host "`n--- SFC /Scannow ---"
-    sfc /scannow
+    # 4. SFC (nécessite admin)
+    if ($isAdmin) {
+        Write-Host "`n--- SFC /Scannow ---"
+        sfc /scannow
+    } else {
+        Write-Host "`n--- SFC /Scannow [IGNORÉ - Droits admin requis] ---" -ForegroundColor Yellow
+    }
 
-    # 7. Nettoyage fichiers temporaires
+    # 5. Nettoyage fichiers temporaires
     Write-Host "`n--- Nettoyage des fichiers temporaires ---"
     Get-ChildItem "C:\Windows\Temp" -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue
     Get-ChildItem "$env:TEMP" -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue
 
-    # 8. Flush DNS
+    # 6. Nettoyage cache winget manuel
+    Write-Host "`n--- Nettoyage du cache Winget ---"
+    $wingetCache = "$env:LOCALAPPDATA\Packages\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\LocalCache"
+    if (Test-Path $wingetCache) {
+        Get-ChildItem $wingetCache -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue
+        Write-Host "Cache Winget nettoyé"
+    }
+
+    # 7. Flush DNS
     Write-Host "`n--- Flush DNS ---"
     ipconfig /flushdns
 
-    # 9. Reset réseau
-    Write-Host "`n--- Reset Winsock & IP ---"
-    netsh winsock reset
-    netsh int ip reset
+    # 8. Reset réseau (nécessite admin)
+    if ($isAdmin) {
+        Write-Host "`n--- Reset Winsock & IP ---"
+        netsh winsock reset
+        netsh int ip reset
+    } else {
+        Write-Host "`n--- Reset Winsock & IP [IGNORÉ - Droits admin requis] ---" -ForegroundColor Yellow
+    }
 
-    # 10. Nettoyage Windows Update
-    Write-Host "`n--- Nettoyage Windows Update ---"
-    net stop wuauserv
-    net stop bits
-    Remove-Item -Path "$env:windir\SoftwareDistribution\*" -Recurse -Force -ErrorAction SilentlyContinue
-    net start wuauserv
-    net start bits
+    # 9. Nettoyage Windows Update (nécessite admin)
+    if ($isAdmin) {
+        Write-Host "`n--- Nettoyage Windows Update ---"
+        Stop-Service wuauserv -Force -ErrorAction SilentlyContinue
+        Stop-Service bits -Force -ErrorAction SilentlyContinue
+        Remove-Item -Path "$env:windir\SoftwareDistribution\*" -Recurse -Force -ErrorAction SilentlyContinue
+        Start-Service wuauserv -ErrorAction SilentlyContinue
+        Start-Service bits -ErrorAction SilentlyContinue
+    } else {
+        Write-Host "`n--- Nettoyage Windows Update [IGNORÉ - Droits admin requis] ---" -ForegroundColor Yellow
+    }
 
-    # 11. CHKDSK
-    Write-Host "`n--- CHKDSK /scan ---"
-    chkdsk C: /scan
+    # 10. CHKDSK (nécessite admin)
+    if ($isAdmin) {
+        Write-Host "`n--- CHKDSK /scan ---"
+        chkdsk C: /scan
+    } else {
+        Write-Host "`n--- CHKDSK /scan [IGNORÉ - Droits admin requis] ---" -ForegroundColor Yellow
+    }
+
+    # 11. Nettoyage disque système (nécessite admin)
+    if ($isAdmin) {
+        Write-Host "`n--- Nettoyage de disque ---"
+        Start-Process cleanmgr -ArgumentList "/sagerun:1" -NoNewWindow -Wait -ErrorAction SilentlyContinue
+    } else {
+        Write-Host "`n--- Nettoyage de disque [IGNORÉ - Droits admin requis] ---" -ForegroundColor Yellow
+    }
 
 }
 else {
-    Write-Host "=> Système détecté : Linux`n"
+    Write-Host "=> Système détecté : Linux`n" -ForegroundColor Green
 
     # 1. Mise à jour des packages
     Write-Host "--- Mise à jour des paquets ---"

@@ -52,6 +52,7 @@ $files = @(
     "logcommit.ps1",
     "backup.ps1",
     "selfupdate.ps1",
+    "maintenance.ps1",
     "heian.ps1",
     "matrix.ps1",
     "help.ps1"
