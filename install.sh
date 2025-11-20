@@ -11,15 +11,143 @@ echo "==========================================================================
 echo ""
 
 # Check if pwsh is installed
+# Check if pwsh is installed
 if ! command -v pwsh &> /dev/null; then
-    echo "❌ PowerShell Core (pwsh) n'est pas installé."
+    echo "⚠️  PowerShell Core (pwsh) n'est pas installé."
     echo ""
-    echo "Veuillez installer PowerShell Core :"
-    echo "  - Ubuntu/Debian: https://learn.microsoft.com/powershell/scripting/install/install-ubuntu"
-    echo "  - macOS: brew install --cask powershell"
-    echo "  - Autre: https://github.com/PowerShell/PowerShell"
+    echo "PowerShell Core est requis pour exécuter HE CLI."
     echo ""
-    exit 1
+    
+    # Detect OS and distribution
+    OS_TYPE=""
+    DISTRO=""
+    
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        OS_TYPE="linux"
+        if [ -f /etc/os-release ]; then
+            . /etc/os-release
+            DISTRO=$ID
+        fi
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        OS_TYPE="macos"
+    else
+        echo "❌ Système d'exploitation non supporté pour l'installation automatique."
+        echo ""
+        echo "Veuillez installer PowerShell Core manuellement :"
+        echo "  https://github.com/PowerShell/PowerShell"
+        exit 1
+    fi
+    
+    echo "Système détecté : $OS_TYPE ($DISTRO)"
+    echo ""
+    read -p "📦 Voulez-vous installer PowerShell Core automatiquement ? (O/n): " response
+    
+    if [[ "$response" =~ ^[OoYy]$ ]] || [[ -z "$response" ]]; then
+        echo ""
+        echo "📥 Installation de PowerShell Core en cours..."
+        echo ""
+        
+        case "$DISTRO" in
+            ubuntu|debian)
+                echo "Installation pour Ubuntu/Debian..."
+                # Download the Microsoft repository GPG keys
+                wget -q "https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb" -O /tmp/packages-microsoft-prod.deb
+                
+                # Register the Microsoft repository GPG keys
+                sudo dpkg -i /tmp/packages-microsoft-prod.deb
+                
+                # Delete the downloaded package file
+                rm /tmp/packages-microsoft-prod.deb
+                
+                # Update the list of packages
+                sudo apt-get update
+                
+                # Install PowerShell
+                sudo apt-get install -y powershell
+                ;;
+                
+            fedora)
+                echo "Installation pour Fedora..."
+                sudo dnf install -y powershell
+                ;;
+                
+            rhel|centos)
+                echo "Installation pour RHEL/CentOS..."
+                # Register the Microsoft RedHat repository
+                curl https://packages.microsoft.com/config/rhel/8/prod.repo | sudo tee /etc/yum.repos.d/microsoft.repo
+                
+                # Install PowerShell
+                sudo dnf install -y powershell
+                ;;
+                
+            arch|manjaro)
+                echo "Installation pour Arch Linux..."
+                echo ""
+                echo "Pour Arch Linux, PowerShell est disponible via AUR."
+                echo "Veuillez l'installer manuellement avec :"
+                echo "  yay -S powershell-bin"
+                echo "ou"
+                echo "  paru -S powershell-bin"
+                exit 1
+                ;;
+                
+            *)
+                if [[ "$OS_TYPE" == "macos" ]]; then
+                    echo "Installation pour macOS..."
+                    if command -v brew &> /dev/null; then
+                        brew install --cask powershell
+                    else
+                        echo "❌ Homebrew n'est pas installé."
+                        echo ""
+                        echo "Veuillez installer Homebrew depuis https://brew.sh"
+                        echo "Puis exécutez : brew install --cask powershell"
+                        exit 1
+                    fi
+                else
+                    echo "❌ Distribution Linux non reconnue : $DISTRO"
+                    echo ""
+                    echo "Veuillez installer PowerShell Core manuellement :"
+                    echo "  https://github.com/PowerShell/PowerShell"
+                    exit 1
+                fi
+                ;;
+        esac
+        
+        echo ""
+        echo "✅ Vérification de l'installation..."
+        
+        # Check if pwsh is now available
+        if command -v pwsh &> /dev/null; then
+            PWSH_VERSION=$(pwsh --version)
+            echo "✅ PowerShell Core installé avec succès !"
+            echo "   Version : $PWSH_VERSION"
+            echo ""
+        else
+            echo "❌ L'installation de PowerShell Core a échoué."
+            echo ""
+            echo "Veuillez installer PowerShell Core manuellement :"
+            echo "  - Ubuntu/Debian: https://learn.microsoft.com/powershell/scripting/install/install-ubuntu"
+            echo "  - macOS: brew install --cask powershell"
+            echo "  - Autre: https://github.com/PowerShell/PowerShell"
+            exit 1
+        fi
+    else
+        echo ""
+        echo "❌ Installation annulée."
+        echo ""
+        echo "PowerShell Core est requis pour exécuter HE CLI."
+        echo "Veuillez l'installer manuellement :"
+        echo "  - Ubuntu/Debian: https://learn.microsoft.com/powershell/scripting/install/install-ubuntu"
+        echo "  - macOS: brew install --cask powershell"
+        echo "  - Autre: https://github.com/PowerShell/PowerShell"
+        echo ""
+        exit 1
+    fi
+else
+    PWSH_VERSION=$(pwsh --version)
+    echo "✅ PowerShell Core est déjà installé"
+    echo "   Version : $PWSH_VERSION"
+    echo ""
 fi
 
 # Check if Git is installed
