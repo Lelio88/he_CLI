@@ -19,9 +19,14 @@ remove_from_path() {
         # Create backup
         cp "$shell_config" "${shell_config}.backup"
         
-        # Remove the PATH line
-        sed -i.bak "/export PATH=.*$dir_to_remove/d" "$shell_config"
-        rm "${shell_config}.bak"
+        # Détecter si on est sur macOS ou Linux pour sed
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS : sed nécessite une extension vide après -i
+            sed -i '' "/export PATH=.*$(echo $dir_to_remove | sed 's/[\/&]/\\&/g')/d" "$shell_config"
+        else
+            # Linux : sed accepte -i directement
+            sed -i "/export PATH=.*$(echo $dir_to_remove | sed 's/[\/&]/\\&/g')/d" "$shell_config"
+        fi
         
         echo "      Ligne PATH supprimée de $shell_config"
     fi
@@ -73,6 +78,7 @@ FILES=(
     "logcommit.ps1"
     "backup.ps1"
     "selfupdate.ps1"
+    "maintenance.ps1"
     "heian.ps1"
     "matrix.ps1"
     "help.ps1"

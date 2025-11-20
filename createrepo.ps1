@@ -26,34 +26,170 @@ function Run-Git {
     }
 }
 
+# Détecter l'OS
+$isWindows = $false
+if (Test-Path variable:global:IsWindows) {
+    $isWindows = $IsWindows
+} elseif ($env:OS -eq "Windows_NT") {
+    $isWindows = $true
+} elseif ($PSVersionTable.Platform -eq "Win32NT") {
+    $isWindows = $true
+} elseif ($PSVersionTable.PSEdition -eq "Desktop") {
+    $isWindows = $true
+}
+
 # Vérifier si GitHub CLI est installé
 Write-Host "🔍 Vérification de GitHub CLI..."
 $ghInstalled = Get-Command gh -ErrorAction SilentlyContinue
 
 if (-not $ghInstalled) {
     Write-Host "❌ GitHub CLI n'est pas installé."
-    Write-Host "📥 Installation de GitHub CLI via winget..."
+    Write-Host "📥 Installation de GitHub CLI..."
+    Write-Host ""
     
-    # Vérifier si winget est disponible
-    $wingetInstalled = Get-Command winget -ErrorAction SilentlyContinue
-    
-    if (-not $wingetInstalled) {
-        Write-Host "❌ winget n'est pas disponible. Veuillez installer GitHub CLI manuellement:"
-        Write-Host "   Téléchargez depuis: https://cli.github.com/"
-        throw "Installation impossible sans winget"
+    if ($isWindows) {
+        # ========== Windows : winget ==========
+        $wingetInstalled = Get-Command winget -ErrorAction SilentlyContinue
+        
+        if (-not $wingetInstalled) {
+            Write-Host "❌ winget n'est pas disponible." -ForegroundColor Red
+            Write-Host ""
+            Write-Host "Veuillez installer GitHub CLI manuellement :" -ForegroundColor Yellow
+            Write-Host "  1. Téléchargez depuis: https://cli.github.com/" -ForegroundColor White
+            Write-Host "  2. Ou installez winget depuis le Microsoft Store" -ForegroundColor White
+            Write-Host ""
+            exit 1
+        }
+        
+        Write-Host "Installation via winget..." -ForegroundColor Cyan
+        winget install --id GitHub.cli --silent --accept-package-agreements --accept-source-agreements
+        
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "❌ Erreur lors de l'installation de GitHub CLI" -ForegroundColor Red
+            exit 1
+        }
+        
+        Write-Host "✅ GitHub CLI installé avec succès" -ForegroundColor Green
+        Write-Host "⚠️  Veuillez redémarrer votre terminal pour que les changements prennent effet." -ForegroundColor Yellow
+        Write-Host "   Puis relancez la commande: he createrepo $RepoName" -ForegroundColor Yellow
+        exit 0
     }
-    
-    # Installer GitHub CLI
-    winget install --id GitHub.cli --silent --accept-package-agreements --accept-source-agreements
-    
-    if ($LASTEXITCODE -ne 0) {
-        throw "Erreur lors de l'installation de GitHub CLI"
+    else {
+        # ========== Linux/macOS ==========
+        $isMacOS = $false
+        $distro = ""
+        
+        # Détecter macOS
+        if (Test-Path "/System/Library/CoreServices/SystemVersion.plist") {
+            $isMacOS = $true
+        }
+        # Détecter la distribution Linux
+        elseif (Test-Path "/etc/os-release") {
+            $osRelease = Get-Content "/etc/os-release" -Raw
+            if ($osRelease -match 'ID=([^\s]+)') {
+                $distro = $matches[1] -replace '"', ''
+            }
+        }
+        
+        if ($isMacOS) {
+            # macOS : Homebrew
+            Write-Host "Système détecté : macOS" -ForegroundColor Cyan
+            
+            if (Get-Command brew -ErrorAction SilentlyContinue) {
+                Write-Host "Installation via Homebrew..." -ForegroundColor Cyan
+                brew install gh
+                
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Host "✅ GitHub CLI installé avec succès" -ForegroundColor Green
+                } else {
+                    Write-Host "❌ Erreur lors de l'installation" -ForegroundColor Red
+                    exit 1
+                }
+            } else {
+                Write-Host "❌ Homebrew n'est pas installé." -ForegroundColor Red
+                Write-Host ""
+                Write-Host "Installez Homebrew depuis : https://brew.sh" -ForegroundColor Yellow
+                Write-Host "Puis exécutez : brew install gh" -ForegroundColor White
+                exit 1
+            }
+        }
+        elseif ($distro -match "ubuntu|debian") {
+            # Ubuntu/Debian : APT
+            Write-Host "Distribution détectée : Ubuntu/Debian" -ForegroundColor Cyan
+            Write-Host "Installation via APT..." -ForegroundColor Cyan
+            
+            # Ajouter le repository GitHub CLI
+            Write-Host "Ajout du repository GitHub CLI..."
+            bash -c "curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg"
+            bash -c "echo 'deb [arch=\$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main' | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null"
+            
+            sudo apt update
+            sudo apt install gh -y
+            
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "✅ GitHub CLI installé avec succès" -ForegroundColor Green
+            } else {
+                Write-Host "❌ Erreur lors de l'installation" -ForegroundColor Red
+                exit 1
+            }
+        }
+        elseif ($distro -match "fedora") {
+            # Fedora : DNF
+            Write-Host "Distribution détectée : Fedora" -ForegroundColor Cyan
+            Write-Host "Installation via DNF..." -ForegroundColor Cyan
+            
+            sudo dnf install gh -y
+            
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "✅ GitHub CLI installé avec succès" -ForegroundColor Green
+            } else {
+                Write-Host "❌ Erreur lors de l'installation" -ForegroundColor Red
+                exit 1
+            }
+        }
+        elseif ($distro -match "rhel|centos") {
+            # RHEL/CentOS : DNF/YUM
+            Write-Host "Distribution détectée : RHEL/CentOS" -ForegroundColor Cyan
+            Write-Host "Installation via DNF..." -ForegroundColor Cyan
+            
+            sudo dnf install gh -y
+            
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "✅ GitHub CLI installé avec succès" -ForegroundColor Green
+            } else {
+                Write-Host "❌ Erreur lors de l'installation" -ForegroundColor Red
+                exit 1
+            }
+        }
+        elseif ($distro -match "arch|manjaro") {
+            # Arch Linux : Pacman
+            Write-Host "Distribution détectée : Arch Linux/Manjaro" -ForegroundColor Cyan
+            Write-Host "Installation via Pacman..." -ForegroundColor Cyan
+            
+            sudo pacman -S github-cli --noconfirm
+            
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "✅ GitHub CLI installé avec succès" -ForegroundColor Green
+            } else {
+                Write-Host "❌ Erreur lors de l'installation" -ForegroundColor Red
+                exit 1
+            }
+        }
+        else {
+            # Distribution inconnue
+            Write-Host "❌ Distribution Linux non reconnue : $distro" -ForegroundColor Red
+            Write-Host ""
+            Write-Host "Veuillez installer GitHub CLI manuellement :" -ForegroundColor Yellow
+            Write-Host "  https://github.com/cli/cli#installation" -ForegroundColor White
+            Write-Host ""
+            exit 1
+        }
+        
+        Write-Host ""
+        Write-Host "⚠️  Veuillez redémarrer votre terminal pour que les changements prennent effet." -ForegroundColor Yellow
+        Write-Host "   Puis relancez la commande: he createrepo $RepoName" -ForegroundColor Yellow
+        exit 0
     }
-    
-    Write-Host "✅ GitHub CLI installé avec succès"
-    Write-Host "⚠️  Veuillez redémarrer votre terminal pour que les changements prennent effet."
-    Write-Host "   Puis relancez la commande: he createrepo $RepoName"
-    exit 0
 }
 
 Write-Host "✅ GitHub CLI est installé"
@@ -100,7 +236,7 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "💡 Suggestions :"
     Write-Host "   - Choisissez un autre nom de repository"
     Write-Host "   - Supprimez l'ancien repository sur GitHub"
-    Write-Host "   - Utilisez 'he startpush https://github.com/$githubUser/$RepoName.git' pour pusher vers le repo existant"
+    Write-Host "   - Utilisez 'he fastpush https://github.com/$githubUser/$RepoName.git' pour pusher vers le repo existant"
     exit 1
 }
 

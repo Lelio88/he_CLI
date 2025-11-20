@@ -134,40 +134,153 @@ if ($isWindows) {
 
 }
 else {
-    Write-Host "=> Système détecté : Linux`n" -ForegroundColor Green
+    Write-Host "=> Système détecté : Linux/macOS`n" -ForegroundColor Green
 
-    # 1. Mise à jour des packages
-    Write-Host "--- Mise à jour des paquets ---"
-    sudo apt update
-    sudo apt upgrade -y
+    # Détection de la distribution Linux ou macOS
+    $isMacOS = $false
+    $distro = ""
 
-    # 2. Nettoyage APT
-    Write-Host "`n--- Nettoyage APT ---"
-    sudo apt autoremove -y
-    sudo apt autoclean
+    if ($PSVersionTable.Platform -eq "Unix") {
+        # Détecter macOS
+        if (Test-Path "/System/Library/CoreServices/SystemVersion.plist") {
+            $isMacOS = $true
+            Write-Host "Système d'exploitation : macOS`n" -ForegroundColor Cyan
+        }
+        # Détecter la distribution Linux
+        elseif (Test-Path "/etc/os-release") {
+            $osRelease = Get-Content "/etc/os-release" -Raw
+            if ($osRelease -match 'ID=([^\s]+)') {
+                $distro = $matches[1] -replace '"', ''
+                Write-Host "Distribution Linux détectée : $distro`n" -ForegroundColor Cyan
+            }
+        }
+    }
 
-    # 3. Réparation des paquets cassés
-    Write-Host "`n--- Réparation des paquets cassés ---"
-    sudo apt --fix-broken install -y
+    if ($isMacOS) {
+        # ========== macOS ==========
+        Write-Host "--- Mise à jour Homebrew ---"
+        if (Get-Command brew -ErrorAction SilentlyContinue) {
+            brew update
+            
+            Write-Host "`n--- Mise à jour des paquets ---"
+            brew upgrade
+            
+            Write-Host "`n--- Nettoyage Homebrew ---"
+            brew cleanup
+            brew autoremove
+        } else {
+            Write-Host "Homebrew n'est pas installé. Installez-le depuis https://brew.sh" -ForegroundColor Yellow
+        }
 
-    # 4. Nettoyage des journaux
-    Write-Host "`n--- Nettoyage du journal systemd ---"
-    sudo journalctl --vacuum-size=100M
+        Write-Host "`n--- Vérification des mises à jour système ---"
+        softwareupdate -l
 
-    # 5. Vérification des services en échec
-    Write-Host "`n--- Services en échec ---"
-    systemctl --failed
+    }
+    elseif ($distro -match "ubuntu|debian") {
+        # ========== Ubuntu/Debian ==========
+        Write-Host "--- Mise à jour des paquets (APT) ---"
+        sudo apt update
+        sudo apt upgrade -y
 
-    # 6. Vérification du disque (non intrusive)
-    Write-Host "`n--- Vérification du disque (fsck dry-run) ---"
-    sudo fsck -N /
+        Write-Host "`n--- Nettoyage APT ---"
+        sudo apt autoremove -y
+        sudo apt autoclean
 
-    # 7. Vérification SMART si disponible
-    if (Get-Command smartctl -ErrorAction SilentlyContinue) {
-        Write-Host "`n--- SMART (état du disque) ---"
-        sudo smartctl -H /dev/sda
-    } else {
-        Write-Host "`nsmartctl non installé (sudo apt install smartmontools pour l'activer)"
+        Write-Host "`n--- Réparation des paquets cassés ---"
+        sudo apt --fix-broken install -y
+
+        Write-Host "`n--- Nettoyage du journal systemd ---"
+        sudo journalctl --vacuum-size=100M
+
+        Write-Host "`n--- Services en échec ---"
+        systemctl --failed
+
+        Write-Host "`n--- Vérification du disque (fsck dry-run) ---"
+        sudo fsck -N /
+
+        # SMART
+        if (Get-Command smartctl -ErrorAction SilentlyContinue) {
+            Write-Host "`n--- SMART (état du disque) ---"
+            $diskDevice = (lsblk -d -o NAME,TYPE | Select-String "disk" | Select-Object -First 1) -replace '\s.*', ''
+            if ($diskDevice) {
+                sudo smartctl -H "/dev/$diskDevice"
+            }
+        } else {
+            Write-Host "`nsmartctl non installé (sudo apt install smartmontools pour l'activer)" -ForegroundColor Yellow
+        }
+
+    }
+    elseif ($distro -match "fedora|rhel|centos") {
+        # ========== Fedora/RHEL/CentOS ==========
+        Write-Host "--- Mise à jour des paquets (DNF) ---"
+        sudo dnf update -y
+
+        Write-Host "`n--- Nettoyage DNF ---"
+        sudo dnf autoremove -y
+        sudo dnf clean all
+
+        Write-Host "`n--- Nettoyage du journal systemd ---"
+        sudo journalctl --vacuum-size=100M
+
+        Write-Host "`n--- Services en échec ---"
+        systemctl --failed
+
+        Write-Host "`n--- Vérification du disque (fsck dry-run) ---"
+        sudo fsck -N /
+
+        # SMART
+        if (Get-Command smartctl -ErrorAction SilentlyContinue) {
+            Write-Host "`n--- SMART (état du disque) ---"
+            $diskDevice = (lsblk -d -o NAME,TYPE | Select-String "disk" | Select-Object -First 1) -replace '\s.*', ''
+            if ($diskDevice) {
+                sudo smartctl -H "/dev/$diskDevice"
+            }
+        } else {
+            Write-Host "`nsmartctl non installé (sudo dnf install smartmontools pour l'activer)" -ForegroundColor Yellow
+        }
+
+    }
+    elseif ($distro -match "arch|manjaro") {
+        # ========== Arch Linux/Manjaro ==========
+        Write-Host "--- Mise à jour des paquets (Pacman) ---"
+        sudo pacman -Syu --noconfirm
+
+        Write-Host "`n--- Nettoyage Pacman ---"
+        sudo pacman -Sc --noconfirm
+
+        Write-Host "`n--- Nettoyage du journal systemd ---"
+        sudo journalctl --vacuum-size=100M
+
+        Write-Host "`n--- Services en échec ---"
+        systemctl --failed
+
+        Write-Host "`n--- Vérification du disque (fsck dry-run) ---"
+        sudo fsck -N /
+
+        # SMART
+        if (Get-Command smartctl -ErrorAction SilentlyContinue) {
+            Write-Host "`n--- SMART (état du disque) ---"
+            $diskDevice = (lsblk -d -o NAME,TYPE | Select-String "disk" | Select-Object -First 1) -replace '\s.*', ''
+            if ($diskDevice) {
+                sudo smartctl -H "/dev/$diskDevice"
+            }
+        } else {
+            Write-Host "`nsmartctl non installé (sudo pacman -S smartmontools pour l'activer)" -ForegroundColor Yellow
+        }
+
+    }
+    else {
+        # ========== Distribution inconnue ==========
+        Write-Host "Distribution Linux non reconnue ou non supportée : $distro" -ForegroundColor Yellow
+        Write-Host "`nOpérations de maintenance génériques :" -ForegroundColor Cyan
+        
+        Write-Host "`n--- Nettoyage du journal systemd ---"
+        sudo journalctl --vacuum-size=100M
+
+        Write-Host "`n--- Services en échec ---"
+        systemctl --failed
+
+        Write-Host "`nPour les mises à jour, utilisez le gestionnaire de paquets de votre distribution." -ForegroundColor Yellow
     }
 }
 

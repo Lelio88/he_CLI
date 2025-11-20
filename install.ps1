@@ -9,20 +9,78 @@ Write-Host "  Installation de HE CLI - HE Command Line Interface" -ForegroundCol
 Write-Host "============================================================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Vérifier les droits administrateur
-$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+# Détection OS robuste
+$isWindows = $false
+$isLinux = $false
+$isMacOS = $false
 
-if (-not $isAdmin) {
-    Write-Host "Avertissement : Ce script n'est pas execute en tant qu'administrateur." -ForegroundColor Yellow
-    Write-Host "L'installation continuera, mais la modification du PATH pourrait echouer." -ForegroundColor Yellow
-    Write-Host ""
+if (Test-Path variable:global:IsWindows) {
+    $isWindows = $IsWindows
+    $isLinux = $IsLinux
+    $isMacOS = $IsMacOS
+} elseif ($env:OS -eq "Windows_NT") {
+    $isWindows = $true
+} elseif ($PSVersionTable.Platform -eq "Win32NT") {
+    $isWindows = $true
+} elseif ($PSVersionTable.PSEdition -eq "Desktop") {
+    $isWindows = $true
+} elseif ($PSVersionTable.Platform -eq "Unix") {
+    if (Test-Path "/System/Library/CoreServices/SystemVersion.plist") {
+        $isMacOS = $true
+    } else {
+        $isLinux = $true
+    }
 }
 
-# Définir le dossier d'installation
-$installPath = if ($IsWindows -or $env:OS -eq "Windows_NT") { 
-    "$env:USERPROFILE\he-tools" 
-} else { 
-    "$env:HOME/he-tools" 
+# Définir le dossier d'installation selon l'OS
+$installPath = ""
+$needSudo = $false
+
+if ($isWindows) {
+    Write-Host "Système détecté : Windows" -ForegroundColor Green
+    Write-Host ""
+    
+    # Vérifier les droits administrateur
+    $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+    
+    if (-not $isAdmin) {
+        Write-Host "Avertissement : Ce script n'est pas execute en tant qu'administrateur." -ForegroundColor Yellow
+        Write-Host "L'installation continuera, mais la modification du PATH pourrait echouer." -ForegroundColor Yellow
+        Write-Host ""
+    }
+    
+    # Windows : Toujours installer dans he-tools (dossier utilisateur)
+    $installPath = "$env:USERPROFILE\he-tools"
+    
+} else {
+    # Linux ou macOS
+    if ($isMacOS) {
+        Write-Host "Système détecté : macOS" -ForegroundColor Green
+    } else {
+        Write-Host "Système détecté : Linux" -ForegroundColor Green
+    }
+    Write-Host ""
+    
+    # Proposer le choix comme install.sh
+    Write-Host "Choisissez le type d'installation :" -ForegroundColor Yellow
+    Write-Host "  [S] Installation système (/usr/local/bin) - Nécessite sudo, déjà dans le PATH" -ForegroundColor White
+    Write-Host "  [U] Installation utilisateur (~/.local/bin) - Sans sudo, ajout au PATH nécessaire" -ForegroundColor White
+    Write-Host ""
+    
+    $choice = Read-Host "Votre choix [S/U] (défaut: U)"
+    $choice = $choice.Trim().ToUpper()
+    
+    if ($choice -eq "S") {
+        $installPath = "/usr/local/bin"
+        $needSudo = $true
+        Write-Host ""
+        Write-Host "Installation système sélectionnée : /usr/local/bin" -ForegroundColor Cyan
+    } else {
+        $installPath = "$env:HOME/.local/bin"
+        $needSudo = $false
+        Write-Host ""
+        Write-Host "Installation utilisateur sélectionnée : ~/.local/bin" -ForegroundColor Cyan
+    }
 }
 
 Write-Host "Dossier d'installation : $installPath" -ForegroundColor White
@@ -31,7 +89,19 @@ Write-Host ""
 # Créer le dossier s'il n'existe pas
 if (-not (Test-Path $installPath)) {
     Write-Host "[1/5] Creation du dossier d'installation..." -ForegroundColor Yellow
-    New-Item -ItemType Directory -Path $installPath -Force | Out-Null
+    
+    if ($needSudo) {
+        # Utiliser sudo sur Linux/macOS
+        sudo mkdir -p $installPath
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host ""
+            Write-Host "Erreur : Impossible de créer le dossier avec sudo" -ForegroundColor Red
+            exit 1
+        }
+    } else {
+        New-Item -ItemType Directory -Path $installPath -Force | Out-Null
+    }
+    
     Write-Host "      Dossier cree avec succes" -ForegroundColor Green
 } else {
     Write-Host "[1/5] Le dossier d'installation existe deja" -ForegroundColor Green
@@ -44,6 +114,7 @@ Write-Host "[2/5] Telechargement des fichiers depuis GitHub..." -ForegroundColor
 $repoUrl = "https://raw.githubusercontent.com/Lelio88/he_CLI/main"
 $files = @(
     "he.cmd",
+    "he",
     "main.ps1",
     "createrepo.ps1",
     "fastpush.ps1",
@@ -55,7 +126,6 @@ $files = @(
     "maintenance.ps1",
     "heian.ps1",
     "matrix.ps1",
-    "he",
     "help.ps1"
 )
 
@@ -67,7 +137,20 @@ foreach ($file in $files) {
         $destination = Join-Path $installPath $file
         
         Write-Host "      Telechargement de $file..." -ForegroundColor Gray
-        Invoke-WebRequest -Uri $url -OutFile $destination -ErrorAction Stop
+        
+        if ($needSudo) {
+            # Télécharger dans un fichier temporaire puis déplacer avec sudo
+            $tempFile = [System.IO.Path]::GetTempFileName()
+            Invoke-WebRequest -Uri $url -OutFile $tempFile -ErrorAction Stop
+            sudo mv $tempFile $destination
+            
+            if ($LASTEXITCODE -ne 0) {
+                throw "Erreur lors du déplacement avec sudo"
+            }
+        } else {
+            Invoke-WebRequest -Uri $url -OutFile $destination -ErrorAction Stop
+        }
+        
         Write-Host "      $file telecharge" -ForegroundColor Green
     }
     catch {
@@ -85,20 +168,47 @@ if (-not $downloadSuccess) {
 
 Write-Host ""
 
+# Rendre le script 'he' exécutable sur Linux/macOS
+if (-not $isWindows) {
+    Write-Host "[3/5] Configuration des permissions..." -ForegroundColor Yellow
+    
+    if ($needSudo) {
+        sudo chmod +x "$installPath/he"
+    } else {
+        chmod +x "$installPath/he"
+    }
+    
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "      Permissions configurees" -ForegroundColor Green
+    } else {
+        Write-Host "      Erreur lors de la configuration des permissions" -ForegroundColor Red
+    }
+} else {
+    Write-Host "[3/5] Configuration des permissions (non nécessaire sur Windows)" -ForegroundColor Green
+}
+Write-Host ""
+
 # Vérifier si Git est installé
-Write-Host "[3/5] Verification de Git..." -ForegroundColor Yellow
+Write-Host "[4/5] Verification de Git..." -ForegroundColor Yellow
 $gitInstalled = Get-Command git -ErrorAction SilentlyContinue
 
 if ($gitInstalled) {
     Write-Host "      Git est deja installe" -ForegroundColor Green
 } else {
     Write-Host "      Git n'est pas installe" -ForegroundColor Red
-    Write-Host "      Veuillez installer Git depuis : https://git-scm.com/download/win" -ForegroundColor Yellow
+    
+    if ($isWindows) {
+        Write-Host "      Veuillez installer Git depuis : https://git-scm.com/download/win" -ForegroundColor Yellow
+    } elseif ($isMacOS) {
+        Write-Host "      Installez Git avec : brew install git" -ForegroundColor Yellow
+    } else {
+        Write-Host "      Installez Git avec : sudo apt install git (ou votre gestionnaire de paquets)" -ForegroundColor Yellow
+    }
 }
 Write-Host ""
 
 # Vérifier GitHub CLI (sera installé automatiquement lors de la première utilisation)
-Write-Host "[4/5] Verification de GitHub CLI..." -ForegroundColor Yellow
+Write-Host "[5/5] Verification de GitHub CLI..." -ForegroundColor Yellow
 $ghInstalled = Get-Command gh -ErrorAction SilentlyContinue
 
 if ($ghInstalled) {
@@ -109,9 +219,9 @@ if ($ghInstalled) {
 Write-Host ""
 
 # Ajouter au PATH
-Write-Host "[5/5] Configuration du PATH..." -ForegroundColor Yellow
+Write-Host "Configuration du PATH..." -ForegroundColor Yellow
 
-if ($IsWindows -or $env:OS -eq "Windows_NT") {
+if ($isWindows) {
     # Windows : Modifier le PATH utilisateur dans le registre
     $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
     $pathsArray = $userPath -split ";"
@@ -131,38 +241,44 @@ if ($IsWindows -or $env:OS -eq "Windows_NT") {
         }
     }
 } else {
-    # Linux/macOS : Ajouter au fichier shell approprié
-    $shellConfig = if (Test-Path "$env:HOME/.zshrc") { 
-        "$env:HOME/.zshrc" 
-    } elseif (Test-Path "$env:HOME/.bashrc") { 
-        "$env:HOME/.bashrc" 
-    } else { 
-        "$env:HOME/.bash_profile" 
-    }
-    
-    $pathExport = "export PATH=`"`$PATH:$installPath`""
-    
-    # Vérifier si le PATH est déjà configuré
-    if (Test-Path $shellConfig) {
-        $configContent = Get-Content $shellConfig -Raw
-        if ($configContent -match [regex]::Escape($installPath)) {
-            Write-Host "      Le chemin est deja dans $shellConfig" -ForegroundColor Green
-        } else {
-            try {
-                Add-Content -Path $shellConfig -Value "`n# HE CLI Path`n$pathExport"
-                Write-Host "      Chemin ajoute a $shellConfig" -ForegroundColor Green
-                Write-Host "      Redemarrez votre terminal ou executez: source $shellConfig" -ForegroundColor Yellow
-            }
-            catch {
-                Write-Host "      Erreur lors de l'ajout au PATH : $_" -ForegroundColor Red
-                Write-Host "      Ajoutez manuellement cette ligne a votre $shellConfig :" -ForegroundColor Yellow
-                Write-Host "      $pathExport" -ForegroundColor White
-            }
-        }
+    # Linux/macOS
+    if ($installPath -eq "/usr/local/bin") {
+        # /usr/local/bin est déjà dans le PATH par défaut
+        Write-Host "      /usr/local/bin est deja dans le PATH systeme" -ForegroundColor Green
     } else {
-        Write-Host "      Fichier de configuration shell non trouve" -ForegroundColor Yellow
-        Write-Host "      Ajoutez manuellement cette ligne a votre fichier shell :" -ForegroundColor Yellow
-        Write-Host "      $pathExport" -ForegroundColor White
+        # Ajouter ~/.local/bin au fichier shell approprié
+        $shellConfig = if (Test-Path "$env:HOME/.zshrc") { 
+            "$env:HOME/.zshrc" 
+        } elseif (Test-Path "$env:HOME/.bashrc") { 
+            "$env:HOME/.bashrc" 
+        } else { 
+            "$env:HOME/.bash_profile" 
+        }
+        
+        $pathExport = "export PATH=`"`$PATH:$installPath`""
+        
+        # Vérifier si le PATH est déjà configuré
+        if (Test-Path $shellConfig) {
+            $configContent = Get-Content $shellConfig -Raw -ErrorAction SilentlyContinue
+            if ($configContent -match [regex]::Escape($installPath)) {
+                Write-Host "      Le chemin est deja dans $shellConfig" -ForegroundColor Green
+            } else {
+                try {
+                    Add-Content -Path $shellConfig -Value "`n# HE CLI Path`n$pathExport"
+                    Write-Host "      Chemin ajoute a $shellConfig" -ForegroundColor Green
+                    Write-Host "      Redemarrez votre terminal ou executez: source $shellConfig" -ForegroundColor Yellow
+                }
+                catch {
+                    Write-Host "      Erreur lors de l'ajout au PATH : $_" -ForegroundColor Red
+                    Write-Host "      Ajoutez manuellement cette ligne a votre $shellConfig :" -ForegroundColor Yellow
+                    Write-Host "      $pathExport" -ForegroundColor White
+                }
+            }
+        } else {
+            Write-Host "      Fichier de configuration shell non trouve" -ForegroundColor Yellow
+            Write-Host "      Ajoutez manuellement cette ligne a votre fichier shell :" -ForegroundColor Yellow
+            Write-Host "      $pathExport" -ForegroundColor White
+        }
     }
 }
 Write-Host ""
@@ -174,8 +290,19 @@ Write-Host "====================================================================
 Write-Host ""
 Write-Host "Prochaines etapes :" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "  1. Redemarrez votre terminal pour que les changements prennent effet" -ForegroundColor White
-Write-Host "  2. Tapez 'he help' pour voir toutes les commandes disponibles" -ForegroundColor White
+
+if ($isWindows) {
+    Write-Host "  1. Redemarrez votre terminal pour que les changements prennent effet" -ForegroundColor White
+    Write-Host "  2. Tapez 'he help' pour voir toutes les commandes disponibles" -ForegroundColor White
+} else {
+    if ($installPath -eq "/usr/local/bin") {
+        Write-Host "  1. Tapez 'he help' pour voir toutes les commandes disponibles" -ForegroundColor White
+    } else {
+        Write-Host "  1. Redemarrez votre terminal (ou executez: source ~/.bashrc ou source ~/.zshrc)" -ForegroundColor White
+        Write-Host "  2. Tapez 'he help' pour voir toutes les commandes disponibles" -ForegroundColor White
+    }
+}
+
 Write-Host "  3. Tapez 'he heian' pour voir le logo Heian Enterprise" -ForegroundColor White
 Write-Host "  4. Tapez 'he matrix' pour un effet special !" -ForegroundColor White
 Write-Host ""
@@ -189,9 +316,10 @@ Write-Host ""
 Write-Host "  HISTORIQUE ET GESTION :" -ForegroundColor Cyan
 Write-Host "    he rollback                    - Annuler le dernier commit" -ForegroundColor Gray
 Write-Host "    he logcommit [nombre]          - Voir l'historique des commits" -ForegroundColor Gray
-Write-Host "    he backupzip                   - Sauvegarder le projet en ZIP" -ForegroundColor Gray
+Write-Host "    he backup                      - Sauvegarder le projet en ZIP" -ForegroundColor Gray
 Write-Host ""
 Write-Host "  MAINTENANCE :" -ForegroundColor Cyan
+Write-Host "    he maintenance                 - Maintenance systeme complete" -ForegroundColor Gray
 Write-Host "    he selfupdate                  - Mettre a jour HE CLI" -ForegroundColor Gray
 Write-Host ""
 Write-Host "  FUN ET UTILITAIRES :" -ForegroundColor Cyan
@@ -217,5 +345,5 @@ Write-Host ""
 Write-Host "============================================================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Made with love by Lelio B" -ForegroundColor Magenta
-Write-Host "Version 1.0.0 - 2025-11-19" -ForegroundColor DarkGray
+Write-Host "Version 1.0.0 - 2025-11-20" -ForegroundColor DarkGray
 Write-Host ""
