@@ -196,7 +196,7 @@ install_to_directory() {
         "backup.ps1"
         "selfupdate.ps1"
         "heian.ps1"
-        ""maintenance.ps1"
+        "maintenance.ps1"
         "matrix.ps1"
         "help.ps1"
     )

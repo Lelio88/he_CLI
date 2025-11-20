@@ -16,7 +16,13 @@ try {
     $tempInstallScript = Join-Path ([System.IO.Path]::GetTempPath()) "he_install_update_$([guid]::NewGuid().ToString()).ps1"
     
     # Télécharger le script d'installation
-    $updateScript = Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.ps1" -UseBasicParsing -ErrorAction Stop
+    if ($IsWindows -or $env:OS -eq "Windows_NT") {
+        $updateScript = Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.ps1"
+    }
+    else {
+        $updateScript = Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.sh"
+        # Sauvegarder en .sh et exécuter avec bash
+    }
     
     # Sauvegarder dans le fichier temporaire
     Set-Content -Path $tempInstallScript -Value $updateScript.Content -Encoding UTF8
@@ -48,7 +54,8 @@ catch {
     
     if ($IsWindows -or $env:OS -eq "Windows_NT") {
         Write-Host "  irm https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.ps1 | iex" -ForegroundColor White
-    } else {
+    }
+    else {
         Write-Host "  curl -fsSL https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.sh | bash" -ForegroundColor White
     }
     

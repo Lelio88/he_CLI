@@ -55,6 +55,7 @@ $files = @(
     "maintenance.ps1",
     "heian.ps1",
     "matrix.ps1",
+    "he",
     "help.ps1"
 )
 

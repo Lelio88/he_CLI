@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# HE CLI Wrapper for Linux/macOS
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+pwsh "$SCRIPT_DIR/main.ps1" "$@"
