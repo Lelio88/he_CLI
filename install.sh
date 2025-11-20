@@ -12,14 +12,108 @@ echo ""
 
 # Check if pwsh is installed
 if ! command -v pwsh &> /dev/null; then
-    echo "❌ PowerShell Core (pwsh) n'est pas installé."
+    echo "⚠️  PowerShell Core (pwsh) n'est pas installé"
     echo ""
-    echo "Veuillez installer PowerShell Core :"
-    echo "  - Ubuntu/Debian: https://learn.microsoft.com/powershell/scripting/install/install-ubuntu"
-    echo "  - macOS: brew install --cask powershell"
-    echo "  - Autre: https://github.com/PowerShell/PowerShell"
+    
+    # Detect OS
+    OS="unknown"
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        # Detect Linux distribution
+        if [ -f /etc/os-release ]; then
+            . /etc/os-release
+            OS=$ID
+        fi
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        OS="macos"
+    fi
+    
+    echo "Système détecté : $OS"
     echo ""
-    exit 1
+    
+    # Propose automatic installation
+    echo "📦 Voulez-vous installer PowerShell Core automatiquement ? (Y/n): "
+    read -r response
+    
+    if [[ "$response" =~ ^([yY][eE][sS]|[yY]|)$ ]]; then
+        echo ""
+        echo "Installation de PowerShell Core en cours..."
+        echo ""
+        
+        case "$OS" in
+            ubuntu|debian)
+                echo "Installation pour Ubuntu/Debian..."
+                sudo apt-get update
+                sudo apt-get install -y wget apt-transport-https software-properties-common
+                
+                # Get Ubuntu version
+                UBUNTU_VERSION=$(lsb_release -rs 2>/dev/null || echo "22.04")
+                
+                wget -q "https://packages.microsoft.com/config/ubuntu/$UBUNTU_VERSION/packages-microsoft-prod.deb" -O /tmp/packages-microsoft-prod.deb
+                sudo dpkg -i /tmp/packages-microsoft-prod.deb
+                rm /tmp/packages-microsoft-prod.deb
+                
+                sudo apt-get update
+                sudo apt-get install -y powershell
+                ;;
+            fedora|rhel|centos)
+                echo "Installation pour Fedora/RHEL/CentOS..."
+                sudo dnf install -y powershell
+                ;;
+            arch|manjaro)
+                echo "Pour Arch Linux, veuillez installer manuellement avec :"
+                echo "  yay -S powershell-bin"
+                echo ""
+                echo "Ou depuis AUR : https://aur.archlinux.org/packages/powershell-bin"
+                echo ""
+                exit 1
+                ;;
+            macos)
+                if command -v brew &> /dev/null; then
+                    echo "Installation via Homebrew..."
+                    brew install --cask powershell
+                else
+                    echo "❌ Homebrew n'est pas installé."
+                    echo ""
+                    echo "Veuillez installer Homebrew depuis https://brew.sh puis réessayer."
+                    echo ""
+                    exit 1
+                fi
+                ;;
+            *)
+                echo "❌ Système d'exploitation non supporté pour l'installation automatique : $OS"
+                echo ""
+                echo "Veuillez installer PowerShell Core manuellement :"
+                echo "  https://docs.microsoft.com/powershell/scripting/install/installing-powershell"
+                echo ""
+                exit 1
+                ;;
+        esac
+        
+        echo ""
+        # Verify installation
+        if command -v pwsh &> /dev/null; then
+            PWSH_VERSION=$(pwsh --version)
+            echo "✅ PowerShell Core installé avec succès ! ($PWSH_VERSION)"
+            echo ""
+        else
+            echo "❌ Échec de l'installation de PowerShell Core"
+            echo ""
+            echo "Veuillez l'installer manuellement :"
+            echo "  https://docs.microsoft.com/powershell/scripting/install/installing-powershell"
+            echo ""
+            exit 1
+        fi
+    else
+        echo ""
+        echo "❌ PowerShell Core est requis pour utiliser HE CLI."
+        echo ""
+        echo "Veuillez l'installer manuellement :"
+        echo "  - Ubuntu/Debian: https://learn.microsoft.com/powershell/scripting/install/install-ubuntu"
+        echo "  - macOS: brew install --cask powershell"
+        echo "  - Autre: https://github.com/PowerShell/PowerShell"
+        echo ""
+        exit 1
+    fi
 fi
 
 # Check if Git is installed
