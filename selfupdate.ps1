@@ -1,4 +1,4 @@
-# Commande selfupdate - Met à jour HE CLI vers la dernière version
+﻿# Commande selfupdate - Met à jour HE CLI vers la dernière version
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::InputEncoding = [System.Text.Encoding]::UTF8
 
@@ -12,32 +12,54 @@ Write-Host "Telechargement de la derniere version depuis GitHub..." -ForegroundC
 Write-Host ""
 
 try {
-    # Créer un fichier temporaire pour le script d'installation
-    $tempInstallScript = Join-Path ([System.IO.Path]::GetTempPath()) "he_install_update_$([guid]::NewGuid().ToString()).ps1"
-    
-    # Télécharger le script d'installation
     if ($IsWindows -or $env:OS -eq "Windows_NT") {
-        $updateScript = Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.ps1"
+        # Windows : Télécharger et exécuter install.ps1
+        $tempInstallScript = Join-Path ([System.IO.Path]::GetTempPath()) "he_install_update_$([guid]::NewGuid().ToString()).ps1"
+        
+        # Télécharger le script d'installation
+        $updateScript = Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.ps1" -UseBasicParsing -ErrorAction Stop
+        
+        # Sauvegarder dans le fichier temporaire
+        Set-Content -Path $tempInstallScript -Value $updateScript.Content -Encoding UTF8
+        
+        Write-Host "Script de mise a jour telecharge avec succes" -ForegroundColor Green
+        Write-Host ""
+        Write-Host "========================================================================" -ForegroundColor Cyan
+        Write-Host ""
+        
+        # Exécuter le script d'installation PowerShell
+        & $tempInstallScript
+        
+        # Nettoyer le fichier temporaire
+        if (Test-Path $tempInstallScript) {
+            Remove-Item -Path $tempInstallScript -Force -ErrorAction SilentlyContinue
+        }
     }
     else {
-        $updateScript = Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.sh"
-        # Sauvegarder en .sh et exécuter avec bash
-    }
-    
-    # Sauvegarder dans le fichier temporaire
-    Set-Content -Path $tempInstallScript -Value $updateScript.Content -Encoding UTF8
-    
-    Write-Host "Script de mise a jour telecharge avec succes" -ForegroundColor Green
-    Write-Host ""
-    Write-Host "========================================================================" -ForegroundColor Cyan
-    Write-Host ""
-    
-    # Exécuter le script d'installation
-    & $tempInstallScript
-    
-    # Nettoyer le fichier temporaire
-    if (Test-Path $tempInstallScript) {
-        Remove-Item -Path $tempInstallScript -Force -ErrorAction SilentlyContinue
+        # Linux/macOS : Télécharger et exécuter install.sh
+        $tempInstallScript = Join-Path ([System.IO.Path]::GetTempPath()) "he_install_update_$([guid]::NewGuid().ToString()).sh"
+        
+        # Télécharger le script d'installation
+        $updateScript = Invoke-WebRequest -Uri "https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.sh" -UseBasicParsing -ErrorAction Stop
+        
+        # Sauvegarder dans le fichier temporaire
+        Set-Content -Path $tempInstallScript -Value $updateScript.Content -Encoding UTF8
+        
+        # Rendre le script exécutable
+        chmod +x $tempInstallScript
+        
+        Write-Host "Script de mise a jour telecharge avec succes" -ForegroundColor Green
+        Write-Host ""
+        Write-Host "========================================================================" -ForegroundColor Cyan
+        Write-Host ""
+        
+        # Exécuter le script d'installation bash
+        bash $tempInstallScript
+        
+        # Nettoyer le fichier temporaire
+        if (Test-Path $tempInstallScript) {
+            Remove-Item -Path $tempInstallScript -Force -ErrorAction SilentlyContinue
+        }
     }
 }
 catch {
