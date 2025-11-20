@@ -132,7 +132,6 @@ Créez une archive ZIP complète de votre projet avec numérotation automatique.
 
 ```bash
 he backup
-he backup
 ```
 
 **Format** : `<nom-projet>_<date>_<heure>_#<numéro>.zip`
