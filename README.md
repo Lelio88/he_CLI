@@ -1,325 +1,281 @@
-# 🚀 HE CLI - HE Command Line Interface
+# HE CLI
 
-Un outil en ligne de commande puissant et simple pour gérer vos projets GitHub avec style !
+Un outil CLI puissant pour gérer vos projets Git et GitHub avec simplicité. Créez des repos, synchronisez votre code, gérez vos commits et créez des backups en une seule commande !
 
 ---
 
-## 📑 Table des matières
+## Table des matières
 
-- [🚀 HE CLI - HE Command Line Interface](#-he-cli---he-command-line-interface)
-  - [📑 Table des matières](#-table-des-matières)
-  - [✨ Fonctionnalités](#-fonctionnalités)
-  - [💻 Compatibilité](#-compatibilité)
-  - [📋 Prérequis](#-prérequis)
+- [HE CLI](#he-cli)
+  - [Table des matières](#table-des-matières)
+  - [Prérequis](#prérequis)
+  - [Installation](#installation)
     - [Windows](#windows)
     - [Linux/macOS](#linuxmacos)
-  - [📦 Installation](#-installation)
-    - [🐧 Linux / 🍎 macOS](#-linux---macos)
-      - [Installation automatique (recommandée)](#installation-automatique-recommandée)
-    - [Installation manuelle](#installation-manuelle)
-      - [Installation manuelle](#installation-manuelle-1)
-  - [🗑️ Désinstallation](#️-désinstallation)
-    - [🐧 Linux / 🍎 macOS](#-linux---macos-1)
-    - [🪟 Windows](#-windows)
-  - [🎯 Commandes](#-commandes)
-    - [`createrepo` - Créer un repository](#createrepo---créer-un-repository)
-    - [`fastpush` - Push rapide](#fastpush---push-rapide)
-    - [`update` - Synchronisation complète](#update---synchronisation-complète)
-    - [`rollback` - Annuler le dernier commit](#rollback---annuler-le-dernier-commit)
-    - [`logcommit` - Historique](#logcommit---historique)
-    - [`backup` - Sauvegarde](#backup---sauvegarde)
-    - [`selfupdate` - Mise à jour](#selfupdate---mise-à-jour)
-    - [`heian` - Logo stylé](#heian---logo-stylé)
-    - [`matrix` - ???](#matrix---)
-    - [`help` - Aide](#help---aide)
-  - [🚀 Quick Start](#-quick-start)
-  - [📊 Récapitulatif](#-récapitulatif)
-  - [👤 Auteur](#-auteur)
+  - [Commandes](#commandes)
+    - [Gestion de repository](#gestion-de-repository)
+    - [Historique et gestion](#historique-et-gestion)
+    - [Maintenance](#maintenance)
+    - [Utilitaires](#utilitaires)
+  - [Exemples d'utilisation](#exemples-dutilisation)
+    - [Créer un nouveau projet GitHub](#créer-un-nouveau-projet-github)
+    - [Travailler sur un projet existant](#travailler-sur-un-projet-existant)
+    - [Annuler un commit](#annuler-un-commit)
+  - [Mise à jour](#mise-à-jour)
+  - [Désinstallation](#désinstallation)
+    - [Windows](#windows-1)
+    - [Linux/macOS](#linuxmacos-1)
+  - [Compatibilité](#compatibilité)
+    - [Shells supportés](#shells-supportés)
+  - [Contribution](#contribution)
+  - [Licence](#licence)
+  - [Auteur](#auteur)
+  - [Support](#support)
 
 ---
 
-## ✨ Fonctionnalités
+## Prérequis
 
-- **Gestion de repository** : Créez, poussez et synchronisez facilement
-- **Historique et maintenance** : Annulez des commits, consultez l'historique, créez des backups
-- **Mises à jour automatiques** : Gardez HE CLI à jour
-- **Compatible multiplateforme** : Fonctionne sur Windows, Linux et macOS
-- **Fun** : Logo stylé et effets spéciaux dans votre terminal
+- **Git** : [Télécharger Git](https://git-scm.com/)
+- **PowerShell Core (pwsh)** : Requis pour Linux/macOS
+  - Linux : Installé automatiquement lors de l'installation
+  - macOS : `brew install --cask powershell`
+- **GitHub CLI** : Installé automatiquement lors de la première utilisation
 
 ---
 
-## 💻 Compatibilité
-
-HE CLI est compatible avec :
-
-- **Windows** : Windows 10/11 avec PowerShell 5.1+
-- **Linux** : Toutes les distributions avec PowerShell Core (pwsh) installé
-- **macOS** : Toutes les versions avec PowerShell Core (pwsh) installé
-
-## 📋 Prérequis
+## Installation
 
 ### Windows
-- PowerShell 5.1 ou supérieur (inclus par défaut dans Windows 10/11)
-- PowerShell 7+ recommandé pour de meilleures performances
 
-### Linux/macOS
-- **PowerShell Core (pwsh)** est requis pour exécuter HE CLI
-- ✅ **Le script d'installation peut l'installer automatiquement pour vous !**
-- Distributions supportées : Ubuntu, Debian, Fedora, RHEL, CentOS, Arch Linux, macOS
+**Option 1 : Installation rapide (une ligne)**
+```powershell
+irm https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.ps1 | iex
+```
+
+**Option 2 : Installation manuelle**
+```powershell
+# Télécharger et exécuter
+curl -O https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.bat
+.\install.bat
+```
+
+**Chemin d'installation :** `%USERPROFILE%\he-tools`
 
 ---
 
-## 📦 Installation
+### Linux/macOS
 
-### 🐧 Linux / 🍎 macOS
-
-#### Installation automatique (recommandée)
-
-Ouvrez votre terminal et exécutez :
-
+**Option 1 : Installation rapide (une ligne)**
 ```bash
 curl -fsSL https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.sh | bash
 ```
 
-Le script vous demandera où installer HE CLI :
-- `/usr/local/bin` (système, nécessite sudo)
-- `~/.local/bin` (utilisateur, pas de sudo)
-
-Redémarrez votre terminal, puis tapez `he help` pour commencer !
-
-### Installation manuelle
-
+**Option 2 : Installation manuelle**
 ```bash
-# Cloner le repository
-git clone https://github.com/Lelio88/he_CLI.git
-cd he_CLI
-
-# Rendre le script exécutable
+# Télécharger et exécuter
+curl -O https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.sh
 chmod +x install.sh
-
-# Lancer l'installation
 ./install.sh
-
-### 🪟 Windows
-
-#### Installation automatique (recommandée)
-
-Ouvrez PowerShell et exécutez :
-
-```powershell
-irm https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.ps1 | iex
 ```
 
-Redémarrez votre terminal, puis tapez `he help` pour commencer !
-
-#### Installation manuelle
-
-1. Clonez ce repository
-2. Copiez les fichiers dans `C:\Users\<VotreNom>\he-tools\`
-3. Ajoutez ce dossier au PATH système
-4. Redémarrez votre terminal
+**Chemins d'installation :**
+- Installation système : `/usr/local/bin` (nécessite sudo, déjà dans le PATH)
+- Installation utilisateur : `~/.local/bin` (sans sudo, ajout au PATH automatique)
 
 ---
 
-## 🗑️ Désinstallation
+## Commandes
 
-### 🐧 Linux / 🍎 macOS
+### Gestion de repository
 
-Ouvrez votre terminal et exécutez :
+| Commande | Description | Exemple |
+|----------|-------------|---------|
+| `he createrepo <nom> [-pr\|-pu]` | Créer un nouveau repository GitHub | `he createrepo mon-projet -pu` |
+| `he fastpush <url> [-m] [message]` | Push rapide vers un repository existant | `he fastpush https://github.com/user/repo.git -m "Initial commit"` |
+| `he update [-m message]` | Commit + Pull + Push complet | `he update -m "feat: nouvelle fonctionnalité"` |
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/Lelio88/he_CLI/main/uninstall.sh | bash
-```
-
-Ou si vous avez déjà téléchargé les fichiers :
-
-```bash
-./uninstall.sh
-```
-
-Le script détectera automatiquement l'emplacement d'installation et nettoiera tous les fichiers.
-
-### 🪟 Windows
-
-Téléchargez et exécutez le script de désinstallation :
-
-```powershell
-irm https://raw.githubusercontent.com/Lelio88/he_CLI/main/uninstall.bat | cmd
-```
-
-Ou téléchargez `uninstall.bat` et double-cliquez dessus.
-
-Le script supprimera tous les fichiers de `%USERPROFILE%\he-tools` et nettoiera le PATH.
+**Flags :**
+- `-pr` : Repository privé
+- `-pu` : Repository public
+- `-m` : Spécifier un message de commit
 
 ---
 
-## 🎯 Commandes
+### Historique et gestion
 
-### `createrepo` - Créer un repository
+| Commande | Description | Exemple |
+|----------|-------------|---------|
+| `he rollback [-d]` | Annuler le dernier commit (soft reset) | `he rollback` |
+| `he logcommit [nombre]` | Afficher l'historique des commits | `he logcommit 10` |
+| `he backup` | Créer une archive ZIP du projet | `he backup` |
 
-Créez un nouveau repository GitHub et faites votre premier push automatiquement.
-
-```bash
-he createrepo mon-projet        # Mode interactif
-he createrepo mon-projet -pu    # Public
-he createrepo mon-projet -pr    # Privé
-```
-
-**Actions** : Vérifie GitHub CLI → Initialise Git → Commit initial → Crée le repo → Push
+**Flags :**
+- `-d` : Confirmation automatique (pas de prompts interactifs)
 
 ---
 
-### `fastpush` - Push rapide
+### Maintenance
 
-Poussez rapidement tous vos changements vers GitHub.
+| Commande | Description | OS supportés |
+|----------|-------------|--------------|
+| `he maintenance` | Maintenance complète du système | Windows, Linux (Ubuntu/Debian/Fedora/RHEL/Arch), macOS |
+| `he selfupdate` | Mettre à jour HE CLI vers la dernière version | Tous |
 
-```bash
-he fastpush                     # Message par défaut
-he fastpush "fix: bug corrigé"  # Message personnalisé
-```
-
-**Actions** : `git add .` → Commit → Push
-
----
-
-### `update` - Synchronisation complète
-
-Commitez, récupérez et envoyez vos changements en une seule commande.
-
-```bash
-he update                       # Mode interactif
-he update -m "feat: nouvelle fonctionnalité"
-```
-
-**Actions** : `git add .` → Commit → Pull → Push  
-**Différence avec fastpush** : Ajoute un pull avant le push (plus sûr pour le travail collaboratif)
+**Maintenance inclut :**
+- **Windows** : Winget update, DISM, SFC, nettoyage disque, CHKDSK
+- **Linux** : APT/DNF/Pacman update, nettoyage packages, journaux systemd
+- **macOS** : Homebrew update & cleanup
 
 ---
 
-### `rollback` - Annuler le dernier commit
+### Utilitaires
 
-Annulez le dernier commit en gardant les fichiers modifiés.
-
-```bash
-he rollback
-```
-
-**Actions** : Affiche le commit → Demande confirmation → `git reset --soft HEAD~1`
+| Commande | Description |
+|----------|-------------|
+| `he heian` | Afficher le logo Heian Enterprise |
+| `he matrix` | ??? |
+| `he help` | Afficher l'aide complète |
 
 ---
 
-### `logcommit` - Historique
+## Exemples d'utilisation
 
-Affichez l'historique des commits avec un graphe ASCII coloré.
+### Créer un nouveau projet GitHub
 
 ```bash
-he logcommit        # 20 derniers commits
-he logcommit 50     # 50 derniers commits
-he logcommit 0      # Tous les commits
+# Créer un dossier et initialiser
+mkdir mon-projet
+cd mon-projet
+
+# Créer le repository public sur GitHub
+he createrepo mon-projet -pu
+
+# Modifier des fichiers...
+echo "# Mon Projet" > README.md
+
+# Synchroniser avec GitHub
+he update -m "docs: add README"
 ```
 
 ---
 
-### `backup` - Sauvegarde
-
-Créez une archive ZIP complète de votre projet avec numérotation automatique.
+### Travailler sur un projet existant
 
 ```bash
+# Cloner le projet
+git clone https://github.com/user/repo.git
+cd repo
+
+# Modifier des fichiers...
+
+# Push rapide
+he update -m "fix: correction bug"
+
+# Voir l'historique
+he logcommit 5
+
+# Créer un backup
 he backup
 ```
 
-**Format** : `<nom-projet>_<date>_<heure>_#<numéro>.zip`
+---
+
+### Annuler un commit
+
+```bash
+# Annuler le dernier commit (fichiers conservés)
+he rollback
+
+# Modifier et recommiter
+git add .
+git commit -m "feat: nouveau commit corrigé"
+git push
+```
 
 ---
 
-### `selfupdate` - Mise à jour
-
-Mettez à jour HE CLI vers la dernière version depuis GitHub.
+## Mise à jour
 
 ```bash
+# Mettre à jour HE CLI vers la dernière version
 he selfupdate
 ```
 
+La commande détecte automatiquement votre OS et télécharge la bonne version.
+
 ---
 
-### `heian` - Logo stylé
+## Désinstallation
 
-Affichez le logo Heian Enterprise dans votre terminal.
+### Windows
 
-```bash
-he heian
+```batch
+# Télécharger et exécuter
+curl -O https://raw.githubusercontent.com/Lelio88/he_CLI/main/uninstall.bat
+.\uninstall.bat
 ```
 
 ---
 
-### `matrix` - ???
-
-Êtes-vous prêt à vous enfoncer dans le terrier du lapin ? 🐰💊
+### Linux/macOS
 
 ```bash
-he matrix
+# Télécharger et exécuter
+curl -fsSL https://raw.githubusercontent.com/Lelio88/he_CLI/main/uninstall.sh | bash
 ```
 
----
-
-### `help` - Aide
-
-Obtenez de l'aide sur toutes les commandes.
-
-```bash
-he help
-```
+La désinstallation :
+- Supprime tous les fichiers installés
+- Nettoie le PATH automatiquement
+- Crée un backup de vos fichiers de configuration shell
 
 ---
 
-## 🚀 Quick Start
+## Compatibilité
 
-```bash
-# 1. Installer HE CLI
-irm https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.ps1 | iex
+| OS | Version minimale | Package Manager | Notes |
+|----|------------------|-----------------|-------|
+| **Windows 10/11** | PowerShell 5.1+ | Winget | Installé par défaut |
+| **Ubuntu/Debian** | 20.04+ | APT | PowerShell Core installé automatiquement |
+| **Fedora** | 35+ | DNF | PowerShell Core installé automatiquement |
+| **RHEL/CentOS** | 8+ | DNF | PowerShell Core installé automatiquement |
+| **Arch Linux** | Rolling | Pacman | PowerShell Core via AUR |
+| **macOS** | 11+ (Big Sur) | Homebrew | Homebrew requis |
 
-# 2. Redémarrer le terminal, puis créer un projet
-cd mon-projet
-he createrepo mon-premier-repo -pu
+### Shells supportés
 
-# 3. Travailler et pousser
-# ... modifier des fichiers ...
-he fastpush "feat: nouvelle fonctionnalité"
-
-# 4. Synchroniser
-he update -m "chore: mise à jour"
-
-# 5. Explorer les autres commandes
-he matrix
-he heian
-```
+- **Windows** : PowerShell, CMD
+- **Linux/macOS** : bash, zsh, fish
 
 ---
 
-## 📊 Récapitulatif
+## Contribution
 
-| Commande | Description | Usage |
-|----------|-------------|-------|
-| `createrepo` | Créer nouveau repo + push | Début de projet |
-| `fastpush` | Add + Commit + Push rapide | Modifications fréquentes |
-| `update` | Commit + Pull + Push | Travail collaboratif |
-| `rollback` | Annuler dernier commit | Corriger un commit |
-| `logcommit` | Voir l'historique | Consulter l'historique |
-| `backup` | Sauvegarder en ZIP | Archivage |
-| `selfupdate` | Mettre à jour HE CLI | Nouvelle version |
-| `heian` | Logo stylé | Fun |
-| `matrix` | ??? | ??? |
-| `help` | Aide | Référence |
+Les contributions sont les bienvenues ! N'hésitez pas à ouvrir une issue ou une pull request.
 
 ---
 
-## 👤 Auteur
+## Licence
 
-**Lelio88** - [GitHub](https://github.com/Lelio88)
+MIT License - Copyright (c) 2025 Lelio B
 
 ---
 
-**Version:** 1.1.0  
-**Compatibilité:** Windows (PowerShell 5.1+), Linux et macOS (PowerShell Core)
+## Auteur
 
-Made with ❤️ by Lelio B
+**Lelio B** - [@Lelio88](https://github.com/Lelio88)
+
+Version 1.0.0 - 2025-11-20
+
+---
+
+## Support
+
+- 🐛 **Bugs** : [Ouvrir une issue](https://github.com/Lelio88/he_CLI/issues)
+- 💬 **Questions** : [Discussions GitHub](https://github.com/Lelio88/he_CLI/discussions)
+- 📧 **Contact** : Via GitHub
+
+---
+
+**Made with ❤️ by Lelio B**
