@@ -9,9 +9,14 @@ Un outil en ligne de commande puissant et simple pour gérer vos projets GitHub 
 - [🚀 HE CLI - HE Command Line Interface](#-he-cli---he-command-line-interface)
   - [📑 Table des matières](#-table-des-matières)
   - [✨ Fonctionnalités](#-fonctionnalités)
+  - [💻 Compatibilité](#-compatibilité)
   - [📦 Installation](#-installation)
-    - [Installation automatique (recommandée)](#installation-automatique-recommandée)
+    - [🐧 Linux / 🍎 macOS](#-linux---macos)
+    - [🪟 Windows](#-windows)
     - [Installation manuelle](#installation-manuelle)
+  - [🗑️ Désinstallation](#️-désinstallation)
+    - [🐧 Linux / 🍎 macOS](#-linux---macos-1)
+    - [🪟 Windows](#-windows-1)
   - [🎯 Commandes](#-commandes)
     - [`createrepo` - Créer un repository](#createrepo---créer-un-repository)
     - [`fastpush` - Push rapide](#fastpush---push-rapide)
@@ -34,13 +39,64 @@ Un outil en ligne de commande puissant et simple pour gérer vos projets GitHub 
 - **Gestion de repository** : Créez, poussez et synchronisez facilement
 - **Historique et maintenance** : Annulez des commits, consultez l'historique, créez des backups
 - **Mises à jour automatiques** : Gardez HE CLI à jour
+- **Compatible multiplateforme** : Fonctionne sur Windows, Linux et macOS
 - **Fun** : Logo stylé et effets spéciaux dans votre terminal
+
+---
+
+## 💻 Compatibilité
+
+HE CLI est compatible avec :
+
+- **Windows** : Windows 10/11 avec PowerShell 5.1+
+- **Linux** : Toutes les distributions avec PowerShell Core (pwsh) installé
+- **macOS** : Toutes les versions avec PowerShell Core (pwsh) installé
+
+### Prérequis
+
+#### Windows
+- PowerShell 5.1+ (préinstallé sur Windows 10/11)
+- Git
+
+#### Linux / macOS
+- **PowerShell Core (pwsh)** - [Guide d'installation](https://learn.microsoft.com/powershell/scripting/install/installing-powershell)
+  - Ubuntu/Debian : [Instructions](https://learn.microsoft.com/powershell/scripting/install/install-ubuntu)
+  - macOS : `brew install --cask powershell`
+- Git
+  - Ubuntu/Debian : `sudo apt install git`
+  - macOS : `brew install git` ou préinstallé avec Xcode
 
 ---
 
 ## 📦 Installation
 
-### Installation automatique (recommandée)
+### 🐧 Linux / 🍎 macOS
+
+#### Installation automatique (recommandée)
+
+Ouvrez votre terminal et exécutez :
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.sh | bash
+```
+
+Le script vous demandera où installer HE CLI :
+- `/usr/local/bin` (système, nécessite sudo)
+- `~/.local/bin` (utilisateur, pas de sudo)
+
+Redémarrez votre terminal, puis tapez `he help` pour commencer !
+
+#### Installation manuelle
+
+1. Clonez ce repository
+2. Copiez les fichiers dans `/usr/local/bin` ou `~/.local/bin`
+3. Rendez le script `he` exécutable : `chmod +x he`
+4. Assurez-vous que le répertoire est dans votre PATH
+5. Redémarrez votre terminal
+
+### 🪟 Windows
+
+#### Installation automatique (recommandée)
 
 Ouvrez PowerShell et exécutez :
 
@@ -50,12 +106,44 @@ irm https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.ps1 | iex
 
 Redémarrez votre terminal, puis tapez `he help` pour commencer !
 
-### Installation manuelle
+#### Installation manuelle
 
 1. Clonez ce repository
 2. Copiez les fichiers dans `C:\Users\<VotreNom>\he-tools\`
 3. Ajoutez ce dossier au PATH système
 4. Redémarrez votre terminal
+
+---
+
+## 🗑️ Désinstallation
+
+### 🐧 Linux / 🍎 macOS
+
+Ouvrez votre terminal et exécutez :
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Lelio88/he_CLI/main/uninstall.sh | bash
+```
+
+Ou si vous avez déjà téléchargé les fichiers :
+
+```bash
+./uninstall.sh
+```
+
+Le script détectera automatiquement l'emplacement d'installation et nettoiera tous les fichiers.
+
+### 🪟 Windows
+
+Téléchargez et exécutez le script de désinstallation :
+
+```powershell
+irm https://raw.githubusercontent.com/Lelio88/he_CLI/main/uninstall.bat | cmd
+```
+
+Ou téléchargez `uninstall.bat` et double-cliquez dessus.
+
+Le script supprimera tous les fichiers de `%USERPROFILE%\he-tools` et nettoiera le PATH.
 
 ---
 
@@ -225,7 +313,7 @@ he heian
 
 ---
 
-**Version:** 1.0.0  
-**Compatibilité:** Windows PowerShell 5.1+
+**Version:** 1.1.0  
+**Compatibilité:** Windows (PowerShell 5.1+), Linux et macOS (PowerShell Core)
 
 Made with ❤️ by Lelio B
