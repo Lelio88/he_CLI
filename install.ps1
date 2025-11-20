@@ -19,7 +19,11 @@ if (-not $isAdmin) {
 }
 
 # Définir le dossier d'installation
-$installPath = "$env:USERPROFILE\he-tools"
+$installPath = if ($IsWindows -or $env:OS -eq "Windows_NT") { 
+    "$env:USERPROFILE\he-tools" 
+} else { 
+    "$env:HOME/he-tools" 
+}
 
 Write-Host "Dossier d'installation : $installPath" -ForegroundColor White
 Write-Host ""
