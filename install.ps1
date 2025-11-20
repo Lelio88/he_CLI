@@ -109,26 +109,58 @@ Write-Host ""
 # Ajouter au PATH
 Write-Host "[5/5] Configuration du PATH..." -ForegroundColor Yellow
 
-# Vérifier si le chemin est déjà dans le PATH utilisateur
-$userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-$pathsArray = $userPath -split ";"
+if ($IsWindows -or $env:OS -eq "Windows_NT") {
+    # Windows : Modifier le PATH utilisateur dans le registre
+    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+    $pathsArray = $userPath -split ";"
 
-if ($pathsArray -contains $installPath) {
-    Write-Host "      Le chemin est deja dans le PATH" -ForegroundColor Green
-} else {
-    try {
-        # Ajouter au PATH utilisateur
-        $newPath = "$userPath;$installPath"
-        [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
-        
-        # Mettre à jour le PATH de la session actuelle
-        $env:Path = "$env:Path;$installPath"
-        
-        Write-Host "      Chemin ajoute au PATH avec succes" -ForegroundColor Green
+    if ($pathsArray -contains $installPath) {
+        Write-Host "      Le chemin est deja dans le PATH" -ForegroundColor Green
+    } else {
+        try {
+            $newPath = "$userPath;$installPath"
+            [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
+            $env:Path = "$env:Path;$installPath"
+            Write-Host "      Chemin ajoute au PATH avec succes" -ForegroundColor Green
+        }
+        catch {
+            Write-Host "      Erreur lors de l'ajout au PATH : $_" -ForegroundColor Red
+            Write-Host "      Vous devrez ajouter manuellement $installPath a votre PATH" -ForegroundColor Yellow
+        }
     }
-    catch {
-        Write-Host "      Erreur lors de l'ajout au PATH : $_" -ForegroundColor Red
-        Write-Host "      Vous devrez ajouter manuellement $installPath a votre PATH" -ForegroundColor Yellow
+} else {
+    # Linux/macOS : Ajouter au fichier shell approprié
+    $shellConfig = if (Test-Path "$env:HOME/.zshrc") { 
+        "$env:HOME/.zshrc" 
+    } elseif (Test-Path "$env:HOME/.bashrc") { 
+        "$env:HOME/.bashrc" 
+    } else { 
+        "$env:HOME/.bash_profile" 
+    }
+    
+    $pathExport = "export PATH=`"`$PATH:$installPath`""
+    
+    # Vérifier si le PATH est déjà configuré
+    if (Test-Path $shellConfig) {
+        $configContent = Get-Content $shellConfig -Raw
+        if ($configContent -match [regex]::Escape($installPath)) {
+            Write-Host "      Le chemin est deja dans $shellConfig" -ForegroundColor Green
+        } else {
+            try {
+                Add-Content -Path $shellConfig -Value "`n# HE CLI Path`n$pathExport"
+                Write-Host "      Chemin ajoute a $shellConfig" -ForegroundColor Green
+                Write-Host "      Redemarrez votre terminal ou executez: source $shellConfig" -ForegroundColor Yellow
+            }
+            catch {
+                Write-Host "      Erreur lors de l'ajout au PATH : $_" -ForegroundColor Red
+                Write-Host "      Ajoutez manuellement cette ligne a votre $shellConfig :" -ForegroundColor Yellow
+                Write-Host "      $pathExport" -ForegroundColor White
+            }
+        }
+    } else {
+        Write-Host "      Fichier de configuration shell non trouve" -ForegroundColor Yellow
+        Write-Host "      Ajoutez manuellement cette ligne a votre fichier shell :" -ForegroundColor Yellow
+        Write-Host "      $pathExport" -ForegroundColor White
     }
 }
 Write-Host ""
