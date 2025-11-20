@@ -1,4 +1,5 @@
 # 🚀 HE CLI - HE Command Line Interface
+# 🚀 HE CLI - HE Command Line Interface
 
 Un outil en ligne de commande puissant et simple pour gérer vos projets GitHub avec style !
 
@@ -7,6 +8,7 @@ Un outil en ligne de commande puissant et simple pour gérer vos projets GitHub 
 ## 📑 Table des matières
 
 - [🚀 HE CLI - HE Command Line Interface](#-he-cli---he-command-line-interface)
+- [🚀 HE CLI - HE Command Line Interface](#-he-cli---he-command-line-interface-1)
   - [📑 Table des matières](#-table-des-matières)
   - [✨ Fonctionnalités](#-fonctionnalités)
   - [📦 Installation](#-installation)
@@ -131,6 +133,7 @@ he logcommit 0      # Tous les commits
 Créez une archive ZIP complète de votre projet avec numérotation automatique.
 
 ```bash
+he backup
 he backup
 ```
 
