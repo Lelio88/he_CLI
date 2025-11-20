@@ -84,7 +84,7 @@ Write-Host "Taille totale : $([math]::Round($totalSize / 1MB, 2)) MB" -Foregroun
 Write-Host ""
 
 # Créer un dossier temporaire pour préparer l'archive
-$tempFolder = Join-Path $env:TEMP "he_backup_$([guid]::NewGuid().ToString())"
+$tempFolder = Join-Path ([System.IO.Path]::GetTempPath()) "he_backup_$([guid]::NewGuid().ToString())"
 New-Item -ItemType Directory -Path $tempFolder -Force | Out-Null
 
 try {
