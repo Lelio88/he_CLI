@@ -126,6 +126,7 @@ $files = @(
     "maintenance.ps1",
     "heian.ps1",
     "matrix.ps1",
+    "flash.ps1",
     "help.ps1"
 )
 

@@ -198,6 +198,7 @@ install_to_directory() {
         "heian.ps1"
         "maintenance.ps1"
         "matrix.ps1"
+        "flash.ps1"
         "help.ps1"
     )
     

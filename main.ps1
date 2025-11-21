@@ -44,6 +44,9 @@ switch ($command) {
     "heian" {
         & (Join-Path $scriptPath "heian.ps1")
     }
+    "flash" {
+        & (Join-Path $scriptPath "flash.ps1")
+    }
     "help" {
         & (Join-Path $scriptPath "help.ps1")
     }
