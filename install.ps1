@@ -14,17 +14,19 @@ $isWindows = $false
 $isLinux = $false
 $isMacOS = $false
 
-if (Test-Path variable:global:IsWindows) {
-    $isWindows = $IsWindows
-    $isLinux = $IsLinux
-    $isMacOS = $IsMacOS
-} elseif ($env:OS -eq "Windows_NT") {
+# 1. Priorité aux variables d'environnement Windows standard (plus fiable sur Windows)
+if ($env:OS -eq "Windows_NT" -or $PSVersionTable.Platform -eq "Win32NT") {
     $isWindows = $true
-} elseif ($PSVersionTable.Platform -eq "Win32NT") {
-    $isWindows = $true
-} elseif ($PSVersionTable.PSEdition -eq "Desktop") {
-    $isWindows = $true
-} elseif ($PSVersionTable.Platform -eq "Unix") {
+}
+# 2. Sinon, vérification via la variable PowerShell Core
+elseif (Test-Path variable:global:IsWindows) {
+    if ($IsWindows) {
+        $isWindows = $true
+    }
+}
+
+# 3. Si ce n'est pas Windows, on détermine si c'est macOS ou Linux
+if (-not $isWindows) {
     if (Test-Path "/System/Library/CoreServices/SystemVersion.plist") {
         $isMacOS = $true
     } else {
