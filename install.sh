@@ -1,13 +1,12 @@
 #!/bin/bash
 
-# ... other script content before line 43
+# Original script with modifications
+...
 
-# Corrected read command to avoid stdin consumption
+# Modification on line 43
 read -p "📦 Voulez-vous installer PowerShell Core automatiquement ? (O/n): " response < /dev/tty
+...
 
-# ... other script content in between
-
-# Corrected read command to avoid stdin consumption
+# Modification on line 260
 read -p "Voulez-vous installer dans /usr/local/bin avec sudo ? [O/n] " -n 1 -r < /dev/tty
-
-# ... other script content after line 260
+...
