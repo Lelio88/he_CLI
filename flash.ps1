@@ -1,4 +1,4 @@
-# Commande flash - Grenade Flashbang CS et écran blanc avec SON
+﻿# Commande flash - Grenade Flashbang CS et écran blanc avec SON
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::InputEncoding = [System.Text.Encoding]::UTF8
 
