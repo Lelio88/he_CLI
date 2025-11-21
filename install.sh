@@ -40,7 +40,7 @@ if ! command -v pwsh &> /dev/null; then
     
     echo "Système détecté : $OS_TYPE ($DISTRO)"
     echo ""
-    read -p "📦 Voulez-vous installer PowerShell Core automatiquement ? (O/n): " response
+    read -p "📦 Voulez-vous installer PowerShell Core automatiquement ? (O/n): " response < /dev/tty
     
     if [[ "$response" =~ ^[OoYy]$ ]] || [[ -z "$response" ]]; then
         echo ""
@@ -257,7 +257,7 @@ echo "The CLI can be installed in:"
 echo "  1. /usr/local/bin (system-wide, requires sudo)"
 echo "  2. ~/.local/bin (user only, no sudo required)"
 echo ""
-read -p "Voulez-vous installer dans /usr/local/bin avec sudo ? [O/n] " -n 1 -r
+read -p "Voulez-vous installer dans /usr/local/bin avec sudo ? [O/n] " -n 1 -r < /dev/tty
 echo ""
 
 if [[ $REPLY =~ ^[OoYy]$ ]] || [[ -z $REPLY ]]; then
