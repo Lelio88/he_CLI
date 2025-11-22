@@ -45,12 +45,24 @@ try {
     Clear-Host
     
     # --- AJOUT DU SON ICI ---
-    # Joue un son à 4000 Hz (aigu) pendant 1000 ms (1 seconde)
-    # Le script attend la fin du son, donc cela contribue à la pause
-    [Console]::Beep(3000, 1000) 
     
-    # On complète la pause pour atteindre les 2 secondes totales demandées
-    Start-Sleep -Seconds 1
+    if ($IsWindows) {
+        # Sur Windows : On peut contrôler la fréquence et la durée
+        # Le script attend la fin du son (1000ms), donc on dort 1s de plus ensuite
+        try {
+            [Console]::Beep(3000, 1000)
+        } catch {
+            # Au cas où le beep échoue même sous Windows (ex: pas de carte son)
+        }
+        Start-Sleep -Seconds 1
+    }
+    else {
+        # Sur Linux/WSL/macOS : La méthode Beep(freq, dur) n'est pas supportée.
+        # On utilise le caractère 'Bell' (`a) qui fait le son système par défaut.
+        # Comme c'est instantané, on doit dormir les 2 secondes complètes ici.
+        Write-Host "`a" -NoNewline
+        Start-Sleep -Seconds 2
+    }
 
 }
 finally {
