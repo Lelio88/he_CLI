@@ -291,21 +291,43 @@ Write-Host "====================================================================
 Write-Host "  Installation terminee avec succes !" -ForegroundColor Green
 Write-Host "============================================================================" -ForegroundColor Cyan
 Write-Host ""
+
+# TENTATIVE DE REFRESHENV (CHOCOLATEY)
+if ($isWindows) {
+    if ($env:ChocolateyInstall -or (Get-Command choco -ErrorAction SilentlyContinue)) {
+        Write-Host "Chocolatey détecté. Tentative de rafraîchissement de l'environnement..." -ForegroundColor Yellow
+        try {
+            if (Get-Command refreshenv -ErrorAction SilentlyContinue) {
+                refreshenv
+                Write-Host "Environnement rafraîchi via refreshenv." -ForegroundColor Green
+            }
+        } catch {
+            Write-Host "Impossible de rafraîchir l'environnement automatiquement." -ForegroundColor DarkGray
+        }
+    }
+}
+
 Write-Host "Prochaines etapes :" -ForegroundColor Yellow
 Write-Host ""
 
 if ($isWindows) {
-    Write-Host "  1. Redemarrez votre terminal pour que les changements prennent effet" -ForegroundColor White
-    Write-Host "  2. Tapez 'he help' pour voir toutes les commandes disponibles" -ForegroundColor White
+    Write-Host "⚠️  IMPORTANT : REDEMARREZ VOTRE TERMINAL MAINTENANT !" -ForegroundColor Red -BackgroundColor Black
+    Write-Host "    Si vous ne le faites pas, la commande 'he' ne sera pas reconnue." -ForegroundColor Red
+    Write-Host ""
+    Write-Host "  1. Fermez cette fenêtre." -ForegroundColor White
+    Write-Host "  2. Ouvrez un nouveau terminal." -ForegroundColor White
+    Write-Host "  3. Tapez 'he help' pour commencer." -ForegroundColor White
 } else {
     if ($installPath -eq "/usr/local/bin") {
         Write-Host "  1. Tapez 'he help' pour voir toutes les commandes disponibles" -ForegroundColor White
     } else {
-        Write-Host "  1. Redemarrez votre terminal (ou executez: source ~/.bashrc ou source ~/.zshrc)" -ForegroundColor White
-        Write-Host "  2. Tapez 'he help' pour voir toutes les commandes disponibles" -ForegroundColor White
+        Write-Host "⚠️  IMPORTANT : Rechargez votre configuration shell !" -ForegroundColor Red
+        Write-Host "  1. Executez: source ~/.bashrc (ou ~/.zshrc)" -ForegroundColor White
+        Write-Host "  2. Tapez 'he help'" -ForegroundColor White
     }
 }
 
+Write-Host ""
 Write-Host "  3. Tapez 'he heian' pour voir le logo Heian Enterprise" -ForegroundColor White
 Write-Host "  4. Tapez 'he matrix' pour un effet special !" -ForegroundColor White
 Write-Host ""

@@ -150,6 +150,11 @@ else
     echo ""
 fi
 
+# --- RECUPERATION CHEMIN ABSOLU PWSH ---
+PWSH_PATH=$(command -v pwsh)
+echo "✅ PowerShell Core détecté : $PWSH_PATH"
+# ---------------------------------------
+
 # Check if Git is installed
 if ! command -v git &> /dev/null; then
     echo "❌ Git n'est pas installé."
@@ -213,15 +218,26 @@ install_to_directory() {
     done
     echo ""
     
-    # Make the he script executable
-    echo "[3/4] Configuration des permissions..."
+    # --- CREATION DU WRAPPER AVEC CHEMIN ABSOLU ---
+    echo "[3/4] Configuration des permissions et du wrapper..."
+    
+    # On regénère le fichier 'he' pour utiliser le chemin absolu de pwsh
+    WRAPPER_CONTENT="#!/usr/bin/env bash
+SCRIPT_DIR=\"\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd)\"
+# Utilisation du chemin absolu détecté lors de l'installation
+\"$PWSH_PATH\" \"\$SCRIPT_DIR/main.ps1\" \"\$@\""
+
     if [ "$need_sudo" = "true" ]; then
+        echo "$WRAPPER_CONTENT" | sudo tee "$install_dir/he" > /dev/null
         sudo chmod +x "$install_dir/he"
     else
+        echo "$WRAPPER_CONTENT" > "$install_dir/he"
         chmod +x "$install_dir/he"
     fi
+    
     echo "      Permissions configurées"
     echo ""
+    # ----------------------------------------------
     
     # Check if directory is in PATH
     echo "[4/4] Configuration du PATH..."
