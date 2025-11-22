@@ -44,24 +44,33 @@ try {
     [Console]::ForegroundColor = [ConsoleColor]::Black
     Clear-Host
     
-    # --- AJOUT DU SON ICI ---
+    # --- GESTION SONORE INTELLIGENTE ---
     
     if ($IsWindows) {
-        # Sur Windows : On peut contrôler la fréquence et la durée
-        # Le script attend la fin du son (1000ms), donc on dort 1s de plus ensuite
-        try {
-            [Console]::Beep(3000, 1000)
-        } catch {
-            # Au cas où le beep échoue même sous Windows (ex: pas de carte son)
-        }
+        # Cas 1: Windows Natif
+        try { [Console]::Beep(3000, 1000) } catch {}
         Start-Sleep -Seconds 1
     }
     else {
-        # Sur Linux/WSL/macOS : La méthode Beep(freq, dur) n'est pas supportée.
-        # On utilise le caractère 'Bell' (`a) qui fait le son système par défaut.
-        # Comme c'est instantané, on doit dormir les 2 secondes complètes ici.
-        Write-Host "`a" -NoNewline
-        Start-Sleep -Seconds 2
+        # Cas 2: Linux / macOS / WSL
+        
+        # On vérifie si on est sur WSL en cherchant l'exécutable Windows
+        if (Get-Command "powershell.exe" -ErrorAction SilentlyContinue) {
+            # C'est WSL ! On appelle le PowerShell Windows pour faire le bip précis
+            # Cela va lancer un mini-processus Windows juste pour le son
+            try {
+                & powershell.exe -NoProfile -Command "[Console]::Beep(3000, 1000)" | Out-Null
+            } catch {}
+            
+            # On ajuste la pause car l'appel externe prend un peu de temps
+            Start-Sleep -Milliseconds 500 
+        }
+        else {
+            # Cas 3: Vrai Linux (Serveur/Desktop) ou macOS
+            # Pas de bip précis possible facilement, on garde le son système
+            Write-Host "`a" -NoNewline
+            Start-Sleep -Seconds 2
+        }
     }
 
 }
