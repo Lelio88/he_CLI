@@ -228,15 +228,49 @@ if (-not (Test-Path ".git")) {
     }
 }
 
+# --- NOUVEAU : CRÉATION FICHIERS PAR DÉFAUT ---
+Write-Host "📄 Vérification des fichiers de base..."
+
+if (-not (Test-Path "README.md")) {
+    Write-Host "   ➕ Création de README.md" -ForegroundColor Green
+    "# $RepoName`n`nCréé avec HE CLI." | Out-File -FilePath "README.md" -Encoding UTF8
+}
+
+if (-not (Test-Path ".gitignore")) {
+    Write-Host "   ➕ Création de .gitignore standard" -ForegroundColor Green
+    $ignoreContent = @(
+        "# Système",
+        ".DS_Store",
+        "Thumbs.db",
+        "",
+        "# Logs",
+        "*.log",
+        "npm-debug.log*",
+        "",
+        "# Dépendances & Build",
+        "node_modules/",
+        "dist/",
+        "build/",
+        "bin/",
+        "obj/",
+        "vendor/",
+        "",
+        "# IDE",
+        ".vscode/",
+        ".idea/",
+        "*.swp"
+    )
+    $ignoreContent | Out-File -FilePath ".gitignore" -Encoding UTF8
+}
+# ----------------------------------------------
+
 Write-Host "📝 Ajout des fichiers..."
 git add .
 
-# Gestion commit vide
+# Gestion commit vide (Safety check)
 $status = git status --porcelain
 if (-not $status) {
-    Write-Host "⚠️  Dossier vide. Création d'un README..."
-    "# $RepoName" | Out-File -FilePath "README.md" -Encoding UTF8
-    git add README.md
+    Write-Host "⚠️  Dossier toujours vide ?" -ForegroundColor Red
 }
 
 Write-Host "💾 Création du commit..."
