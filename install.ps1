@@ -29,7 +29,8 @@ elseif (Test-Path variable:global:IsWindows) {
 if (-not $isWindows) {
     if (Test-Path "/System/Library/CoreServices/SystemVersion.plist") {
         $isMacOS = $true
-    } else {
+    }
+    else {
         $isLinux = $true
     }
 }
@@ -54,11 +55,13 @@ if ($isWindows) {
     # Windows : Toujours installer dans he-tools (dossier utilisateur)
     $installPath = "$env:USERPROFILE\he-tools"
     
-} else {
+}
+else {
     # Linux ou macOS
     if ($isMacOS) {
         Write-Host "Système détecté : macOS" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Host "Système détecté : Linux" -ForegroundColor Green
     }
     Write-Host ""
@@ -77,7 +80,8 @@ if ($isWindows) {
         $needSudo = $true
         Write-Host ""
         Write-Host "Installation système sélectionnée : /usr/local/bin" -ForegroundColor Cyan
-    } else {
+    }
+    else {
         $installPath = "$env:HOME/.local/bin"
         $needSudo = $false
         Write-Host ""
@@ -100,12 +104,14 @@ if (-not (Test-Path $installPath)) {
             Write-Host "Erreur : Impossible de créer le dossier avec sudo" -ForegroundColor Red
             exit 1
         }
-    } else {
+    }
+    else {
         New-Item -ItemType Directory -Path $installPath -Force | Out-Null
     }
     
     Write-Host "      Dossier cree avec succes" -ForegroundColor Green
-} else {
+}
+else {
     Write-Host "[1/5] Le dossier d'installation existe deja" -ForegroundColor Green
 }
 Write-Host ""
@@ -117,6 +123,7 @@ $repoUrl = "https://raw.githubusercontent.com/Lelio88/he_CLI/main"
 $files = @(
     "he.cmd",
     "he",
+    "uninstall.bat",
     "main.ps1",
     "createrepo.ps1",
     "fastpush.ps1",
@@ -150,7 +157,8 @@ foreach ($file in $files) {
             if ($LASTEXITCODE -ne 0) {
                 throw "Erreur lors du déplacement avec sudo"
             }
-        } else {
+        }
+        else {
             Invoke-WebRequest -Uri $url -OutFile $destination -ErrorAction Stop
         }
         
@@ -168,6 +176,25 @@ if (-not $downloadSuccess) {
     Write-Host "Verifiez votre connexion Internet et reessayez." -ForegroundColor Red
     exit 1
 }
+try {
+    Write-Host "      Création du manifeste d'installation..." -ForegroundColor Gray
+    $manifestPath = Join-Path $installPath "manifest.txt"
+    
+    if ($needSudo) {
+        # Si on est en mode sudo (Linux/macOS system), on doit passer par un fichier temp
+        $tempManifest = [System.IO.Path]::GetTempFileName()
+        $files | Out-File -FilePath $tempManifest -Encoding UTF8 -Force
+        sudo mv $tempManifest $manifestPath
+        if ($LASTEXITCODE -ne 0) { throw "Erreur permission manifeste" }
+    }
+    else {
+        # Windows ou Linux user mode (pas besoin de sudo)
+        $files | Out-File -FilePath $manifestPath -Encoding UTF8 -Force
+    }
+}
+catch {
+    Write-Host "      Attention : Impossible de créer le fichier manifeste." -ForegroundColor Yellow
+}
 
 Write-Host ""
 
@@ -177,16 +204,19 @@ if (-not $isWindows) {
     
     if ($needSudo) {
         sudo chmod +x "$installPath/he"
-    } else {
+    }
+    else {
         chmod +x "$installPath/he"
     }
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host "      Permissions configurees" -ForegroundColor Green
-    } else {
+    }
+    else {
         Write-Host "      Erreur lors de la configuration des permissions" -ForegroundColor Red
     }
-} else {
+}
+else {
     Write-Host "[3/5] Configuration des permissions (non nécessaire sur Windows)" -ForegroundColor Green
 }
 Write-Host ""
@@ -197,14 +227,17 @@ $gitInstalled = Get-Command git -ErrorAction SilentlyContinue
 
 if ($gitInstalled) {
     Write-Host "      Git est deja installe" -ForegroundColor Green
-} else {
+}
+else {
     Write-Host "      Git n'est pas installe" -ForegroundColor Red
     
     if ($isWindows) {
         Write-Host "      Veuillez installer Git depuis : https://git-scm.com/download/win" -ForegroundColor Yellow
-    } elseif ($isMacOS) {
+    }
+    elseif ($isMacOS) {
         Write-Host "      Installez Git avec : brew install git" -ForegroundColor Yellow
-    } else {
+    }
+    else {
         Write-Host "      Installez Git avec : sudo apt install git (ou votre gestionnaire de paquets)" -ForegroundColor Yellow
     }
 }
@@ -216,7 +249,8 @@ $ghInstalled = Get-Command gh -ErrorAction SilentlyContinue
 
 if ($ghInstalled) {
     Write-Host "      GitHub CLI est deja installe" -ForegroundColor Green
-} else {
+}
+else {
     Write-Host "      GitHub CLI sera installe automatiquement lors de la premiere utilisation" -ForegroundColor Yellow
 }
 Write-Host ""
@@ -231,7 +265,8 @@ if ($isWindows) {
 
     if ($pathsArray -contains $installPath) {
         Write-Host "      Le chemin est deja dans le PATH" -ForegroundColor Green
-    } else {
+    }
+    else {
         try {
             $newPath = "$userPath;$installPath"
             [Environment]::SetEnvironmentVariable("Path", $newPath, "User")
@@ -243,18 +278,22 @@ if ($isWindows) {
             Write-Host "      Vous devrez ajouter manuellement $installPath a votre PATH" -ForegroundColor Yellow
         }
     }
-} else {
+}
+else {
     # Linux/macOS
     if ($installPath -eq "/usr/local/bin") {
         # /usr/local/bin est déjà dans le PATH par défaut
         Write-Host "      /usr/local/bin est deja dans le PATH systeme" -ForegroundColor Green
-    } else {
+    }
+    else {
         # Ajouter ~/.local/bin au fichier shell approprié
         $shellConfig = if (Test-Path "$env:HOME/.zshrc") { 
             "$env:HOME/.zshrc" 
-        } elseif (Test-Path "$env:HOME/.bashrc") { 
+        }
+        elseif (Test-Path "$env:HOME/.bashrc") { 
             "$env:HOME/.bashrc" 
-        } else { 
+        }
+        else { 
             "$env:HOME/.bash_profile" 
         }
         
@@ -265,7 +304,8 @@ if ($isWindows) {
             $configContent = Get-Content $shellConfig -Raw -ErrorAction SilentlyContinue
             if ($configContent -match [regex]::Escape($installPath)) {
                 Write-Host "      Le chemin est deja dans $shellConfig" -ForegroundColor Green
-            } else {
+            }
+            else {
                 try {
                     Add-Content -Path $shellConfig -Value "`n# HE CLI Path`n$pathExport"
                     Write-Host "      Chemin ajoute a $shellConfig" -ForegroundColor Green
@@ -277,7 +317,8 @@ if ($isWindows) {
                     Write-Host "      $pathExport" -ForegroundColor White
                 }
             }
-        } else {
+        }
+        else {
             Write-Host "      Fichier de configuration shell non trouve" -ForegroundColor Yellow
             Write-Host "      Ajoutez manuellement cette ligne a votre fichier shell :" -ForegroundColor Yellow
             Write-Host "      $pathExport" -ForegroundColor White
@@ -301,7 +342,8 @@ if ($isWindows) {
                 refreshenv
                 Write-Host "Environnement rafraîchi via refreshenv." -ForegroundColor Green
             }
-        } catch {
+        }
+        catch {
             Write-Host "Impossible de rafraîchir l'environnement automatiquement." -ForegroundColor DarkGray
         }
     }
@@ -317,10 +359,12 @@ if ($isWindows) {
     Write-Host "  1. Fermez cette fenêtre." -ForegroundColor White
     Write-Host "  2. Ouvrez un nouveau terminal." -ForegroundColor White
     Write-Host "  3. Tapez 'he help' pour commencer." -ForegroundColor White
-} else {
+}
+else {
     if ($installPath -eq "/usr/local/bin") {
         Write-Host "  1. Tapez 'he help' pour voir toutes les commandes disponibles" -ForegroundColor White
-    } else {
+    }
+    else {
         Write-Host "⚠️  IMPORTANT : Rechargez votre configuration shell !" -ForegroundColor Red
         Write-Host "  1. Executez: source ~/.bashrc (ou ~/.zshrc)" -ForegroundColor White
         Write-Host "  2. Tapez 'he help'" -ForegroundColor White

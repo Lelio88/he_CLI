@@ -10,15 +10,14 @@ echo "  Installation de HE CLI - HE Command Line Interface"
 echo "============================================================================"
 echo ""
 
-# Check if pwsh is installed
-# Check if pwsh is installed
+# 1. Vérification de PowerShell Core (pwsh)
 if ! command -v pwsh &> /dev/null; then
     echo "⚠️  PowerShell Core (pwsh) n'est pas installé."
     echo ""
     echo "PowerShell Core est requis pour exécuter HE CLI."
     echo ""
     
-    # Detect OS and distribution
+    # Détection OS et Distribution
     OS_TYPE=""
     DISTRO=""
     
@@ -32,9 +31,7 @@ if ! command -v pwsh &> /dev/null; then
         OS_TYPE="macos"
     else
         echo "❌ Système d'exploitation non supporté pour l'installation automatique."
-        echo ""
-        echo "Veuillez installer PowerShell Core manuellement :"
-        echo "  https://github.com/PowerShell/PowerShell"
+        echo "   Veuillez installer PowerShell manuellement : https://github.com/PowerShell/PowerShell"
         exit 1
     fi
     
@@ -50,19 +47,10 @@ if ! command -v pwsh &> /dev/null; then
         case "$DISTRO" in
             ubuntu|debian)
                 echo "Installation pour Ubuntu/Debian..."
-                # Download the Microsoft repository GPG keys
                 wget -q "https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb" -O /tmp/packages-microsoft-prod.deb
-                
-                # Register the Microsoft repository GPG keys
                 sudo dpkg -i /tmp/packages-microsoft-prod.deb
-                
-                # Delete the downloaded package file
                 rm /tmp/packages-microsoft-prod.deb
-                
-                # Update the list of packages
                 sudo apt-get update
-                
-                # Install PowerShell
                 sudo apt-get install -y powershell
                 ;;
                 
@@ -73,21 +61,13 @@ if ! command -v pwsh &> /dev/null; then
                 
             rhel|centos)
                 echo "Installation pour RHEL/CentOS..."
-                # Register the Microsoft RedHat repository
                 curl https://packages.microsoft.com/config/rhel/8/prod.repo | sudo tee /etc/yum.repos.d/microsoft.repo
-                
-                # Install PowerShell
                 sudo dnf install -y powershell
                 ;;
                 
             arch|manjaro)
                 echo "Installation pour Arch Linux..."
-                echo ""
-                echo "Pour Arch Linux, PowerShell est disponible via AUR."
-                echo "Veuillez l'installer manuellement avec :"
-                echo "  yay -S powershell-bin"
-                echo "ou"
-                echo "  paru -S powershell-bin"
+                echo "Veuillez l'installer via AUR : yay -S powershell-bin"
                 exit 1
                 ;;
                 
@@ -98,113 +78,62 @@ if ! command -v pwsh &> /dev/null; then
                         brew install --cask powershell
                     else
                         echo "❌ Homebrew n'est pas installé."
-                        echo ""
-                        echo "Veuillez installer Homebrew depuis https://brew.sh"
-                        echo "Puis exécutez : brew install --cask powershell"
                         exit 1
                     fi
                 else
-                    echo "❌ Distribution Linux non reconnue : $DISTRO"
-                    echo ""
-                    echo "Veuillez installer PowerShell Core manuellement :"
-                    echo "  https://github.com/PowerShell/PowerShell"
+                    echo "❌ Distribution non reconnue : $DISTRO"
                     exit 1
                 fi
                 ;;
         esac
         
-        echo ""
-        echo "✅ Vérification de l'installation..."
-        
-        # Check if pwsh is now available
-        if command -v pwsh &> /dev/null; then
-            PWSH_VERSION=$(pwsh --version)
-            echo "✅ PowerShell Core installé avec succès !"
-            echo "   Version : $PWSH_VERSION"
-            echo ""
-        else
+        # Vérification post-installation
+        if ! command -v pwsh &> /dev/null; then
             echo "❌ L'installation de PowerShell Core a échoué."
-            echo ""
-            echo "Veuillez installer PowerShell Core manuellement :"
-            echo "  - Ubuntu/Debian: https://learn.microsoft.com/powershell/scripting/install/install-ubuntu"
-            echo "  - macOS: brew install --cask powershell"
-            echo "  - Autre: https://github.com/PowerShell/PowerShell"
             exit 1
         fi
     else
-        echo ""
         echo "❌ Installation annulée."
-        echo ""
-        echo "PowerShell Core est requis pour exécuter HE CLI."
-        echo "Veuillez l'installer manuellement :"
-        echo "  - Ubuntu/Debian: https://learn.microsoft.com/powershell/scripting/install/install-ubuntu"
-        echo "  - macOS: brew install --cask powershell"
-        echo "  - Autre: https://github.com/PowerShell/PowerShell"
-        echo ""
         exit 1
     fi
-else
-    PWSH_VERSION=$(pwsh --version)
-    echo "✅ PowerShell Core est déjà installé"
-    echo "   Version : $PWSH_VERSION"
-    echo ""
 fi
 
-# --- RECUPERATION CHEMIN ABSOLU PWSH ---
+# 2. Récupération du chemin absolu de pwsh
 PWSH_PATH=$(command -v pwsh)
 echo "✅ PowerShell Core détecté : $PWSH_PATH"
-# ---------------------------------------
 
-# Check if Git is installed
+# 3. Vérification de Git
 if ! command -v git &> /dev/null; then
-    echo "❌ Git n'est pas installé."
-    echo ""
-    echo "Veuillez installer Git :"
-    echo "  - Ubuntu/Debian: sudo apt install git"
-    echo "  - macOS: brew install git"
-    echo ""
+    echo "❌ Git n'est pas installé. Veuillez l'installer."
     exit 1
 fi
 
-# Function to install to a specific directory
+# 4. Fonction d'installation principale
 install_to_directory() {
     local install_dir="$1"
     local need_sudo="$2"
     
+    echo ""
     echo "Dossier d'installation : $install_dir"
     echo ""
     
-    # Create directory if it doesn't exist
-    echo "[1/4] Création du dossier d'installation..."
+    # Création du dossier
+    echo "[1/4] Création du dossier..."
     if [ "$need_sudo" = "true" ]; then
         sudo mkdir -p "$install_dir"
-        echo "      Dossier créé avec succès"
     else
         mkdir -p "$install_dir"
-        echo "      Dossier créé avec succès"
     fi
-    echo ""
     
-    # Download files from GitHub
-    echo "[2/4] Téléchargement des fichiers depuis GitHub..."
+    # Téléchargement des fichiers
+    echo "[2/4] Téléchargement des fichiers..."
     
     REPO_URL="https://raw.githubusercontent.com/Lelio88/he_CLI/main"
     FILES=(
-        "he"
-        "he.cmd"
-        "main.ps1"
-        "createrepo.ps1"
-        "fastpush.ps1"
-        "update.ps1"
-        "rollback.ps1"
-        "logcommit.ps1"
-        "backup.ps1"
-        "selfupdate.ps1"
-        "heian.ps1"
-        "maintenance.ps1"
-        "matrix.ps1"
-        "flash.ps1"
-        "help.ps1"
+        "he" "main.ps1" "createrepo.ps1" "fastpush.ps1"
+        "update.ps1" "rollback.ps1" "logcommit.ps1" "backup.ps1"
+        "selfupdate.ps1" "maintenance.ps1" "heian.ps1" "matrix.ps1"
+        "flash.ps1" "help.ps1" "uninstall.sh"
     )
     
     for file in "${FILES[@]}"; do
@@ -214,14 +143,30 @@ install_to_directory() {
         else
             curl -fsSL "$REPO_URL/$file" -o "$install_dir/$file"
         fi
-        echo "      $file téléchargé"
     done
+    
+    # --- CRÉATION DU MANIFESTE ---
+    echo "      Génération du manifeste (manifest.txt)..."
+    
+    # On crée le contenu du fichier ligne par ligne
+    MANIFEST_CONTENT=$(printf "%s\n" "${FILES[@]}")
+    # On ajoute le fichier manifeste lui-même à la liste pour qu'il soit supprimé à la fin
+    MANIFEST_CONTENT="$MANIFEST_CONTENT
+manifest.txt"
+    
+    if [ "$need_sudo" = "true" ]; then
+        echo "$MANIFEST_CONTENT" | sudo tee "$install_dir/manifest.txt" > /dev/null
+    else
+        echo "$MANIFEST_CONTENT" > "$install_dir/manifest.txt"
+    fi
+    # ---------------------------------------
+    
     echo ""
     
-    # --- CREATION DU WRAPPER AVEC CHEMIN ABSOLU ---
-    echo "[3/4] Configuration des permissions et du wrapper..."
+    # --- CONFIGURATION DU WRAPPER ET PERMISSIONS ---
+    echo "[3/4] Configuration..."
     
-    # On regénère le fichier 'he' pour utiliser le chemin absolu de pwsh
+    # Création du contenu du wrapper he
     WRAPPER_CONTENT="#!/usr/bin/env bash
 SCRIPT_DIR=\"\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd)\"
 # Utilisation du chemin absolu détecté lors de l'installation
@@ -230,27 +175,27 @@ SCRIPT_DIR=\"\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd)\"
     if [ "$need_sudo" = "true" ]; then
         echo "$WRAPPER_CONTENT" | sudo tee "$install_dir/he" > /dev/null
         sudo chmod +x "$install_dir/he"
+        # Rendre uninstall.sh exécutable aussi
+        sudo chmod +x "$install_dir/uninstall.sh"
     else
         echo "$WRAPPER_CONTENT" > "$install_dir/he"
         chmod +x "$install_dir/he"
+        # Rendre uninstall.sh exécutable aussi
+        chmod +x "$install_dir/uninstall.sh"
     fi
     
     echo "      Permissions configurées"
-    echo ""
     # ----------------------------------------------
     
-    # Check if directory is in PATH
+    # Configuration du PATH
     echo "[4/4] Configuration du PATH..."
     if [[ ":$PATH:" == *":$install_dir:"* ]]; then
         echo "      Le chemin est déjà dans le PATH"
     else
-        # Add to PATH based on the shell
         local shell_config=""
         if [ -n "$BASH_VERSION" ]; then
-            if [ -f "$HOME/.bashrc" ]; then
-                shell_config="$HOME/.bashrc"
-            elif [ -f "$HOME/.bash_profile" ]; then
-                shell_config="$HOME/.bash_profile"
+            if [ -f "$HOME/.bashrc" ]; then shell_config="$HOME/.bashrc"
+            elif [ -f "$HOME/.bash_profile" ]; then shell_config="$HOME/.bash_profile"
             fi
         elif [ -n "$ZSH_VERSION" ]; then
             shell_config="$HOME/.zshrc"
@@ -258,95 +203,44 @@ SCRIPT_DIR=\"\$(cd \"\$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd)\"
         
         if [ "$need_sudo" = "false" ] && [ -n "$shell_config" ]; then
             echo "export PATH=\"\$PATH:$install_dir\"" >> "$shell_config"
-            export PATH="$PATH:$install_dir"
             echo "      Chemin ajouté au PATH dans $shell_config"
         else
-            echo "      Le chemin $install_dir devrait déjà être dans le PATH système"
+            echo "      Le chemin $install_dir devrait être dans le PATH système."
         fi
     fi
-    echo ""
     
     return 0
 }
 
-# Try to install to /usr/local/bin first (requires sudo)
-echo "The CLI can be installed in:"
-echo "  1. /usr/local/bin (system-wide, requires sudo)"
-echo "  2. ~/.local/bin (user only, no sudo required)"
+# Choix du dossier d'installation
+echo "Où installer HE CLI ?"
+echo "  1. /usr/local/bin (Système - Recommandé, nécessite sudo)"
+echo "  2. ~/.local/bin   (Utilisateur)"
 echo ""
-read -p "Voulez-vous installer dans /usr/local/bin avec sudo ? [O/n] " -n 1 -r < /dev/tty
+read -p "Votre choix (1/2) [Défaut: 2] : " choice < /dev/tty
 echo ""
 
-if [[ $REPLY =~ ^[OoYy]$ ]] || [[ -z $REPLY ]]; then
-    # Try to install to /usr/local/bin
+if [[ "$choice" == "1" ]]; then
     install_to_directory "/usr/local/bin" "true"
-    INSTALL_DIR="/usr/local/bin"
 else
-    # Install to ~/.local/bin
-    echo "Installation dans ~/.local/bin..."
-    echo ""
     install_to_directory "$HOME/.local/bin" "false"
-    INSTALL_DIR="$HOME/.local/bin"
 fi
 
-# Check GitHub CLI
+# Vérification GitHub CLI
+echo ""
 echo "Vérification de GitHub CLI..."
 if command -v gh &> /dev/null; then
-    echo "      GitHub CLI est déjà installé"
+    echo "✅ GitHub CLI est déjà installé"
 else
-    echo "      GitHub CLI sera installé automatiquement lors de la première utilisation"
+    echo "ℹ️  GitHub CLI sera installé automatiquement lors de la première utilisation"
 fi
-echo ""
 
-# Display success message
+echo ""
 echo "============================================================================"
-echo "  Installation terminée avec succès !"
+echo "  ✅ Installation terminée avec succès !"
 echo "============================================================================"
 echo ""
 echo "Prochaines étapes :"
-echo ""
-echo "  1. Redémarrez votre terminal (ou exécutez: source ~/.bashrc)"
-echo "  2. Tapez 'he help' pour voir toutes les commandes disponibles"
-echo "  3. Tapez 'he heian' pour voir le logo Heian Enterprise"
-echo "  4. Tapez 'he matrix' pour un effet spécial !"
-echo ""
-echo "Commandes principales :"
-echo ""
-echo "  GESTION DE REPOSITORY :"
-echo "    he createrepo <nom> [-pr|-pu]  - Créer un nouveau repo"
-echo "    he fastpush [message]          - Push rapide (add+commit+push)"
-echo "    he update [-m <message>]       - Commit + Pull + Push complet"
-echo ""
-echo "  HISTORIQUE ET GESTION :"
-echo "    he rollback                    - Annuler le dernier commit"
-echo "    he logcommit [nombre]          - Voir l'historique des commits"
-echo "    he backup                      - Sauvegarder le projet en ZIP"
-echo ""
-echo "  MAINTENANCE :"
-echo "    he selfupdate                  - Mettre à jour HE CLI"
-echo ""
-echo "  FUN ET UTILITAIRES :"
-echo "    he heian                       - Afficher le logo"
-echo "    he matrix                      - Effet Matrix"
-echo "    he help                        - Afficher l'aide"
-echo ""
-echo "============================================================================"
-echo ""
-echo "Quick Start :"
-echo ""
-echo "  # Créer un nouveau projet"
-echo "  mkdir mon-projet && cd mon-projet"
-echo "  he createrepo mon-projet -pu"
-echo ""
-echo "  # Modifications rapides"
-echo "  # ... modifier des fichiers ..."
-echo "  he fastpush \"feat: nouvelle fonctionnalité\""
-echo ""
-echo "  # Mettre à jour HE CLI"
-echo "  he selfupdate"
-echo ""
-echo "============================================================================"
-echo ""
-echo "Made with ❤️  by Lelio B"
-echo "Version 1.0.0 - 2025"
+echo "  1. Redémarrez votre terminal"
+echo "  2. Tapez 'he help' pour commencer"
 echo ""
