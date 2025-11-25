@@ -38,6 +38,9 @@ switch ($command) {
     "selfupdate" {
         & (Join-Path $scriptPath "selfupdate.ps1")
     }
+    "cs" {
+        & (Join-Path $scriptPath "cs.ps1") @remainingArgs
+    }
     "matrix"{
         & (Join-Path $scriptPath "matrix.ps1")
     }
