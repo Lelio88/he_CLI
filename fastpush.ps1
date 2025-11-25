@@ -10,20 +10,7 @@
 )
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-
-# Fonction Git PRO avec découpage correct des arguments
-function Run-Git {
-    param([string]$cmd)
-
-    # Split en arguments individuels (remote / add / origin / url)
-    $parts = $cmd -split ' '
-
-    git @parts
-
-    if ($LASTEXITCODE -ne 0) {
-        throw "Erreur lors de : git $cmd"
-    }
-}
+[Console]::InputEncoding = [System.Text.Encoding]::UTF8
 
 # Gestion du message de commit
 $commitMessage = "initial commit"
@@ -49,30 +36,62 @@ Write-Host "Initialisation du dépôt..."
 
 # Init si pas déjà fait
 if (-not (Test-Path ".git")) {
-    Run-Git "init"
+    git init
+    if ($LASTEXITCODE -ne 0) { throw "Erreur lors de git init" }
 }
 
-# Vérifier si un origin existe
-$originExists = git remote | Select-String -Pattern "^origin$" -Quiet
+# Vérifier si un remote origin existe déjà et s'il correspond
+$currentRemoteUrl = git remote get-url origin 2>$null
 
-if ($originExists) {
-    Write-Host "Suppression de l'ancien remote origin..."
-    Run-Git "remote remove origin"
+if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($currentRemoteUrl)) {
+    # Un remote existe déjà
+    if ($currentRemoteUrl.Trim() -eq $RepoUrl.Trim()) {
+        Write-Host "✅ Le remote origin correspond déjà à l'URL fournie." -ForegroundColor Green
+    } else {
+        Write-Host "⚠️  Le remote origin actuel est différent !" -ForegroundColor Yellow
+        Write-Host "   Actuel  : $currentRemoteUrl" -ForegroundColor White
+        Write-Host "   Nouveau : $RepoUrl" -ForegroundColor White
+        Write-Host ""
+        
+        $choice = Read-Host "Voulez-vous écraser l'ancien remote ? (O/N)"
+        if ($choice -eq "O" -or $choice -eq "o") {
+            Write-Host "Suppression de l'ancien remote origin..."
+            git remote remove origin
+            
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "❌ Impossible de supprimer le remote origin." -ForegroundColor Red
+                exit 1
+            }
+            
+            Write-Host "Ajout du nouveau remote origin..."
+            git remote add origin $RepoUrl
+        } else {
+            Write-Host "Conservation du remote existant." -ForegroundColor Cyan
+            # On met à jour l'URL cible pour le push si l'utilisateur refuse de changer
+            # Note: Ici on garde la logique simple: on pushera vers le remote configuré
+        }
+    }
+} else {
+    # Pas de remote, on l'ajoute
+    Write-Host "Ajout du remote origin..."
+    git remote add origin $RepoUrl
 }
-
-Write-Host "Ajout du remote origin..."
-Run-Git "remote add origin $RepoUrl"
 
 Write-Host "Ajout des fichiers..."
-Run-Git "add ."
+git add .
 
 Write-Host "Création du commit : '$commitMessage'..."
-Run-Git "commit -m `"$commitMessage`""
+git commit -m "$commitMessage"
 
 Write-Host "Forçage de la branche main..."
-Run-Git "branch -M main"
+git branch -M main
 
 Write-Host "Push vers main..."
-Run-Git "push -u origin main"
+git push -u origin main
 
-Write-Host "✨ Push effectué avec succès !"
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "✨ Push effectué avec succès !" -ForegroundColor Green
+} else {
+    Write-Host "❌ Erreur lors du push." -ForegroundColor Red
+    exit 1
+}

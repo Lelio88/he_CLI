@@ -1,165 +1,190 @@
-﻿# Commande backup - Crée une archive ZIP complète du projet avec numérotation automatique
+﻿param(
+    [Parameter(Mandatory=$false)]
+    [string]$n = ""
+)
+
+# Commande backup - Crée une archive ZIP externe avec support .gitignore
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::InputEncoding = [System.Text.Encoding]::UTF8
 
 Write-Host ""
 Write-Host "========================================================================" -ForegroundColor Cyan
-Write-Host "  backup - Sauvegarde du projet" -ForegroundColor Cyan
+Write-Host "  BACKUP - Sauvegarde intelligente" -ForegroundColor Cyan
 Write-Host "========================================================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Vérifier si on est dans un dépôt Git (optionnel, peut fonctionner sans)
-$isGitRepo = Test-Path ".git"
+# 1. Configuration des chemins (SORTIR DU PROJET)
+$currentDir = Get-Location
+$projectName = Split-Path -Leaf $currentDir
 
-if ($isGitRepo) {
-    Write-Host "Depot Git detecte" -ForegroundColor Green
-} else {
-    Write-Host "Pas de depot Git detecte (sauvegarde de tous les fichiers)" -ForegroundColor Yellow
-}
-Write-Host ""
-
-# Obtenir le nom du dossier actuel (nom du projet)
-$projectName = Split-Path -Leaf (Get-Location)
+# On remonte d'un cran pour créer le dossier backups à côté du projet, pas dedans
+$parentDir = Split-Path -Parent $currentDir
+$backupFolder = Join-Path $parentDir "backups"
 
 # Créer le dossier backups s'il n'existe pas
-$backupFolder = Join-Path (Get-Location) "backups"
-
 if (-not (Test-Path $backupFolder)) {
-    Write-Host "Creation du dossier backups..." -ForegroundColor Yellow
+    Write-Host "Création du dossier de stockage externe..." -ForegroundColor Yellow
     New-Item -ItemType Directory -Path $backupFolder -Force | Out-Null
-    Write-Host "Dossier backups cree" -ForegroundColor Green
+    Write-Host "Dossier créé : $backupFolder" -ForegroundColor DarkGray
     Write-Host ""
 }
 
-# Obtenir la date et l'heure actuelles
-$dateTime = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
+# 2. Gestion du nom du backup (Date ou Nom personnalisé)
+if (-not [string]::IsNullOrWhiteSpace($n)) {
+    # Nettoyer le nom personnalisé (enlever les caractères interdits dans les fichiers)
+    $cleanName = $n -replace '[\\/:*?"<>|]', '_'
+    $middlePart = $cleanName
+    Write-Host "Mode : Nom personnalisé ($cleanName)" -ForegroundColor Cyan
+} else {
+    $middlePart = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
+    Write-Host "Mode : Horodatage automatique" -ForegroundColor Cyan
+}
 
-# Trouver le numéro de backup suivant
-Write-Host "Recherche du prochain numero de backup..." -ForegroundColor Yellow
-
+# 3. Calcul du numéro d'incrémentation (Auto-increment)
+# On cherche les fichiers qui commencent par le nom du projet
 $existingBackups = Get-ChildItem -Path $backupFolder -Filter "$projectName*.zip" -ErrorAction SilentlyContinue
 
+$nextNumber = 1
 if ($existingBackups) {
-    # Extraire les numéros existants
     $numbers = @()
     foreach ($backup in $existingBackups) {
+        # Regex pour trouver le numéro à la fin : _#123.zip
         if ($backup.Name -match "_#(\d+)\.zip$") {
             $numbers += [int]$matches[1]
         }
     }
-    
     if ($numbers.Count -gt 0) {
         $nextNumber = ($numbers | Measure-Object -Maximum).Maximum + 1
-    } else {
-        $nextNumber = 1
     }
-} else {
-    $nextNumber = 1
 }
 
-Write-Host "Numero de backup : #$nextNumber" -ForegroundColor Green
-Write-Host ""
-
-# Nom du fichier ZIP avec date, heure et numéro
-$zipName = "${projectName}_${dateTime}_#${nextNumber}.zip"
+$zipName = "${projectName}_${middlePart}_#${nextNumber}.zip"
 $zipPath = Join-Path $backupFolder $zipName
 
-Write-Host "Creation de l'archive : $zipName" -ForegroundColor Yellow
+Write-Host "Fichier cible : $zipName" -ForegroundColor Green
 Write-Host ""
 
-# Obtenir tous les fichiers à sauvegarder (exclure le dossier backups et .git)
-$sep = [System.IO.Path]::DirectorySeparatorChar
-$filesToBackup = Get-ChildItem -Path (Get-Location) -Recurse -File | Where-Object {
-    $_.FullName -notlike "*${sep}backups${sep}*" -and
-    $_.FullName -notlike "*${sep}.git${sep}*" -and
-    $_.FullName -notlike "*${sep}node_modules${sep}*" -and
-    $_.FullName -notlike "*${sep}obj${sep}*" -and
-    $_.FullName -notlike "*${sep}bin${sep}*"
+# 4. Sélection intelligente des fichiers (.gitignore)
+Write-Host "Analyse des fichiers à sauvegarder..." -ForegroundColor Yellow
+
+$filesToBackup = @()
+$isGitRepo = Test-Path ".git"
+
+if ($isGitRepo) {
+    Write-Host "✅ Dépôt Git détecté : Utilisation du .gitignore" -ForegroundColor Green
+    
+    # On demande à Git la liste des fichiers "propres" :
+    # -c : cached (fichiers déjà suivis)
+    # -o : others (fichiers non suivis mais présents)
+    # --exclude-standard : applique les règles du .gitignore
+    $gitOutput = git ls-files -c -o --exclude-standard 2>$null
+    
+    if ($LASTEXITCODE -eq 0) {
+        # Git renvoie des chemins relatifs avec des slashes /. On doit les convertir.
+        $allowedFiles = New-Object System.Collections.Generic.HashSet[string]
+        
+        foreach ($relativePath in $gitOutput) {
+            # Normaliser le chemin pour l'OS actuel (Windows utilise \)
+            $normPath = $relativePath -replace '/', [System.IO.Path]::DirectorySeparatorChar
+            $fullPath = Join-Path $currentDir $normPath
+            $allowedFiles.Add($fullPath) | Out-Null
+        }
+        
+        # Récupérer les objets fichiers correspondants
+        $filesToBackup = Get-ChildItem -Path $currentDir -Recurse -File | Where-Object {
+            $allowedFiles.Contains($_.FullName) -and $_.FullName -ne $zipPath
+        }
+    } else {
+        Write-Host "⚠️ Erreur Git, bascule sur la méthode standard." -ForegroundColor Red
+        $isGitRepo = $false # Fallback
+    }
+}
+
+if (-not $isGitRepo) {
+    Write-Host "ℹ️ Pas de Git/.gitignore : Utilisation des exclusions par défaut" -ForegroundColor Yellow
+    
+    # Exclusions "en dur" classiques
+    $sep = [System.IO.Path]::DirectorySeparatorChar
+    $filesToBackup = Get-ChildItem -Path $currentDir -Recurse -File | Where-Object {
+        $_.FullName -notlike "*${sep}.git${sep}*" -and
+        $_.FullName -notlike "*${sep}node_modules${sep}*" -and
+        $_.FullName -notlike "*${sep}obj${sep}*" -and
+        $_.FullName -notlike "*${sep}bin${sep}*" -and
+        $_.FullName -notlike "*${sep}venv${sep}*" -and
+        $_.FullName -notlike "*${sep}dist${sep}*" -and
+        $_.FullName -notlike "*${sep}build${sep}*" -and
+        $_.FullName -ne $zipPath
+    }
 }
 
 $totalFiles = ($filesToBackup | Measure-Object).Count
 $totalSize = ($filesToBackup | Measure-Object -Property Length -Sum).Sum
 
-Write-Host "Fichiers a sauvegarder : $totalFiles" -ForegroundColor Cyan
-Write-Host "Taille totale : $([math]::Round($totalSize / 1MB, 2)) MB" -ForegroundColor Cyan
+if ($totalFiles -eq 0) {
+    Write-Host "❌ Aucun fichier à sauvegarder !" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "Fichiers sélectionnés : $totalFiles" -ForegroundColor Cyan
+Write-Host "Taille estimée : $([math]::Round($totalSize / 1MB, 2)) MB" -ForegroundColor Cyan
 Write-Host ""
 
-# Créer un dossier temporaire pour préparer l'archive
+# 5. Création de l'archive
 $tempFolder = Join-Path ([System.IO.Path]::GetTempPath()) "he_backup_$([guid]::NewGuid().ToString())"
 New-Item -ItemType Directory -Path $tempFolder -Force | Out-Null
 
 try {
-    # Copier les fichiers dans le dossier temporaire en préservant la structure
-    Write-Host "Preparation des fichiers..." -ForegroundColor Yellow
+    Write-Host "Préparation de l'archive..." -ForegroundColor Yellow
     
-    $currentLocation = Get-Location
     $progressCount = 0
     
     foreach ($file in $filesToBackup) {
         $progressCount++
-        $percentComplete = [math]::Round(($progressCount / $totalFiles) * 100)
+        if ($progressCount % 10 -eq 0) { # Mise à jour UI tous les 10 fichiers pour perf
+            $percent = [math]::Round(($progressCount / $totalFiles) * 100)
+            Write-Progress -Activity "Copie des fichiers" -Status "$percent% complet" -PercentComplete $percent
+        }
         
-        Write-Progress -Activity "Copie des fichiers" -Status "$progressCount / $totalFiles fichiers" -PercentComplete $percentComplete
-        
-        # Calculer le chemin relatif
-        $relativePath = $file.FullName.Substring($currentLocation.Path.Length + 1)
+        # Calcul du chemin relatif pour recréer la structure
+        $relativePath = $file.FullName.Substring($currentDir.Path.Length + 1)
         $destPath = Join-Path $tempFolder $relativePath
         
-        # Créer le dossier parent si nécessaire
+        # Créer le dossier parent
         $destDir = Split-Path -Parent $destPath
         if (-not (Test-Path $destDir)) {
             New-Item -ItemType Directory -Path $destDir -Force | Out-Null
         }
         
-        # Copier le fichier
         Copy-Item -Path $file.FullName -Destination $destPath -Force
     }
     
     Write-Progress -Activity "Copie des fichiers" -Completed
-    Write-Host "Fichiers prepares" -ForegroundColor Green
-    Write-Host ""
     
-    # Créer l'archive ZIP
-    Write-Host "Creation de l'archive ZIP..." -ForegroundColor Yellow
+    Write-Host "Compression en cours..." -ForegroundColor Yellow
     
-    # Utiliser la compression .NET pour plus de contrôle
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     [System.IO.Compression.ZipFile]::CreateFromDirectory($tempFolder, $zipPath, [System.IO.Compression.CompressionLevel]::Optimal, $false)
     
     if (Test-Path $zipPath) {
-        $zipSize = (Get-Item $zipPath).Length
+        $finalSize = (Get-Item $zipPath).Length
         
         Write-Host ""
         Write-Host "========================================================================" -ForegroundColor Cyan
-        Write-Host "  Sauvegarde terminee avec succes !" -ForegroundColor Green
+        Write-Host "  ✅ Sauvegarde terminée !" -ForegroundColor Green
         Write-Host "========================================================================" -ForegroundColor Cyan
         Write-Host ""
-        Write-Host "Nom du backup    : $zipName" -ForegroundColor White
-        Write-Host "Chemin complet   : $zipPath" -ForegroundColor White
-        Write-Host "Taille de l'archive : $([math]::Round($zipSize / 1MB, 2)) MB" -ForegroundColor Cyan
-        Write-Host "Fichiers sauvegardes : $totalFiles" -ForegroundColor Cyan
-        Write-Host "Numero de backup : #$nextNumber" -ForegroundColor Yellow
+        Write-Host "Fichier : $zipName" -ForegroundColor White
+        Write-Host "Dossier : $backupFolder" -ForegroundColor Yellow
+        Write-Host "Taille  : $([math]::Round($finalSize / 1MB, 2)) MB" -ForegroundColor Cyan
         Write-Host ""
-        Write-Host "========================================================================" -ForegroundColor Cyan
-        Write-Host ""
-        Write-Host "Pour restaurer cette sauvegarde :" -ForegroundColor Yellow
-        Write-Host "  1. Extraire l'archive ZIP" -ForegroundColor Gray
-        Write-Host "  2. Copier les fichiers dans votre projet" -ForegroundColor Gray
-        Write-Host ""
-        Write-Host "Tous vos backups sont dans : $backupFolder" -ForegroundColor Magenta
-        Write-Host ""
-    } else {
-        throw "Le fichier ZIP n'a pas ete cree"
     }
 }
 catch {
     Write-Host ""
-    Write-Host "Erreur lors de la creation de la sauvegarde : $_" -ForegroundColor Red
-    Write-Host ""
+    Write-Host "❌ Erreur critique : $_" -ForegroundColor Red
     exit 1
 }
 finally {
-    # Nettoyer le dossier temporaire
     if (Test-Path $tempFolder) {
         Remove-Item -Path $tempFolder -Recurse -Force -ErrorAction SilentlyContinue
     }

@@ -44,13 +44,34 @@ try {
     [Console]::ForegroundColor = [ConsoleColor]::Black
     Clear-Host
     
-    # --- AJOUT DU SON ICI ---
-    # Joue un son à 4000 Hz (aigu) pendant 1000 ms (1 seconde)
-    # Le script attend la fin du son, donc cela contribue à la pause
-    [Console]::Beep(3000, 1000) 
+    # --- GESTION SONORE INTELLIGENTE ---
     
-    # On complète la pause pour atteindre les 2 secondes totales demandées
-    Start-Sleep -Seconds 1
+    if ($IsWindows) {
+        # Cas 1: Windows Natif
+        try { [Console]::Beep(3000, 1000) } catch {}
+        Start-Sleep -Seconds 1
+    }
+    else {
+        # Cas 2: Linux / macOS / WSL
+        
+        # On vérifie si on est sur WSL en cherchant l'exécutable Windows
+        if (Get-Command "powershell.exe" -ErrorAction SilentlyContinue) {
+            # C'est WSL ! On appelle le PowerShell Windows pour faire le bip précis
+            # Cela va lancer un mini-processus Windows juste pour le son
+            try {
+                & powershell.exe -NoProfile -Command "[Console]::Beep(3000, 1000)" | Out-Null
+            } catch {}
+            
+            # On ajuste la pause car l'appel externe prend un peu de temps
+            Start-Sleep -Milliseconds 500 
+        }
+        else {
+            # Cas 3: Vrai Linux (Serveur/Desktop) ou macOS
+            # Pas de bip précis possible facilement, on garde le son système
+            Write-Host "`a" -NoNewline
+            Start-Sleep -Seconds 2
+        }
+    }
 
 }
 finally {

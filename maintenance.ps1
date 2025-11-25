@@ -26,24 +26,16 @@ Write-Host "`n===== MAINTENANCE CROSS-PLATFORM =====`n"
 # Détection OS corrigée
 $isWindows = $false
 
-# Méthode 1 : Variable automatique PowerShell Core (la plus fiable)
+# Méthodes de détection
 if (Test-Path variable:global:IsWindows) {
     $isWindows = $IsWindows
-}
-# Méthode 2 : Variable d'environnement Windows
-elseif ($env:OS -eq "Windows_NT") {
+} elseif ($env:OS -eq "Windows_NT") {
     $isWindows = $true
-}
-# Méthode 3 : Platform Win32NT
-elseif ($PSVersionTable.Platform -eq "Win32NT") {
+} elseif ($PSVersionTable.Platform -eq "Win32NT") {
     $isWindows = $true
-}
-# Méthode 4 : PowerShell Desktop = Windows
-elseif ($PSVersionTable.PSEdition -eq "Desktop") {
+} elseif ($PSVersionTable.PSEdition -eq "Desktop") {
     $isWindows = $true
-}
-# Méthode 5 : Test de chemin système
-elseif (Test-Path "C:\Windows\System32") {
+} elseif (Test-Path "C:\Windows\System32") {
     $isWindows = $true
 }
 
@@ -104,14 +96,25 @@ if ($isWindows) {
         Write-Host "`n--- Reset Winsock & IP [IGNORÉ - Droits admin requis] ---" -ForegroundColor Yellow
     }
 
-    # 9. Nettoyage Windows Update (nécessite admin)
+    # 9. Nettoyage Windows Update (nécessite admin) - AVEC SÉCURITÉ TRY/FINALLY
     if ($isAdmin) {
         Write-Host "`n--- Nettoyage Windows Update ---"
-        Stop-Service wuauserv -Force -ErrorAction SilentlyContinue
-        Stop-Service bits -Force -ErrorAction SilentlyContinue
-        Remove-Item -Path "$env:windir\SoftwareDistribution\*" -Recurse -Force -ErrorAction SilentlyContinue
-        Start-Service wuauserv -ErrorAction SilentlyContinue
-        Start-Service bits -ErrorAction SilentlyContinue
+        try {
+            Write-Host "Arrêt des services..." -ForegroundColor Yellow
+            Stop-Service wuauserv -Force -ErrorAction SilentlyContinue
+            Stop-Service bits -Force -ErrorAction SilentlyContinue
+            
+            Write-Host "Suppression du cache..." -ForegroundColor Yellow
+            Remove-Item -Path "$env:windir\SoftwareDistribution\*" -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        catch {
+             Write-Host "Erreur lors du nettoyage : $_" -ForegroundColor Red
+        }
+        finally {
+            Write-Host "Redémarrage des services..." -ForegroundColor Yellow
+            Start-Service wuauserv -ErrorAction SilentlyContinue
+            Start-Service bits -ErrorAction SilentlyContinue
+        }
     } else {
         Write-Host "`n--- Nettoyage Windows Update [IGNORÉ - Droits admin requis] ---" -ForegroundColor Yellow
     }
