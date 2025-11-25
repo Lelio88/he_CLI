@@ -37,7 +37,7 @@ INSTALL_DIR=""
 if [ -f "/usr/local/bin/he" ]; then
     INSTALL_DIR="/usr/local/bin"
     NEED_SUDO="true"
-elif [ -f "$HOME/.local/bin/he" ]; then
+    elif [ -f "$HOME/.local/bin/he" ]; then
     INSTALL_DIR="$HOME/.local/bin"
     NEED_SUDO="false"
 else
@@ -66,37 +66,65 @@ echo ""
 echo "Désinstallation en cours..."
 echo ""
 
-# List of files to remove
-FILES=(
-    "he"
-    "he.cmd"
-    "main.ps1"
-    "createrepo.ps1"
-    "fastpush.ps1"
-    "update.ps1"
-    "rollback.ps1"
-    "logcommit.ps1"
-    "backup.ps1"
-    "selfupdate.ps1"
-    "maintenance.ps1"
-    "heian.ps1"
-    "matrix.ps1"
-    "help.ps1"
-)
+# DEFINITION DU CHEMIN DU MANIFESTE
+MANIFEST_FILE="$INSTALL_DIR/manifest.txt"
 
-echo "[1/2] Suppression des fichiers..."
-for file in "${FILES[@]}"; do
-    file_path="$INSTALL_DIR/$file"
-    if [ -f "$file_path" ]; then
-        if [ "$NEED_SUDO" = "true" ]; then
-            sudo rm -f "$file_path"
+if [ -f "$MANIFEST_FILE" ]; then
+    echo "      📄 Lecture du manifeste ($MANIFEST_FILE)..."
+    
+    # Lire le fichier ligne par ligne
+    while IFS= read -r file || [ -n "$file" ]; do
+        # Nettoyer les retours chariot éventuels (compatibilité Windows/Linux)
+        file=$(echo "$file" | tr -d '\r')
+        
+        # Ignorer les lignes vides
+        if [ -z "$file" ]; then continue; fi
+        
+        file_path="$INSTALL_DIR/$file"
+        
+        if [ -f "$file_path" ] || [ -L "$file_path" ]; then
+            if [ "$NEED_SUDO" = "true" ]; then
+                sudo rm -f "$file_path"
+            else
+                rm -f "$file_path"
+            fi
+            echo "      - Supprimé : $file"
         else
-            rm -f "$file_path"
+            echo "      ! Introuvable (déjà supprimé ?) : $file"
         fi
-        echo "      $file supprimé"
+    done < "$MANIFEST_FILE"
+    
+    # Supprimer le manifeste lui-même s'il n'était pas dans la liste
+    if [ -f "$MANIFEST_FILE" ]; then
+        if [ "$NEED_SUDO" = "true" ]; then
+            sudo rm -f "$MANIFEST_FILE"
+        else
+            rm -f "$MANIFEST_FILE"
+        fi
     fi
-done
-echo ""
+else
+    echo "⚠️  Manifeste introuvable. Utilisation de la liste de secours."
+    # LISTE DE SECOURS (FALLBACK)
+    FILES=(
+        "he" "he.cmd" "manifest.txt"
+        "main.ps1" "createrepo.ps1" "fastpush.ps1"
+        "update.ps1" "rollback.ps1" "logcommit.ps1" "backup.ps1"
+        "selfupdate.ps1" "maintenance.ps1" "heian.ps1" "matrix.ps1" "flash.ps1"
+        "help.ps1" "install.sh" "install.ps1" "uninstall.sh" "uninstall.bat"
+    )
+    
+    for file in "${FILES[@]}"; do
+        file_path="$INSTALL_DIR/$file"
+        if [ -f "$file_path" ]; then
+            if [ "$NEED_SUDO" = "true" ]; then
+                sudo rm -f "$file_path"
+            else
+                rm -f "$file_path"
+            fi
+            echo "      - Supprimé : $file"
+        fi
+    done
+fi
 
 echo "[2/2] Nettoyage du PATH..."
 if [ "$NEED_SUDO" = "false" ]; then
@@ -108,7 +136,7 @@ if [ "$NEED_SUDO" = "false" ]; then
         if [ -f "$HOME/.bash_profile" ]; then
             remove_from_path "$INSTALL_DIR" "$HOME/.bash_profile"
         fi
-    elif [ -n "$ZSH_VERSION" ]; then
+        elif [ -n "$ZSH_VERSION" ]; then
         if [ -f "$HOME/.zshrc" ]; then
             remove_from_path "$INSTALL_DIR" "$HOME/.zshrc"
         fi
