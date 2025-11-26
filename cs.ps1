@@ -9,41 +9,20 @@ $MapPool = New-Object System.Collections.Generic.List[string]
 $StartMaps = [string[]]@("Mirage", "Inferno", "Nuke", "Overpass", "Dust2", "Ancient")
 $MapPool.AddRange($StartMaps)
 
-# Base de données des positions
 $MapData = @{
-    "Mirage" = @{
-        "A" = @("Ticket", "Tetris", "Sandwich", "Jungle", "Stairs", "Palace", "Site", "Default")
-        "B" = @("Van", "Bench", "Market", "Short", "Apps", "Site", "E-Box", "Default")
-    }
-    "Inferno" = @{
-        "A" = @("Pit", "Graveyard", "Site", "Long", "Short", "Apartments", "Boiler", "Moto")
-        "B" = @("Banana", "Coffins", "CT", "New Box", "Fountain", "Ruins", "Sandbags", "Oranges")
-    }
-    "Nuke" = @{
-        "A" = @("Squeaky", "Hut", "Mustang", "Heaven", "Tetris", "Mini", "Site")
-        "B" = @("Ramp", "Secret", "Control", "Vents", "Decon", "Doors", "Site")
-    }
-    "Overpass" = @{
-        "A" = @("Long", "Toilets", "Bank", "Truck", "Dice", "Site", "Default")
-        "B" = @("Monster", "Short", "Pillar", "Barrels", "Heaven", "Water", "Pit")
-    }
-    "Dust2" = @{
-        "A" = @("Long", "Short", "Car", "Goose", "Ramp", "Site", "Pit", "Catwalk")
-        "B" = @("Doors", "Window", "Car", "Tunnel", "Site", "Platform", "Back Plat")
-    }
-    "Ancient" = @{
-        "A" = @("Main", "Donut", "Temple", "CT", "Site", "Cave", "Triple")
-        "B" = @("Ramp", "Cave", "Pillar", "Long", "Short", "Site", "Lane")
-    }
+    "Mirage" = @{ "A" = @("Ticket", "Tetris", "Sandwich", "Jungle", "Stairs", "Palace", "Site", "Default"); "B" = @("Van", "Bench", "Market", "Short", "Apps", "Site", "E-Box", "Default") }
+    "Inferno" = @{ "A" = @("Pit", "Graveyard", "Site", "Long", "Short", "Apartments", "Boiler", "Moto"); "B" = @("Banana", "Coffins", "CT", "New Box", "Fountain", "Ruins", "Sandbags", "Oranges") }
+    "Nuke" = @{ "A" = @("Squeaky", "Hut", "Mustang", "Heaven", "Tetris", "Mini", "Site"); "B" = @("Ramp", "Secret", "Control", "Vents", "Decon", "Doors", "Site") }
+    "Overpass" = @{ "A" = @("Long", "Toilets", "Bank", "Truck", "Dice", "Site", "Default"); "B" = @("Monster", "Short", "Pillar", "Barrels", "Heaven", "Water", "Pit") }
+    "Dust2" = @{ "A" = @("Long", "Short", "Car", "Goose", "Ramp", "Site", "Pit", "Catwalk"); "B" = @("Doors", "Window", "Car", "Tunnel", "Site", "Platform", "Back Plat") }
+    "Ancient" = @{ "A" = @("Main", "Donut", "Temple", "CT", "Site", "Cave", "Triple"); "B" = @("Ramp", "Cave", "Pillar", "Long", "Short", "Site", "Lane") }
 }
 
-if ($Bots -ne "") {
-    $BotNames = $Bots -split ","
-} else {
-    $BotNames = @("Glados", "Hal", "Cortana", "Jarvis", "T-800", "Wall-E", "R2D2", "C3PO")
-}
+if ($Bots -ne "") { $BotNames = $Bots -split "," } 
+else { $BotNames = @("Glados", "Hal", "Cortana", "Jarvis", "T-800", "Wall-E", "R2D2", "C3PO") }
 
-# --- FONCTION GRAPHIQUE ---
+# --- FONCTIONS UTILITAIRES ---
+
 function Show-BarChart ($VoteData, $Title) {
     Write-Host "`n📊 $Title" -ForegroundColor Cyan
     foreach ($key in $VoteData.Keys) {
@@ -57,6 +36,99 @@ function Show-BarChart ($VoteData, $Title) {
         }
     }
     Write-Host ""
+}
+
+function Show-HUD ($Map, $Side, $ScoreU, $ScoreT, $Context) {
+    Write-Host "`n┌────────────────────────────────────────────────────────┐" -ForegroundColor DarkGray
+    Write-Host "│ INFO PARTIE" -ForegroundColor White
+    if ($Map) { Write-Host "│ MAP   : $Map" -ForegroundColor Green }
+    if ($Side) { 
+        $SideColor = if ($Side -eq "CT") { "Cyan" } else { "Yellow" }
+        Write-Host "│ SIDE  : $Side" -ForegroundColor $SideColor 
+    }
+    if ($ScoreU -ne $null) { Write-Host "│ SCORE : NOUS $ScoreU - $ScoreT EUX" -ForegroundColor White }
+    Write-Host "│"
+    Write-Host "│ ACTION: $Context" -ForegroundColor Magenta
+    Write-Host "└────────────────────────────────────────────────────────┘" -ForegroundColor DarkGray
+}
+
+# --- FONCTIONS FLASHBANG (MISE À JOUR) ---
+
+function Invoke-FlashEffect {
+    # Sauvegarde des couleurs actuelles
+    $RawUI = $Host.UI.RawUI
+    $OriginalBG = $RawUI.BackgroundColor
+    $OriginalFG = $RawUI.ForegroundColor
+    
+    # 1. ÉCRAN BLANC COMPLET
+    $RawUI.BackgroundColor = "White"
+    $RawUI.ForegroundColor = "White"
+    Clear-Host
+    
+    # 2. SON DU FLASH (Tinnitus)
+    # [Console]::Beep bloque le script pendant la durée (1000ms)
+    # Donc l'écran restera blanc pendant 1 seconde
+    try {
+        [Console]::Beep(3000, 1000) 
+    } catch {
+        # Si le son ne marche pas, on force l'attente visuelle
+        Start-Sleep -Seconds 1
+    }
+
+    # 3. EFFET DE DISSIPATION (Gris)
+    $RawUI.BackgroundColor = "Gray"
+    $RawUI.ForegroundColor = "Gray"
+    Clear-Host
+    Start-Sleep -Milliseconds 300
+
+    # 4. RÉTABLISSEMENT
+    $RawUI.BackgroundColor = $OriginalBG
+    $RawUI.ForegroundColor = $OriginalFG
+    Clear-Host
+}
+
+function Test-FlashReflex ($EnemiesCount) {
+    # 1. Calculer si une flash est lancée (10% par ennemi)
+    $FlashThrown = $false
+    1..$EnemiesCount | ForEach-Object {
+        if ((Get-Random -Minimum 0 -Maximum 100) -lt 10) { $FlashThrown = $true }
+    }
+
+    if (-not $FlashThrown) { return 0 } # Pas de flash, pas de malus
+
+    # 2. QTE : Le joueur doit esquiver
+    $TargetKey = Get-Random -InputObject @("z", "q", "s", "d")
+    Write-Host "`n⚠️  FLASH ENNEMIE ! APPUIE VITE SUR [ $TargetKey ]" -ForegroundColor Red -BackgroundColor Yellow
+    
+    # On vide le buffer clavier avant
+    while ([Console]::KeyAvailable) { $null = [Console]::ReadKey($true) }
+
+    $TimeLimit = 1.0 # 1 seconde pour réagir (très rapide)
+    $Start = Get-Date
+    $Success = $false
+
+    while ((Get-Date) - $Start -lt (New-TimeSpan -Seconds $TimeLimit)) {
+        if ([Console]::KeyAvailable) {
+            $KeyInfo = [Console]::ReadKey($true)
+            if ($KeyInfo.KeyChar.ToString().ToLower() -eq $TargetKey) {
+                $Success = $true
+                break
+            } else {
+                # Mauvaise touche = échec immédiat
+                break 
+            }
+        }
+    }
+
+    if ($Success) {
+        Write-Host "✅ FLASH ESQUIVÉE !" -ForegroundColor Green
+        return 0
+    } else {
+        # Appel de la nouvelle fonction avec son + écran blanc long
+        Invoke-FlashEffect
+        Write-Host "`n😵 TU ES FLASHÉ ! (Désavantage combat -20%)" -ForegroundColor Red
+        return 20 # Malus de 20%
+    }
 }
 
 Clear-Host
@@ -73,16 +145,25 @@ if ($Scenario -eq 0) {
     Write-Host "`n🎲 RÉSULTAT: 0 (USER LEAD)" -ForegroundColor Cyan
     $GlobalVotes = @{}
     foreach ($map in $MapPool) { $GlobalVotes[$map] = 0 }
+    $UserHistory = @()
 
     for ($i=1; $i -le 2; $i++) {
-        Write-Host "`n🗺️  Maps : $($MapPool -join ', ')" -ForegroundColor Gray
+        $AvailableMaps = $MapPool | Where-Object { $UserHistory -notcontains $_ }
+        Write-Host "`n🗺️  Maps : $($AvailableMaps -join ', ')" -ForegroundColor Gray
+        
         $valid = $false
         while (-not $valid) {
             $inputBan = Read-Host "🗳️  Ton Vote Ban #$i"
             $match = $MapPool | Where-Object { $_ -eq $inputBan }
+            
             if ($match) {
-                $GlobalVotes[$match]++
-                $valid = $true
+                if ($UserHistory -contains $match) {
+                    Write-Host "⚠️  Tu as déjà voté pour $match !" -ForegroundColor Yellow
+                } else {
+                    $GlobalVotes[$match]++
+                    $UserHistory += $match
+                    $valid = $true
+                }
             } else { Write-Host "❌ Map inconnue." -ForegroundColor Red }
         }
     }
@@ -123,15 +204,26 @@ if ($Scenario -eq 0) {
 
     $GlobalVotes = @{}
     foreach ($map in $MapPool) { $GlobalVotes[$map] = 0 }
+    $UserHistory = @()
 
     for ($i=1; $i -le 3; $i++) {
-        Write-Host "`n🗺️  Maps : $($MapPool -join ', ')" -ForegroundColor Gray
+        $AvailableMaps = $MapPool | Where-Object { $UserHistory -notcontains $_ }
+        Write-Host "`n🗺️  Maps : $($AvailableMaps -join ', ')" -ForegroundColor Gray
+        
         $valid = $false
         while (-not $valid) {
             $inputBan = Read-Host "🗳️  Ton Vote Ban #$i"
             $match = $MapPool | Where-Object { $_ -eq $inputBan }
-            if ($match) { $GlobalVotes[$match]++; $valid = $true } 
-            else { Write-Host "❌ Invalide." -ForegroundColor Red }
+            
+            if ($match) {
+                if ($UserHistory -contains $match) {
+                    Write-Host "⚠️  Tu as déjà voté pour $match !" -ForegroundColor Yellow
+                } else {
+                    $GlobalVotes[$match]++
+                    $UserHistory += $match
+                    $valid = $true
+                }
+            } else { Write-Host "❌ Invalide." -ForegroundColor Red }
         }
     }
 
@@ -193,7 +285,8 @@ while ($ScoreUs -lt 13 -and $ScoreThem -lt 13) {
             Write-Host "   • $($SquadBots[$i]) > $site" -ForegroundColor $c
         }
 
-        # Choix U
+        # Choix U (AVEC HUD)
+        Show-HUD -Map $FinalMap -Side $FinalSide -ScoreU $ScoreUs -ScoreT $ScoreThem -Context "CHOIX DU SITE D'ATTAQUE"
         $validPick = $false
         while (-not $validPick) {
             $UserSite = Read-Host "👤 Quel site attaques-tu ? (A / B)"
@@ -206,29 +299,37 @@ while ($ScoreUs -lt 13 -and $ScoreThem -lt 13) {
         $EnemiesOnSite = Get-Random -InputObject @(2, 3) 
         
         Write-Host "`n⚔️  ENTRY PHASE SUR $UserSite" -ForegroundColor Magenta
-        Write-Host "   Force T : $AlliesOnSite vs Force CT : $EnemiesOnSite" -ForegroundColor Gray
-        Start-Sleep -Milliseconds 800
+        Write-Host "   Force T : $AlliesOnSite (Attaque) vs Force CT : $EnemiesOnSite (Défense)" -ForegroundColor Gray
+        Start-Sleep -Milliseconds 500
+
+        # --- TEST FLASH ENNEMIE ---
+        $FlashMalus = Test-FlashReflex -EnemiesCount $EnemiesOnSite
 
         # ENTRY MATHS
         $BaseChance = 50
         $DefBonus = -10
         $NumAdvantage = ($AlliesOnSite - $EnemiesOnSite) * 10
-        $WinChance = $BaseChance + $DefBonus + $NumAdvantage
+        
+        $WinChance = $BaseChance + $DefBonus + $NumAdvantage - $FlashMalus
         if ($WinChance -lt 5) { $WinChance = 5 }
         if ($WinChance -gt 95) { $WinChance = 95 }
+        
         Write-Host "   📊 Proba Win : $WinChance %" -ForegroundColor DarkGray
         
         if ((Get-Random -Max 101) -le $WinChance) {
             Write-Host "✅ SITE PRIS !" -ForegroundColor Green
             Write-Host "💣 BOMB HAS BEEN PLANTED." -ForegroundColor Red -BackgroundColor Yellow
             
-            # Pertes Entry ?
+            # Pertes Entry
             $Losses = Get-Random -InputObject @(0, 1)
             $AlliesAlive = $AlliesOnSite - $Losses
             if ($AlliesAlive -lt 1) { $AlliesAlive = 1 }
 
             $PossiblePositions = $MapData[$FinalMap][$UserSite]
-            Write-Host "`n📍 Choisis ta position de Post-Plant :" -ForegroundColor Gray
+            
+            # Choix Pose (AVEC HUD)
+            Show-HUD -Map $FinalMap -Side $FinalSide -ScoreU $ScoreUs -ScoreT $ScoreThem -Context "CHOIX POSITION POST-PLANT ($UserSite)"
+            Write-Host "📍 Poses disponibles :" -ForegroundColor Gray
             for ($k=0; $k -lt $PossiblePositions.Count; $k++) { Write-Host "   [$k] $($PossiblePositions[$k])" -NoNewline }
             Write-Host ""
             
@@ -246,7 +347,10 @@ while ($ScoreUs -lt 13 -and $ScoreThem -lt 13) {
             $RetakeCTs = Get-Random -InputObject @(3, 4, 5)
             Write-Host "⚠️  RETAKE : $AlliesAlive T (Défense) vs $RetakeCTs CT (Attaque)" -ForegroundColor Yellow
             
-            $PostPlantChance = 50 + 10 + (($AlliesAlive - $RetakeCTs) * 10)
+            # Test Flash Retake
+            $FlashMalusRetake = Test-FlashReflex -EnemiesCount $RetakeCTs
+
+            $PostPlantChance = 50 + 10 + (($AlliesAlive - $RetakeCTs) * 10) - $FlashMalusRetake
             if ($PostPlantChance -lt 5) { $PostPlantChance = 5 }
             Write-Host "   📊 Proba Win : $PostPlantChance %" -ForegroundColor DarkGray
 
@@ -283,6 +387,8 @@ while ($ScoreUs -lt 13 -and $ScoreThem -lt 13) {
             Write-Host "   • $($SquadBots[$i]) > $site" -ForegroundColor $c
         }
 
+        # Choix Site (AVEC HUD)
+        Show-HUD -Map $FinalMap -Side $FinalSide -ScoreU $ScoreUs -ScoreT $ScoreThem -Context "CHOIX SITE DÉFENSE"
         $validPick = $false
         while (-not $validPick) {
             $UserSite = Read-Host "👤 Sur quel site défends-tu ? (A / B)"
@@ -290,12 +396,14 @@ while ($ScoreUs -lt 13 -and $ScoreThem -lt 13) {
         }
         $UserSite = $UserSite.ToUpper()
         
-        # Calcul Défenseurs sur MON site
         $AlliesOnSite = 1
         foreach ($s in $ShuffledSlots) { if ($s -eq $UserSite) { $AlliesOnSite++ } }
 
         $PossiblePositions = $MapData[$FinalMap][$UserSite]
-        Write-Host "📍 Positions défensives sur $UserSite :" -ForegroundColor Gray
+        
+        # Choix Pose (AVEC HUD)
+        Show-HUD -Map $FinalMap -Side $FinalSide -ScoreU $ScoreUs -ScoreT $ScoreThem -Context "CHOIX POSE DÉFENSIVE ($UserSite)"
+        Write-Host "📍 Poses disponibles :" -ForegroundColor Gray
         for ($k=0; $k -lt $PossiblePositions.Count; $k++) { Write-Host "   [$k] $($PossiblePositions[$k])" -NoNewline }
         Write-Host ""
         
@@ -318,7 +426,10 @@ while ($ScoreUs -lt 13 -and $ScoreThem -lt 13) {
             $EnemiesAttacking = Get-Random -InputObject @(4, 5)
             Write-Host "🔥 ILS SONT SUR TON SITE ! $AlliesOnSite CT vs $EnemiesAttacking T" -ForegroundColor Red
             
-            $DefChance = 50 + 10 + (($AlliesOnSite - $EnemiesAttacking) * 10)
+            # Test Flash CT
+            $FlashMalus = Test-FlashReflex -EnemiesCount $EnemiesAttacking
+
+            $DefChance = 50 + 10 + (($AlliesOnSite - $EnemiesAttacking) * 10) - $FlashMalus
             if ($DefChance -lt 5) { $DefChance = 5 }
             Write-Host "   📊 Proba Win : $DefChance %" -ForegroundColor DarkGray
 
@@ -330,29 +441,26 @@ while ($ScoreUs -lt 13 -and $ScoreThem -lt 13) {
                 $ScoreThem++
             }
         } else {
-            # --- RETAKE LOGIC (CORRIGÉE) ---
+            # --- RETAKE LOGIC ---
             Write-Host "👀 C'est sur l'autre site ($AttackSite)..." -ForegroundColor Yellow
             
-            # 1. Calculer combien de bots étaient sur l'autre site
             $BotsOnLostSite = 0
             foreach ($s in $ShuffledSlots) { if ($s -eq $AttackSite) { $BotsOnLostSite++ } }
 
-            # 2. Simulation rapide : sont-ils morts ?
             $Survivors = 0
             if ($BotsOnLostSite -gt 0) {
-                if ((Get-Random -Max 100) -lt 20) { $Survivors = 1 } # 20% chance qu'un survive
+                if ((Get-Random -Max 100) -lt 20) { $Survivors = 1 } 
             }
 
-            # 3. Calcul des Retakers (Nous = Les rotators + Éventuel survivant)
-            # $AlliesOnSite contient déjà "Moi + Mes potes sur mon site"
             $AlliesRetaking = $AlliesOnSite + $Survivors
-            
-            # Les terros ont pris le site, ils ont peut-être perdu 1 gars
             $EnemiesHolding = Get-Random -InputObject @(3, 4)
 
             Write-Host "🏃 RETAKE : $AlliesRetaking CT (Attaque) vs $EnemiesHolding T (Défense)"
             
-            $RetakeChance = 50 - 10 + (($AlliesRetaking - $EnemiesHolding) * 10)
+            # Test Flash Retake CT
+            $FlashMalus = Test-FlashReflex -EnemiesCount $EnemiesHolding
+
+            $RetakeChance = 50 - 10 + (($AlliesRetaking - $EnemiesHolding) * 10) - $FlashMalus
             if ($RetakeChance -lt 5) { $RetakeChance = 5 }
             
             Write-Host "   📊 Proba Win : $RetakeChance %" -ForegroundColor DarkGray
@@ -371,6 +479,7 @@ while ($ScoreUs -lt 13 -and $ScoreThem -lt 13) {
     Start-Sleep -Seconds 1
 }
 
+# --- 4. FIN DE MATCH ---
 Write-Host "`n=========================================" -ForegroundColor DarkGray
 if ($ScoreUs -ge 13) {
     Write-Host "      VICTOIRE ! ($ScoreUs - $ScoreThem)      " -ForegroundColor Black -BackgroundColor Green
