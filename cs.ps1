@@ -196,19 +196,29 @@ function Invoke-ManualClear ($Map, $Site, $EnemiesRemaining, $Reason, [ref]$Inve
     Write-Host "🔥 MODE COMBAT MANUEL (1v$EnemiesRemaining)" -ForegroundColor Yellow -BackgroundColor Black
     Start-Sleep -Milliseconds 800
 
+    # On charge les positions
     $Positions = $script:MapData[$Map][$Site]
     
-    for ($i = 1; $i -le $EnemiesRemaining; $i++) {
+    # LISTE NOIRE (Zones brûlées)
+    $BurnedZones = @()
+
+    for ($i=1; $i -le $EnemiesRemaining; $i++) {
         Write-Host "`n⚔️  DUEL $i / $EnemiesRemaining" -ForegroundColor Magenta
         
-        $TruePos = Get-Random -InputObject $Positions
-        $FakePos = $Positions | Where-Object { $_ -ne $TruePos } | Get-Random -Count 2
-        $Choices = @($TruePos) + $FakePos | Sort-Object { Get-Random }
+        # On retire les zones brûlées des choix possibles
+        $ValidPositions = $Positions | Where-Object { $BurnedZones -notcontains $_ }
+        
+        # Sécurité anti-crash (si plus de places, on reset, mais peu probable)
+        if ($ValidPositions.Count -eq 0) { $ValidPositions = $Positions }
+
+        $TruePos = Get-Random -InputObject $ValidPositions
+        $FakePos = $ValidPositions | Where-Object { $_ -ne $TruePos } | Get-Random -Count 2
+        $Choices = @($TruePos) + $FakePos | Sort-Object {Get-Random}
         
         $EnemyAlive = $true
         while ($EnemyAlive) {
             Write-Host "👀 Ennemi suspecté vers..." -ForegroundColor Gray
-            for ($k = 0; $k -lt $Choices.Count; $k++) { Write-Host "   [$k] $($Choices[$k])" }
+            for ($k=0; $k -lt $Choices.Count; $k++) { Write-Host "   [$k] $($Choices[$k])" }
 
             $ActionPrompt = "🔫 Tirer (0-$($Choices.Count - 1))"
             if ($Inventory.Value -eq "Molotov") { $ActionPrompt += " | 🔥 Molotov (M)" }
@@ -220,17 +230,20 @@ function Invoke-ManualClear ($Map, $Site, $EnemiesRemaining, $Reason, [ref]$Inve
                 $moloPick = Read-Host "🔥 Quelle position brûler ? (0-$($Choices.Count - 1))"
                 if ($moloPick -match "^\d+$" -and [int]$moloPick -lt $Choices.Count) {
                     $MoloTarget = $Choices[[int]$moloPick]
+                    
                     Write-Host "🧨 Molotov lancée sur $MoloTarget..." -ForegroundColor DarkRed
                     Start-Sleep -Milliseconds 500
-                    $Inventory.Value = $null
+                    
+                    $Inventory.Value = $null # Consomme l'item
+                    $BurnedZones += $MoloTarget # Ajoute à la liste noire (FIX ICI)
 
                     if ($MoloTarget -eq $TruePos) {
                         Write-Host "🔥🔥 L'ENNEMI BRÛLE ! POSITION CLEAR !" -ForegroundColor Green
                         $EnemyAlive = $false 
                         break
-                    }
-                    else {
-                        Write-Host "💨 Personne ici. La position est clear." -ForegroundColor Yellow
+                    } else {
+                        Write-Host "💨 Personne ici. $MoloTarget est en feu (Zone condamnée)." -ForegroundColor Yellow
+                        # On retire le choix pour ce duel-ci
                         $Choices = $Choices | Where-Object { $_ -ne $MoloTarget }
                         continue 
                     }
@@ -242,8 +255,7 @@ function Invoke-ManualClear ($Map, $Site, $EnemiesRemaining, $Reason, [ref]$Inve
                 if ($ChosenPos -eq $TruePos) {
                     Write-Host "💥 HEADSHOT ! Ennemi à $TruePos éliminé." -ForegroundColor Green
                     $EnemyAlive = $false
-                }
-                else {
+                } else {
                     Write-Host "💨 RATÉ ! Il était à $TruePos." -ForegroundColor Red
                     Write-Host "☠️  TU ES MORT." -ForegroundColor DarkRed
                     return $false 
@@ -573,8 +585,31 @@ while ($ScoreUs -lt $WinLimit -and $ScoreThem -lt $WinLimit) {
 }
 
 Write-Host "`n=========================================" -ForegroundColor DarkGray
-if ($ScoreUs -ge $WinLimit) { Write-Host "      VICTOIRE ! ($ScoreUs - $ScoreThem)      " -ForegroundColor Black -BackgroundColor Green } 
-elseif ($ScoreUs -eq 15 -and $ScoreThem -eq 15) { Write-Host "      MATCH NUL ! (15 - 15)      " -ForegroundColor Black -BackgroundColor Yellow }
-else { Write-Host "      DÉFAITE... ($ScoreUs - $ScoreThem)      " -ForegroundColor White -BackgroundColor Red }
+if ($ScoreUs -ge $WinLimit) {
+    Write-Host "      VICTOIRE ! ($ScoreUs - $ScoreThem)      " -ForegroundColor Black -BackgroundColor Green
+    
+    $NewElo = $CurrentElo + 250
+    Write-Host "📈 ELO : $CurrentElo -> $NewElo (+250)" -ForegroundColor Green
+    
+    # Force l'écriture en String pour éviter les erreurs de type
+    Set-Content -Path $EloFile -Value "$NewElo" -Force
+    Write-Host "💾 Sauvegardé dans : $EloFile" -ForegroundColor DarkGray
+
+} elseif ($ScoreUs -eq 15 -and $ScoreThem -eq 15) {
+    Write-Host "      MATCH NUL ! (15 - 15)      " -ForegroundColor Black -BackgroundColor Yellow
+    Write-Host "➖ ELO : $CurrentElo (Inchangé)" -ForegroundColor Gray
+
+} else {
+    Write-Host "      DÉFAITE... ($ScoreUs - $ScoreThem)      " -ForegroundColor White -BackgroundColor Red
+    
+    $NewElo = $CurrentElo - 200
+    if ($NewElo -lt 0) { $NewElo = 0 }
+    
+    Write-Host "📉 ELO : $CurrentElo -> $NewElo (-200)" -ForegroundColor Red
+    
+    # Force l'écriture
+    Set-Content -Path $EloFile -Value "$NewElo" -Force
+    Write-Host "💾 Sauvegardé dans : $EloFile" -ForegroundColor DarkGray
+}
 Write-Host "=========================================" -ForegroundColor DarkGray
 Write-Host "`n🚀 Retour au menu..." -ForegroundColor Cyan
