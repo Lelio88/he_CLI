@@ -12,15 +12,15 @@ $StartMaps = [string[]]@("Mirage", "Inferno", "Nuke", "Overpass", "Dust2", "Anci
 $MapPool.AddRange($StartMaps)
 
 $MapData = @{
-    "Mirage" = @{ 
+    "Mirage"   = @{ 
         "A" = @("Ticket", "Tetris", "Sandwich", "Jungle", "Stairs", "Palace", "Site", "Default")
         "B" = @("Van", "Bench", "Market", "Short", "Apps", "Site", "E-Box", "Default") 
     }
-    "Inferno" = @{ 
+    "Inferno"  = @{ 
         "A" = @("Pit", "Graveyard", "Site", "Long", "Short", "Apartments", "Boiler", "Moto")
-        "B" = @("Banana", "Coffins", "CT", "New Box", "Fountain", "C1", "Sandbags", "Pillar") 
+        "B" = @("Banana", "Coffins", "CT", "New Box", "Fountain", "Ruins", "Sandbags", "Oranges") 
     }
-    "Nuke" = @{ 
+    "Nuke"     = @{ 
         "A" = @("Squeaky", "Hut", "Mustang", "Heaven", "Tetris", "Mini", "Site")
         "B" = @("Ramp", "Secret", "Control", "Vents", "Decon", "Doors", "Site") 
     }
@@ -28,11 +28,11 @@ $MapData = @{
         "A" = @("Long", "Toilets", "Bank", "Truck", "Dice", "Site", "Default")
         "B" = @("Monster", "Short", "Pillar", "Barrels", "Heaven", "Water", "Pit") 
     }
-    "Dust2" = @{ 
+    "Dust2"    = @{ 
         "A" = @("Long", "Short", "Car", "Goose", "Ramp", "Site", "Pit", "Catwalk")
         "B" = @("Doors", "Window", "Car", "Tunnel", "Site", "Platform", "Back Plat") 
     }
-    "Ancient" = @{ 
+    "Ancient"  = @{ 
         "A" = @("Main", "Donut", "Temple", "CT", "Site", "Cave", "Triple")
         "B" = @("Ramp", "Cave", "Pillar", "Long", "Short", "Site", "Lane") 
     }
@@ -40,7 +40,8 @@ $MapData = @{
 
 if ($Bots -ne "") { 
     $BotNames = $Bots -split "," 
-} else { 
+}
+else { 
     $BotNames = @("Lelio", "Peushu", "Silver", "Agowny", "Lpk", "Asu", "Xeniisk", "Monsieur", "Blue", "Morgan", "Roro") 
 }
 
@@ -101,7 +102,6 @@ function Test-FlashReflex ($EnemiesCount, [ref]$Inventory) {
     1..$EnemiesCount | ForEach-Object { if ((Get-Random -Max 100) -lt 10) { $FlashThrown = $true } }
     if (-not $FlashThrown) { return 0 }
 
-    # ASCII ART FLASH
     $FlashArt = @'
        ___
      ___(   )___ 
@@ -138,7 +138,8 @@ function Test-FlashReflex ($EnemiesCount, [ref]$Inventory) {
     if ($Success) { 
         Write-Host "✅ FLASH ESQUIVÉE !" -ForegroundColor Green
         return 0 
-    } else { 
+    }
+    else { 
         Invoke-FlashEffect
         Write-Host "`n😵 TU ES FLASHÉ ! (Malus -20%)" -ForegroundColor Red
         if ($Inventory.Value -eq "Flash") {
@@ -161,17 +162,17 @@ function Invoke-ManualClear ($Map, $Site, $EnemiesRemaining, $Reason, [ref]$Inve
 
     $Positions = $script:MapData[$Map][$Site]
     
-    for ($i=1; $i -le $EnemiesRemaining; $i++) {
+    for ($i = 1; $i -le $EnemiesRemaining; $i++) {
         Write-Host "`n⚔️  DUEL $i / $EnemiesRemaining" -ForegroundColor Magenta
         
         $TruePos = Get-Random -InputObject $Positions
         $FakePos = $Positions | Where-Object { $_ -ne $TruePos } | Get-Random -Count 2
-        $Choices = @($TruePos) + $FakePos | Sort-Object {Get-Random}
+        $Choices = @($TruePos) + $FakePos | Sort-Object { Get-Random }
         
         $EnemyAlive = $true
         while ($EnemyAlive) {
             Write-Host "👀 Ennemi suspecté vers..." -ForegroundColor Gray
-            for ($k=0; $k -lt $Choices.Count; $k++) { Write-Host "   [$k] $($Choices[$k])" }
+            for ($k = 0; $k -lt $Choices.Count; $k++) { Write-Host "   [$k] $($Choices[$k])" }
 
             $ActionPrompt = "🔫 Tirer (0-$($Choices.Count - 1))"
             if ($Inventory.Value -eq "Molotov") { $ActionPrompt += " | 🔥 Molotov (M)" }
@@ -191,7 +192,8 @@ function Invoke-ManualClear ($Map, $Site, $EnemiesRemaining, $Reason, [ref]$Inve
                         Write-Host "🔥🔥 L'ENNEMI BRÛLE ! POSITION CLEAR !" -ForegroundColor Green
                         $EnemyAlive = $false 
                         break
-                    } else {
+                    }
+                    else {
                         Write-Host "💨 Personne ici. La position est clear." -ForegroundColor Yellow
                         $Choices = $Choices | Where-Object { $_ -ne $MoloTarget }
                         continue 
@@ -204,7 +206,8 @@ function Invoke-ManualClear ($Map, $Site, $EnemiesRemaining, $Reason, [ref]$Inve
                 if ($ChosenPos -eq $TruePos) {
                     Write-Host "💥 HEADSHOT ! Ennemi à $TruePos éliminé." -ForegroundColor Green
                     $EnemyAlive = $false
-                } else {
+                }
+                else {
                     Write-Host "💨 RATÉ ! Il était à $TruePos." -ForegroundColor Red
                     Write-Host "☠️  TU ES MORT." -ForegroundColor DarkRed
                     return $false 
@@ -237,13 +240,42 @@ function Invoke-RetakePhase ($Map, $Site, $AlliesCount, $EnemiesCount, [ref]$Inv
             if ((Get-Random -Max 101) -le $NinjaChance) {
                 Write-Host "✨ BOMB DEFUSED ! NINJA LÉGENDAIRE !" -ForegroundColor Green -BackgroundColor Black
                 return $true
-            } else {
+            }
+            else {
                 Write-Host "💀 REPÉRÉ ! TU ES MORT DANS TA SMOKE." -ForegroundColor Red
                 return $false
             }
         }
     }
-    return Invoke-ManualClear -Map $Map -Site $Site -EnemiesRemaining $EnemiesCount -Reason "⚔️ ASSAUT LANCÉ..." -Inventory $Inventory
+
+    # --- SIMULATION COMBAT ALLIÉS (AJOUT CORRECTIF) ---
+    $AlliedBots = $AlliesCount - 1 # On enlève le joueur humain
+    
+    if ($AlliedBots -gt 0) {
+        Write-Host "`n⚔️  TES ALLIÉS ($AlliedBots) ENGAGENT LE COMBAT..." -ForegroundColor DarkYellow
+        Start-Sleep -Milliseconds 800
+        
+        for ($i = 0; $i -lt $AlliedBots; $i++) {
+            # 40% de chance qu'un bot allié tue un bot ennemie
+            if ($EnemiesCount -gt 0) {
+                if ((Get-Random -Max 100) -lt 40) {
+                    $EnemiesCount--
+                    Write-Host "   ✅ Un allié a abattu un terroriste !" -ForegroundColor Green
+                }
+                else {
+                    Write-Host "   ❌ Un allié est tombé au combat." -ForegroundColor Red
+                }
+                Start-Sleep -Milliseconds 300
+            }
+        }
+    }
+
+    if ($EnemiesCount -le 0) {
+        Write-Host "`n✨ LES BOTS ONT CLEAN LE SITE ! ROUND GAGNÉ !" -ForegroundColor Green -BackgroundColor Black
+        return $true
+    }
+
+    return Invoke-ManualClear -Map $Map -Site $Site -EnemiesRemaining $EnemiesCount -Reason "⚔️ À TOI DE FINIR LE TRAVAIL..." -Inventory $Inventory
 }
 
 function Invoke-ClutchMode ($Map, $Site, $EnemiesRemaining, $Reason, [ref]$Inventory) {
@@ -265,7 +297,7 @@ $FinalSide = ""
 if ($Scenario -eq 0) {
     Write-Host "Ban 2 maps + Choix du Side" -ForegroundColor Cyan
     $GlobalVotes = @{}; foreach ($map in $MapPool) { $GlobalVotes[$map] = 0 }; $UserHistory = @()
-    for ($i=1; $i -le 2; $i++) {
+    for ($i = 1; $i -le 2; $i++) {
         $AvailableMaps = $MapPool | Where-Object { $UserHistory -notcontains $_ }
         Write-Host "`n🗺️  Maps : $($AvailableMaps -join ', ')" -ForegroundColor Gray
         $valid = $false
@@ -278,30 +310,22 @@ if ($Scenario -eq 0) {
     Write-Host "`n🤖 Bots votent..."
     1..8 | ForEach-Object { $GlobalVotes[(Get-Random -InputObject $MapPool)]++ }
     Show-BarChart $GlobalVotes "RÉSULTAT"
-    $BannedMaps = $GlobalVotes.GetEnumerator() | Sort-Object {Get-Random} | Sort-Object -Property Value -Descending | Select-Object -First 5
+    $BannedMaps = $GlobalVotes.GetEnumerator() | Sort-Object { Get-Random } | Sort-Object -Property Value -Descending | Select-Object -First 5
     foreach ($item in $BannedMaps) { Write-Host "❌ BANNIE : $($item.Key)" -ForegroundColor Red; $MapPool.Remove($item.Key) | Out-Null }
     if ($MapPool.Count -gt 0) { $FinalMap = $MapPool[0] }
     Write-Host "`n✅ MAP : $FinalMap" -ForegroundColor Green
-    
-    # --- RESTAURATION DU VOTE DE SIDE ---
-    Write-Host "`n🔫 SÉLECTION DU SIDE" -ForegroundColor Magenta
-    $validSide = $false
-    while (-not $validSide) {
-        $UserSide = Read-Host "Choisis ton side (CT / T)"
-        if ($UserSide -match "^(CT|T)$") { $validSide = $true }
-    }
-    $SideVotes = @{ "CT" = 0; "T" = 0 }
-    $SideVotes[$UserSide.ToUpper()]++
+    $validSide = $false; while (-not $validSide) { $UserSide = Read-Host "Side (CT/T)"; if ($UserSide -match "^(CT|T)$") { $validSide = $true } }
+    $SideVotes = @{ "CT" = 0; "T" = 0 }; $SideVotes[$UserSide.ToUpper()]++
     1..4 | ForEach-Object { $SideVotes[(Get-Random -InputObject @("CT", "T"))]++ }
     Show-BarChart $SideVotes "VOTES DU SIDE"
     $FinalSide = ($SideVotes.GetEnumerator() | Sort-Object -Property Value -Descending | Select-Object -First 1).Key
-
-} else {
+}
+else {
     Write-Host "Ban 3 maps" -ForegroundColor Red
     $SystemBans = Get-Random -InputObject $MapPool -Count 2
     foreach ($ban in $SystemBans) { $MapPool.Remove($ban) | Out-Null; Write-Host "❌ SYSTÈME BAN : $ban" -ForegroundColor DarkGray }
     $GlobalVotes = @{}; foreach ($map in $MapPool) { $GlobalVotes[$map] = 0 }; $UserHistory = @()
-    for ($i=1; $i -le 3; $i++) {
+    for ($i = 1; $i -le 3; $i++) {
         $AvailableMaps = $MapPool | Where-Object { $UserHistory -notcontains $_ }
         Write-Host "`n🗺️  Maps : $($AvailableMaps -join ', ')" -ForegroundColor Gray
         $valid = $false
@@ -313,7 +337,7 @@ if ($Scenario -eq 0) {
     }
     1..12 | ForEach-Object { $GlobalVotes[(Get-Random -InputObject $MapPool)]++ }
     Show-BarChart $GlobalVotes "RÉSULTAT"
-    $BannedMaps = $GlobalVotes.GetEnumerator() | Sort-Object {Get-Random} | Sort-Object -Property Value -Descending | Select-Object -First 3
+    $BannedMaps = $GlobalVotes.GetEnumerator() | Sort-Object { Get-Random } | Sort-Object -Property Value -Descending | Select-Object -First 3
     foreach ($item in $BannedMaps) { Write-Host "❌ BANNIE : $($item.Key)" -ForegroundColor Red; $MapPool.Remove($item.Key) | Out-Null }
     if ($MapPool.Count -gt 0) { $FinalMap = $MapPool[0] }
     Write-Host "`n✅ MAP : $FinalMap" -ForegroundColor Green
@@ -373,14 +397,14 @@ while ($ScoreUs -lt $WinLimit -and $ScoreThem -lt $WinLimit) {
         else { $BotsOnA = 2; $StratName = "SPLIT" }
 
         $BotsOnB = 4 - $BotsOnA
-        $BotSlots = @(); for($k=0;$k -lt $BotsOnA;$k++){$BotSlots+="A"}; for($k=0;$k -lt $BotsOnB;$k++){$BotSlots+="B"}
-        $ShuffledSlots = $BotSlots | Sort-Object {Get-Random}
+        $BotSlots = @(); for ($k = 0; $k -lt $BotsOnA; $k++) { $BotSlots += "A" }; for ($k = 0; $k -lt $BotsOnB; $k++) { $BotSlots += "B" }
+        $ShuffledSlots = $BotSlots | Sort-Object { Get-Random }
 
         Write-Host "📻 RADIO ($StratName):" -ForegroundColor DarkCyan
-        for ($i=0; $i -lt 4; $i++) { $site = $ShuffledSlots[$i]; $c = if ($site -eq "A") { "Cyan" } else { "Yellow" }; Write-Host "   • $($SquadBots[$i]) > $site" -ForegroundColor $c }
+        for ($i = 0; $i -lt 4; $i++) { $site = $ShuffledSlots[$i]; $c = if ($site -eq "A") { "Cyan" } else { "Yellow" }; Write-Host "   • $($SquadBots[$i]) > $site" -ForegroundColor $c }
 
         Show-HUD -Map $FinalMap -Side $FinalSide -ScoreU $ScoreUs -ScoreT $ScoreThem -Inventory $UserInventory -Context "CHOIX SITE ATTAQUE"
-        $validPick = $false; while (-not $validPick) { $US = Read-Host "👤 Site (A/B)"; if($US -match "^(A|B)$"){$validPick=$true}}
+        $validPick = $false; while (-not $validPick) { $US = Read-Host "👤 Site (A/B)"; if ($US -match "^(A|B)$") { $validPick = $true } }
         $UserSite = $US.ToUpper()
 
         $AlliesOnSite = 1; foreach ($s in $ShuffledSlots) { if ($s -eq $UserSite) { $AlliesOnSite++ } }
@@ -404,8 +428,8 @@ while ($ScoreUs -lt $WinLimit -and $ScoreThem -lt $WinLimit) {
             $PosList = $script:MapData[$FinalMap][$UserSite]
             
             Show-HUD -Map $FinalMap -Side $FinalSide -ScoreU $ScoreUs -ScoreT $ScoreThem -Inventory $UserInventory -Context "POST-PLANT ($UserSite)"
-            Write-Host "📍 Poses :" -ForegroundColor Gray; for($k=0;$k -lt $PosList.Count;$k++){Write-Host " [$k] $($PosList[$k])" -NoNewline}; Write-Host ""
-            $validP=$false; while(-not $validP){$p=Read-Host "🎯 Pose"; if($p -match "^\d+$" -and [int]$p -lt $PosList.Count){$UPN=$PosList[[int]$p];$validP=$true}}
+            Write-Host "📍 Poses :" -ForegroundColor Gray; for ($k = 0; $k -lt $PosList.Count; $k++) { Write-Host " [$k] $($PosList[$k])" -NoNewline }; Write-Host ""
+            $validP = $false; while (-not $validP) { $p = Read-Host "🎯 Pose"; if ($p -match "^\d+$" -and [int]$p -lt $PosList.Count) { $UPN = $PosList[[int]$p]; $validP = $true } }
             Write-Host "🛡️  Tu tiens : $UPN" -ForegroundColor Cyan
             
             if ($UserInventory -eq "Smoke") {
@@ -413,7 +437,6 @@ while ($ScoreUs -lt $WinLimit -and $ScoreThem -lt $WinLimit) {
                 if ($useSmoke -match "^o") { Write-Host "☁️  SMOKE POSÉE. Bonus défense +15%." -ForegroundColor Green; $WinChance += 15; $UserInventory = $null }
             }
 
-            # CORRECTION DU CALCUL DES ENNEMIS RESTANTS POUR RETAKE
             $RetakeCTs = 5 - $EnemiesOnSite
             
             Write-Host "⚠️  RETAKE : $AlliesAlive T vs $RetakeCTs CT" -ForegroundColor Yellow
@@ -425,16 +448,19 @@ while ($ScoreUs -lt $WinLimit -and $ScoreThem -lt $WinLimit) {
             if ((Get-Random -Max 101) -le $PPC) { Write-Host "🏆 GAGNÉ !" -ForegroundColor Green; $ScoreUs++ } 
             else { 
                 if ((Get-Random -Max 100) -lt 10) {
-                     $ClutchWin = Invoke-ClutchMode -Map $FinalMap -Site $UserSite -EnemiesRemaining (Get-Random -InputObject @(1, 2)) -Reason "💀 DÉFUSÉ EN COURS... IL RESTE UNE CHANCE." -Inventory ([ref]$UserInventory)
-                     if ($ClutchWin) { $ScoreUs++ } else { $ScoreThem++ }
-                } else { Write-Host "💀 DÉFUSÉ... ROUND PERDU." -ForegroundColor Red; $ScoreThem++ }
+                    $ClutchWin = Invoke-ClutchMode -Map $FinalMap -Site $UserSite -EnemiesRemaining (Get-Random -InputObject @(1, 2)) -Reason "💀 DÉFUSÉ EN COURS... IL RESTE UNE CHANCE." -Inventory ([ref]$UserInventory)
+                    if ($ClutchWin) { $ScoreUs++ } else { $ScoreThem++ }
+                }
+                else { Write-Host "💀 DÉFUSÉ... ROUND PERDU." -ForegroundColor Red; $ScoreThem++ }
             }
-        } else {
+        }
+        else {
             $Diff = $AlliesOnSite - $EnemiesOnSite
             if ($Diff -ge -1 -and (Get-Random -Max 100) -lt 10) {
-                 $ClutchWin = Invoke-ClutchMode -Map $FinalMap -Site $UserSite -EnemiesRemaining (Get-Random -InputObject @(1, 2)) -Reason "💀 L'ASSAUT A ÉCHOUÉ... CLUTCH POSSIBLE." -Inventory ([ref]$UserInventory)
-                 if ($ClutchWin) { $ScoreUs++ } else { $ScoreThem++ }
-            } else { Write-Host "❌ ECHEC TOTAL." -ForegroundColor Red; $ScoreThem++ }
+                $ClutchWin = Invoke-ClutchMode -Map $FinalMap -Site $UserSite -EnemiesRemaining (Get-Random -InputObject @(1, 2)) -Reason "💀 L'ASSAUT A ÉCHOUÉ... CLUTCH POSSIBLE." -Inventory ([ref]$UserInventory)
+                if ($ClutchWin) { $ScoreUs++ } else { $ScoreThem++ }
+            }
+            else { Write-Host "❌ ECHEC TOTAL." -ForegroundColor Red; $ScoreThem++ }
         }
     } 
     # --------------------------------------------------------------------------
@@ -444,22 +470,22 @@ while ($ScoreUs -lt $WinLimit -and $ScoreThem -lt $WinLimit) {
         $Roll = Get-Random -Max 101
         if ($Roll -le 60) { $BotsOnA = 2 } else { $BotsOnA = Get-Random -InputObject @(1, 3) } 
         $BotsOnB = 4 - $BotsOnA
-        $BotSlots = @(); for($k=0;$k -lt $BotsOnA;$k++){$BotSlots+="A"}; for($k=0;$k -lt $BotsOnB;$k++){$BotSlots+="B"}
-        $ShuffledSlots = $BotSlots | Sort-Object {Get-Random}
+        $BotSlots = @(); for ($k = 0; $k -lt $BotsOnA; $k++) { $BotSlots += "A" }; for ($k = 0; $k -lt $BotsOnB; $k++) { $BotSlots += "B" }
+        $ShuffledSlots = $BotSlots | Sort-Object { Get-Random }
 
         Write-Host "📻 RADIO (Défense):" -ForegroundColor DarkCyan
-        for ($i=0; $i -lt 4; $i++) { $s=$ShuffledSlots[$i]; $c=if($s -eq "A"){"Cyan"}else{"Yellow"}; Write-Host "   • $($SquadBots[$i]) > $s" -ForegroundColor $c }
+        for ($i = 0; $i -lt 4; $i++) { $s = $ShuffledSlots[$i]; $c = if ($s -eq "A") { "Cyan" }else { "Yellow" }; Write-Host "   • $($SquadBots[$i]) > $s" -ForegroundColor $c }
 
         Show-HUD -Map $FinalMap -Side $FinalSide -ScoreU $ScoreUs -ScoreT $ScoreThem -Inventory $UserInventory -Context "CHOIX SITE DÉFENSE"
-        $validPick = $false; while (-not $validPick) { $US = Read-Host "👤 Site (A/B)"; if($US -match "^(A|B)$"){$validPick=$true}}
+        $validPick = $false; while (-not $validPick) { $US = Read-Host "👤 Site (A/B)"; if ($US -match "^(A|B)$") { $validPick = $true } }
         $UserSite = $US.ToUpper()
         
         $AlliesOnSite = 1; foreach ($s in $ShuffledSlots) { if ($s -eq $UserSite) { $AlliesOnSite++ } }
         $PosList = $script:MapData[$FinalMap][$UserSite]
         
         Show-HUD -Map $FinalMap -Side $FinalSide -ScoreU $ScoreUs -ScoreT $ScoreThem -Inventory $UserInventory -Context "CHOIX POSE ($UserSite)"
-        Write-Host "📍 Poses :" -ForegroundColor Gray; for($k=0;$k -lt $PosList.Count;$k++){Write-Host " [$k] $($PosList[$k])" -NoNewline}; Write-Host ""
-        $validP=$false; while(-not $validP){$p=Read-Host "🎯 Pose"; if($p -match "^\d+$" -and [int]$p -lt $PosList.Count){$UPN=$PosList[[int]$p];$validP=$true}}
+        Write-Host "📍 Poses :" -ForegroundColor Gray; for ($k = 0; $k -lt $PosList.Count; $k++) { Write-Host " [$k] $($PosList[$k])" -NoNewline }; Write-Host ""
+        $validP = $false; while (-not $validP) { $p = Read-Host "🎯 Pose"; if ($p -match "^\d+$" -and [int]$p -lt $PosList.Count) { $UPN = $PosList[[int]$p]; $validP = $true } }
         Write-Host "🛡️  En position : $UPN" -ForegroundColor Green
         Start-Sleep -Milliseconds 500
         
@@ -483,11 +509,13 @@ while ($ScoreUs -lt $WinLimit -and $ScoreThem -lt $WinLimit) {
             if ((Get-Random -Max 101) -le $DefChance) { Write-Host "🏆 DÉFENSE HÉROÏQUE ! ROUND GAGNÉ." -ForegroundColor Green; $ScoreUs++ } 
             else { 
                 if ((Get-Random -Max 100) -lt 10) {
-                     $ClutchWin = Invoke-ManualClear -Map $FinalMap -Site $UserSite -EnemiesRemaining (Get-Random -InputObject @(1, 2)) -Reason "💀 SITE SUBMERGÉ... CLUTCH ?" -Inventory ([ref]$UserInventory)
-                     if ($ClutchWin) { $ScoreUs++ } else { $ScoreThem++ }
-                } else { Write-Host "💀 SUBMERGÉ." -ForegroundColor Red; $ScoreThem++ }
+                    $ClutchWin = Invoke-ManualClear -Map $FinalMap -Site $UserSite -EnemiesRemaining (Get-Random -InputObject @(1, 2)) -Reason "💀 SITE SUBMERGÉ... CLUTCH ?" -Inventory ([ref]$UserInventory)
+                    if ($ClutchWin) { $ScoreUs++ } else { $ScoreThem++ }
+                }
+                else { Write-Host "💀 SUBMERGÉ." -ForegroundColor Red; $ScoreThem++ }
             }
-        } else {
+        }
+        else {
             Write-Host "👀 C'est sur l'autre site ($AttackSite)..." -ForegroundColor Yellow
             $BotsOnLost = 0; foreach ($s in $ShuffledSlots) { if ($s -eq $AttackSite) { $BotsOnLost++ } }
             $Survivors = 0; if ($BotsOnLost -gt 0 -and (Get-Random -Max 100) -lt 20) { $Survivors = 1 } 
