@@ -2,6 +2,42 @@
 param (
     [string]$Bots = "" 
 )
+# ==============================================================================
+# 0. GESTION DE L'ELO & FICHIERS
+# ==============================================================================
+
+$EloFile = Join-Path $HOME "he-tools\elo.txt"
+
+# Création du fichier par défaut s'il n'existe pas
+if (-not (Test-Path $EloFile)) {
+    $Dir = Join-Path $HOME "he-tools"
+    if (-not (Test-Path $Dir)) { New-Item -ItemType Directory -Path $Dir -Force | Out-Null }
+    Set-Content -Path $EloFile -Value "10000"
+}
+
+# Lecture et Configuration de la difficulté
+$CurrentElo = [int](Get-Content $EloFile)
+$LobbyElo = $CurrentElo + (Get-Random -Minimum -400 -Maximum 400)
+
+$RankName = "Silver"
+if ($CurrentElo -ge 10000) { $RankName = "Gold Nova" }
+if ($CurrentElo -ge 13000) { $RankName = "Legendary Eagle" }
+if ($CurrentElo -ge 15000) { $RankName = "Global Elite" }
+
+# Difficulté dynamique
+$FlashProbability = 10 
+$CoordinatedRushChance = 65 
+
+if ($CurrentElo -lt 9000) {
+    # Bas niveau : Peu de flashs, bots désorganisés
+    $FlashProbability = 5
+    $CoordinatedRushChance = 40 
+}
+elseif ($CurrentElo -gt 14000) {
+    # Haut niveau : Beaucoup de flashs, bots très groupés
+    $FlashProbability = 20
+    $CoordinatedRushChance = 85
+}
 
 # ==============================================================================
 # 1. CONFIGURATION & DONNÉES
@@ -97,9 +133,9 @@ function Invoke-FlashEffect {
 # 3. MÉCANIQUES DE JEU
 # ==============================================================================
 
-function Test-FlashReflex ($EnemiesCount, [ref]$Inventory) {
+function Test-FlashReflex ($EnemiesCount, [ref]$Inventory, $FlashProb) {
     $FlashThrown = $false
-    1..$EnemiesCount | ForEach-Object { if ((Get-Random -Max 100) -lt 10) { $FlashThrown = $true } }
+    1..$EnemiesCount | ForEach-Object { if ((Get-Random -Max 100) -lt $FlashProb) { $FlashThrown = $true } }
     if (-not $FlashThrown) { return 0 }
 
     $FlashArt = @'
@@ -290,6 +326,10 @@ function Invoke-ClutchMode ($Map, $Site, $EnemiesRemaining, $Reason, [ref]$Inven
 # ==============================================================================
 
 Clear-Host
+Write-Host "=========================================" -ForegroundColor DarkGray
+Write-Host "      RANK: $RankName ($CurrentElo Elo)  " -ForegroundColor Yellow
+Write-Host "      LOBBY ELO: $LobbyElo               " -ForegroundColor Gray
+Write-Host "=========================================" -ForegroundColor DarkGray
 
 $Scenario = Get-Random -Minimum 0 -Maximum 2
 $FinalSide = "" 
@@ -392,7 +432,10 @@ while ($ScoreUs -lt $WinLimit -and $ScoreThem -lt $WinLimit) {
     if ($FinalSide -eq "T") {
         $Roll = Get-Random -Minimum 1 -Maximum 101
         $BotsOnA = 0; $StratName = ""
-        if ($Roll -le 65) { $BotsOnA = Get-Random -InputObject @(0, 4); $StratName = "GROS PACK" } 
+        if ($Roll -le $CoordinatedRushChance) { 
+            $BotsOnA = Get-Random -InputObject @(0, 4)
+            $StratName = "GROS PACK" 
+        }
         elseif ($Roll -le 90) { $BotsOnA = Get-Random -InputObject @(1, 3); $StratName = "LURK" } 
         else { $BotsOnA = 2; $StratName = "SPLIT" }
 
@@ -413,7 +456,7 @@ while ($ScoreUs -lt $WinLimit -and $ScoreThem -lt $WinLimit) {
         Write-Host "`n⚔️  ENTRY $UserSite : $AlliesOnSite vs $EnemiesOnSite" -ForegroundColor Magenta
         Start-Sleep -Milliseconds 500
 
-        $FlashMalus = Test-FlashReflex -EnemiesCount $EnemiesOnSite -Inventory ([ref]$UserInventory)
+        $FlashMalus = Test-FlashReflex -EnemiesCount $EnemiesOnSite -Inventory ([ref]$UserInventory) -FlashProb $FlashProbability
 
         $BaseChance = 50; $DefBonus = -10; $NumAdvantage = ($AlliesOnSite - $EnemiesOnSite) * 10
         $WinChance = $BaseChance + $DefBonus + $NumAdvantage - $FlashMalus
@@ -440,7 +483,7 @@ while ($ScoreUs -lt $WinLimit -and $ScoreThem -lt $WinLimit) {
             $RetakeCTs = 5 - $EnemiesOnSite
             
             Write-Host "⚠️  RETAKE : $AlliesAlive T vs $RetakeCTs CT" -ForegroundColor Yellow
-            $FM = Test-FlashReflex -EnemiesCount $RetakeCTs -Inventory ([ref]$UserInventory)
+            $FM = Test-FlashReflex -EnemiesCount $RetakeCTs -Inventory ([ref]$UserInventory) -FlashProb $FlashProbability
             $PPC = 50 + 10 + (($AlliesAlive - $RetakeCTs) * 10) - $FM
             if ($PPC -lt 5) { $PPC = 5 }
 
@@ -501,7 +544,7 @@ while ($ScoreUs -lt $WinLimit -and $ScoreThem -lt $WinLimit) {
                 if ($useSmoke -match "^o") { Write-Host "☁️  SMOKE POSÉE. Bonus +15%." -ForegroundColor Green; $SmokeBonus = 15; $UserInventory = $null }
             }
 
-            $FM = Test-FlashReflex -EnemiesCount $EnemiesAttacking -Inventory ([ref]$UserInventory)
+            $FM = Test-FlashReflex -EnemiesCount $EnemiesAttacking -Inventory ([ref]$UserInventory) -FlashProb $FlashProbability
             $DefChance = 50 + 10 + (($AlliesOnSite - $EnemiesAttacking) * 10) - $FM + $SmokeBonus
             if ($DefChance -lt 5) { $DefChance = 5 }
             Write-Host "   📊 Proba Win : $DefChance %" -ForegroundColor DarkGray
@@ -521,7 +564,7 @@ while ($ScoreUs -lt $WinLimit -and $ScoreThem -lt $WinLimit) {
             $Survivors = 0; if ($BotsOnLost -gt 0 -and (Get-Random -Max 100) -lt 20) { $Survivors = 1 } 
             $AlliesRetaking = $AlliesOnSite + $Survivors
             $EnemiesHolding = Get-Random -InputObject @(3, 4)
-
+            Test-FlashReflex -EnemiesCount $EnemiesHolding -Inventory ([ref]$UserInventory) -FlashProb $FlashProbability
             $RetakeWin = Invoke-RetakePhase -Map $FinalMap -Site $AttackSite -AlliesCount $AlliesRetaking -EnemiesCount $EnemiesHolding -Inventory ([ref]$UserInventory)
             if ($RetakeWin) { $ScoreUs++ } else { $ScoreThem++ }
         }
