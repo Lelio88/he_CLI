@@ -91,13 +91,14 @@ chmod +x install.sh
 
 | Commande | Description | Exemple |
 |----------|-------------|---------|
-| `he createrepo <nom> [-pr\|-pu]` | Créer un nouveau repository GitHub | `he createrepo mon-projet -pu` |
+| `he createrepo <nom> [-pr\|-pu] [-d]` | Créer un nouveau repository GitHub | `he createrepo mon-projet -pu -d` |
 | `he fastpush <url> [-m] [message]` | Push rapide vers un repository existant | `he fastpush https://github.com/user/repo.git -m "Initial commit"` |
 | `he update [-m message]` | Commit + Pull + Push complet | `he update -m "feat: nouvelle fonctionnalité"` |
 
 **Flags :**
 - `-pr` : Repository privé
 - `-pu` : Repository public
+- `-d` : Activer la suppression automatique des branches après merge (pour `createrepo`)
 - `-m` : Spécifier un message de commit
 
 ---
@@ -150,6 +151,9 @@ cd mon-projet
 
 # Créer le repository public sur GitHub
 he createrepo mon-projet -pu
+
+# Ou créer avec suppression automatique des branches après merge
+he createrepo mon-projet -pu -d
 
 # Modifier des fichiers...
 echo "# Mon Projet" > README.md

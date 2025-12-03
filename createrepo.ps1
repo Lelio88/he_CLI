@@ -6,7 +6,10 @@
     [switch] $pr,
     
     [Parameter(Mandatory=$false)]
-    [switch] $pu
+    [switch] $pu,
+    
+    [Parameter(Mandatory=$false)]
+    [switch] $d
 )
 
 # Configuration complète de l'encodage
@@ -295,6 +298,18 @@ if ($isPublic) {
 if ($LASTEXITCODE -ne 0) { throw "Erreur création repo GitHub" }
 
 Write-Host "✅ Repository créé sur GitHub"
+
+# Activation de la suppression automatique des branches après merge si flag -d
+if ($d) {
+    Write-Host "🔧 Activation de la suppression automatique des branches après merge..."
+    gh repo edit "$githubUser/$RepoName" --delete-branch-on-merge
+    
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "✅ Suppression automatique des branches activée"
+    } else {
+        Write-Host "⚠️  Attention : Impossible d'activer la suppression automatique" -ForegroundColor Yellow
+    }
+}
 
 Write-Host "🔗 Ajout du remote origin..."
 $repoUrl = "https://github.com/$githubUser/$RepoName.git"
