@@ -138,6 +138,7 @@ $files = @(
     "cs.ps1",
     "flash.ps1",
     "readme.ps1",
+    "generate_readme.py",
     "help.ps1"
 )
 
