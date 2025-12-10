@@ -133,7 +133,7 @@ install_to_directory() {
         "he" "main.ps1" "createrepo.ps1" "fastpush.ps1"
         "update.ps1" "rollback.ps1" "logcommit.ps1" "backup.ps1"
         "selfupdate.ps1" "maintenance.ps1" "heian.ps1" "matrix.ps1"
-        "flash.ps1" "help.ps1" "uninstall.sh" "cs.ps1"
+        "flash.ps1" "help.ps1" "uninstall.sh" "cs.ps1" "readme.ps1"
     )
     
     for file in "${FILES[@]}"; do

@@ -236,7 +236,7 @@ Write-Host "📄 Vérification des fichiers de base..."
 
 if (-not (Test-Path "README.md")) {
     Write-Host "   ➕ Création de README.md" -ForegroundColor Green
-    "# $RepoName`n`nCréé avec HE CLI." | Out-File -FilePath "README.md" -Encoding UTF8
+    "# $RepoName`n`nCréé avec HE CLI. Possibilité d'amélioration automatique avec he readme." | Out-File -FilePath "README.md" -Encoding UTF8
 }
 
 if (-not (Test-Path ".gitignore")) {

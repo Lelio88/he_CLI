@@ -137,6 +137,7 @@ $files = @(
     "matrix.ps1",
     "cs.ps1",
     "flash.ps1",
+    "readme.ps1",
     "help.ps1"
 )
 

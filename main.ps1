@@ -41,6 +41,9 @@ switch ($command) {
     "cs" {
         & (Join-Path $scriptPath "cs.ps1") @remainingArgs
     }
+    "readme"{
+        & (Join-Path $scriptPath "readme.ps1") @remainingArgs 
+    }
     "matrix"{
         & (Join-Path $scriptPath "matrix.ps1")
     }
