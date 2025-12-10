@@ -282,17 +282,27 @@ if (-not (Test-Path ".gitignore")) {
 Write-Host "📝 Ajout des fichiers..."
 git add .
 
-# Gestion commit vide (Safety check)
+# Vérifier s'il y a des changements
 $status = git status --porcelain
 if (-not $status) {
-    Write-Host "⚠️  Dossier toujours vide ?" -ForegroundColor Red
-}
-
-Write-Host "💾 Création du commit..."
-git commit -m "initial commit" 2>&1 | Out-Null
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "⚠️  ATTENTION : Echec du commit (dossier vide ?)" -ForegroundColor Red
+    Write-Host "ℹ️  Aucun nouveau fichier à committer (dépôt déjà initialisé)" -ForegroundColor Gray
+    Write-Host "   Le dépôt existant sera utilisé tel quel." -ForegroundColor Gray
+    
+    # Vérifier qu'il y a au moins 1 commit
+    $hasCommits = git rev-parse HEAD 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "⚠️  ATTENTION : Le dépôt n'a aucun commit !" -ForegroundColor Red
+        Write-Host "   Créez au moins un fichier dans ce dossier avant de lancer la commande." -ForegroundColor Yellow
+        exit 1
+    }
+} else {
+    Write-Host "💾 Création du commit..."
+    git commit -m "initial commit" 2>&1 | Out-Null
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "⚠️ Erreur lors de la création du commit" -ForegroundColor Red
+        exit 1
+    }
 }
 
 Write-Host "🌿 Configuration branche main..."
