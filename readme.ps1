@@ -227,3 +227,4 @@ function Invoke-HeReadme {
         Pop-Location
     }
 }
+Invoke-HeReadme @args
