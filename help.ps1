@@ -1,6 +1,6 @@
-﻿# Commande help - Affiche l'aide complète de HE CLI
+﻿# help.ps1 - Aide complète de HE CLI
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-[Console]::InputEncoding = [System.Text.Encoding]::UTF8
+[Console]::InputEncoding = [System.Text. Encoding]::UTF8
 
 Write-Host ""
 Write-Host "============================================================================" -ForegroundColor Cyan
@@ -27,7 +27,7 @@ if ($isWindows) {
     Write-Host "Système détecté : " -ForegroundColor Gray -NoNewline
     Write-Host "Windows" -ForegroundColor Green
 } else {
-    Write-Host "Système détecté : " -ForegroundColor Gray -NoNewline
+    Write-Host "Système détecté :  " -ForegroundColor Gray -NoNewline
     Write-Host "Linux/macOS" -ForegroundColor Green
 }
 Write-Host ""
@@ -37,20 +37,25 @@ Write-Host "  GESTION DE REPOSITORY" -ForegroundColor Cyan
 Write-Host "============================================================================" -ForegroundColor Cyan
 Write-Host ""
 
-Write-Host "  he createrepo <nom> [-pr|-pu]" -ForegroundColor Yellow
+Write-Host "  he createrepo <nom> [-pr|-pu] [-d] [-pages]" -ForegroundColor Yellow
 Write-Host "    Créer un nouveau repository sur GitHub" -ForegroundColor Gray
 Write-Host ""
 Write-Host "    Options :" -ForegroundColor White
 Write-Host "      -pr            Repository privé" -ForegroundColor Gray
 Write-Host "      -pu            Repository public" -ForegroundColor Gray
+Write-Host "      -d             Active la suppression automatique des branches après merge" -ForegroundColor Gray
+Write-Host "      -pages         Active GitHub Pages (branche main) - Nécessite -pu" -ForegroundColor Gray
 Write-Host "      (sans flag)    Demande interactive" -ForegroundColor Gray
 Write-Host ""
 Write-Host "    Exemples :" -ForegroundColor White
 Write-Host "      he createrepo mon-projet -pu" -ForegroundColor Cyan
 Write-Host "      he createrepo app-privee -pr" -ForegroundColor Cyan
+Write-Host "      he createrepo mon-site -pu -pages" -ForegroundColor Cyan
+Write-Host "      he createrepo mon-app -pu -d -pages" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "    Fonctionnalités :" -ForegroundColor White
 Write-Host "      • Initialise Git localement" -ForegroundColor Gray
+Write-Host "      • Crée automatiquement README.md et .gitignore" -ForegroundColor Gray
 Write-Host "      • Crée le repository sur GitHub" -ForegroundColor Gray
 Write-Host "      • Configure le remote origin" -ForegroundColor Gray
 Write-Host "      • Fait le premier push automatiquement" -ForegroundColor Gray
@@ -66,7 +71,7 @@ Write-Host "      (sans -m)      Utilise 'initial commit' par défaut" -Foregrou
 Write-Host ""
 Write-Host "    Exemples :" -ForegroundColor White
 Write-Host "      he fastpush https://github.com/user/repo.git" -ForegroundColor Cyan
-Write-Host "      he fastpush https://github.com/user/repo.git -m \"Premier commit\"" -ForegroundColor Cyan
+Write-Host "      he fastpush https://github.com/user/repo.git -m ""Premier commit""" -ForegroundColor Cyan
 Write-Host ""
 
 Write-Host "  he update [-m message]" -ForegroundColor Yellow
@@ -78,11 +83,11 @@ Write-Host "      (sans -m)      Demande interactive du message" -ForegroundColo
 Write-Host ""
 Write-Host "    Exemples :" -ForegroundColor White
 Write-Host "      he update" -ForegroundColor Cyan
-Write-Host "      he update -m \"feat: nouvelle fonctionnalité\"" -ForegroundColor Cyan
-Write-Host "      he update -m \"fix: correction bug\"" -ForegroundColor Cyan
+Write-Host "      he update -m ""feat: nouvelle fonctionnalité""" -ForegroundColor Cyan
+Write-Host "      he update -m ""fix: correction bug""" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "    Fonctionnalités :" -ForegroundColor White
-Write-Host "      • Ajoute tous les fichiers modifiés (git add .)" -ForegroundColor Gray
+Write-Host "      • Ajoute tous les fichiers modifiés (git add . )" -ForegroundColor Gray
 Write-Host "      • Crée un commit avec le message" -ForegroundColor Gray
 Write-Host "      • Pull depuis origin (détecte les conflits)" -ForegroundColor Gray
 Write-Host "      • Push vers origin" -ForegroundColor Gray
@@ -116,7 +121,7 @@ Write-Host "  he logcommit [nombre]" -ForegroundColor Yellow
 Write-Host "    Afficher l'historique des commits" -ForegroundColor Gray
 Write-Host ""
 Write-Host "    Arguments :" -ForegroundColor White
-Write-Host "      [nombre]       Nombre de commits à afficher (défaut : 10)" -ForegroundColor Gray
+Write-Host "      [nombre]       Nombre de commits à afficher (défaut :  10)" -ForegroundColor Gray
 Write-Host ""
 Write-Host "    Exemples :" -ForegroundColor White
 Write-Host "      he logcommit" -ForegroundColor Cyan
@@ -138,10 +143,41 @@ Write-Host "      he backup" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "    Fonctionnalités :" -ForegroundColor White
 Write-Host "      • Numérotation automatique des backups" -ForegroundColor Gray
-Write-Host "      • Nom avec date et heure (projet_2025-11-20_17-30-00_#1.zip)" -ForegroundColor Gray
-Write-Host "      • Exclut automatiquement : .git, backups, node_modules, bin, obj" -ForegroundColor Gray
+Write-Host "      • Nom avec date et heure (projet_2025-12-10_17-30-00_#1. zip)" -ForegroundColor Gray
+Write-Host "      • Exclut automatiquement : . git, backups, node_modules, bin, obj" -ForegroundColor Gray
 Write-Host "      • Sauvegarde dans le dossier ./backups" -ForegroundColor Gray
 Write-Host "      • Affiche la taille et le nombre de fichiers" -ForegroundColor Gray
+Write-Host ""
+
+Write-Host "============================================================================" -ForegroundColor Cyan
+Write-Host "  DOCUMENTATION" -ForegroundColor Cyan
+Write-Host "============================================================================" -ForegroundColor Cyan
+Write-Host ""
+
+Write-Host "  he readme [-Path <chemin>]" -ForegroundColor Yellow
+Write-Host "    Générer automatiquement un README.md avec IA (Ollama)" -ForegroundColor Gray
+Write-Host ""
+Write-Host "    Options :" -ForegroundColor White
+Write-Host "      -Path          Chemin du projet (défaut : dossier courant)" -ForegroundColor Gray
+Write-Host ""
+Write-Host "    Exemples :" -ForegroundColor White
+Write-Host "      he readme" -ForegroundColor Cyan
+Write-Host "      he readme -Path ""C:\MesProjets\MonApp""" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "    Prérequis :" -ForegroundColor White
+Write-Host "      • Python 3.7+ (installation proposée si absent)" -ForegroundColor Gray
+Write-Host "      • Ollama installé localement (installation guidée)" -ForegroundColor Gray
+Write-Host "      • Modèle qwen2.5-coder (téléchargement automatique)" -ForegroundColor Gray
+Write-Host ""
+Write-Host "    Fonctionnalités :" -ForegroundColor White
+Write-Host "      • Analyse automatique du code source (respecte . gitignore)" -ForegroundColor Gray
+Write-Host "      • Détection des TODOs et FIXME" -ForegroundColor Gray
+Write-Host "      • Génération de la structure (installation, architecture, stack)" -ForegroundColor Gray
+Write-Host "      • Backup automatique du README existant (. bak)" -ForegroundColor Gray
+Write-Host "      • Choix de la langue (Français/Anglais)" -ForegroundColor Gray
+Write-Host "      • Instructions personnalisables" -ForegroundColor Gray
+Write-Host "      • Optimisation automatique selon la RAM disponible" -ForegroundColor Gray
+Write-Host "      • Fallback :  création d'un README basique si échec" -ForegroundColor Gray
 Write-Host ""
 
 Write-Host "============================================================================" -ForegroundColor Cyan
@@ -171,7 +207,7 @@ if ($isWindows) {
     Write-Host "      • Détection automatique de la distribution" -ForegroundColor Gray
     Write-Host "      • Ubuntu/Debian : APT update, upgrade, autoremove" -ForegroundColor Gray
     Write-Host "      • Fedora/RHEL/CentOS : DNF update, clean" -ForegroundColor Gray
-    Write-Host "      • Arch/Manjaro : Pacman update, clean" -ForegroundColor Gray
+    Write-Host "      • Arch/Manjaro :  Pacman update, clean" -ForegroundColor Gray
     Write-Host "      • macOS : Homebrew update, upgrade, cleanup" -ForegroundColor Gray
     Write-Host "      • Nettoyage journaux systemd (Linux)" -ForegroundColor Gray
     Write-Host "      • Vérification SMART du disque" -ForegroundColor Gray
@@ -198,12 +234,19 @@ Write-Host "  UTILITAIRES" -ForegroundColor Cyan
 Write-Host "============================================================================" -ForegroundColor Cyan
 Write-Host ""
 
+Write-Host "  he cs" -ForegroundColor Yellow
+Write-Host "    Ptite game ?" -ForegroundColor Gray
+
+Write-Host "  he flash" -ForegroundColor Yellow
+Write-Host "    À ne pas faire le soir" -ForegroundColor Gray
+Write-Host ""
+
 Write-Host "  he heian" -ForegroundColor Yellow
 Write-Host "    Afficher le logo Heian Enterprise" -ForegroundColor Gray
 Write-Host ""
 
 Write-Host "  he matrix" -ForegroundColor Yellow
-Write-Host "    ???" -ForegroundColor Gray
+Write-Host "    Effet Matrix dans le terminal" -ForegroundColor Gray
 Write-Host ""
 
 Write-Host "  he help" -ForegroundColor Yellow
@@ -216,9 +259,9 @@ Write-Host "====================================================================
 Write-Host ""
 
 Write-Host "Version          : " -ForegroundColor Gray -NoNewline
-Write-Host "1.0.0" -ForegroundColor White
+Write-Host "1.2.0" -ForegroundColor White
 Write-Host "Date de release  : " -ForegroundColor Gray -NoNewline
-Write-Host "2025-11-20" -ForegroundColor White
+Write-Host "2025-12-10" -ForegroundColor White
 Write-Host "Auteur           : " -ForegroundColor Gray -NoNewline
 Write-Host "Lelio B (@Lelio88)" -ForegroundColor White
 Write-Host "Repository       : " -ForegroundColor Gray -NoNewline
@@ -240,7 +283,7 @@ Write-Host "  https://github.com/Lelio88/he_CLI/blob/main/README.md" -Foreground
 Write-Host ""
 
 Write-Host "Support :" -ForegroundColor Gray
-Write-Host "  Issues   : https://github.com/Lelio88/he_CLI/issues" -ForegroundColor Cyan
+Write-Host "  Issues      : https://github.com/Lelio88/he_CLI/issues" -ForegroundColor Cyan
 Write-Host "  Discussions : https://github.com/Lelio88/he_CLI/discussions" -ForegroundColor Cyan
 Write-Host ""
 
