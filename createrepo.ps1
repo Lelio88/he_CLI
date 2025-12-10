@@ -342,7 +342,7 @@ if ($pages) {
     Write-Host "📄 Configuration de GitHub Pages..."
     
     # Vérifier que le repo est public
-    $repoInfo = gh repo view "$githubUser/$RepoName" --json isPrivate --jq '. isPrivate'
+    $repoInfo = gh repo view "$githubUser/$RepoName" --json isPrivate --jq '.isPrivate'
     
     if ($repoInfo -eq "true") {
         Write-Host "❌ ERREUR :  GitHub Pages nécessite un repository PUBLIC." -ForegroundColor Red
