@@ -9,7 +9,10 @@
     [switch] $pu,
     
     [Parameter(Mandatory=$false)]
-    [switch] $d
+    [switch] $d,
+
+    [Parameter(Mandatory=$false)]
+    [switch] $pages
 )
 
 # Configuration complète de l'encodage
@@ -308,6 +311,41 @@ if ($d) {
         Write-Host "✅ Suppression automatique des branches activée"
     } else {
         Write-Host "⚠️  Attention : Impossible d'activer la suppression automatique" -ForegroundColor Yellow
+    }
+}
+
+# Activation de GitHub Pages si flag -pages
+if ($pages) {
+    Write-Host ""
+    Write-Host "📄 Configuration de GitHub Pages..."
+    
+    # Vérifier que le repo est public
+    $repoInfo = gh repo view "$githubUser/$RepoName" --json isPrivate --jq '.isPrivate'
+    
+    if ($repoInfo -eq "true") {
+        Write-Host "❌ ERREUR : GitHub Pages nécessite un repository PUBLIC." -ForegroundColor Red
+        Write-Host "   Le repository '$RepoName' est actuellement privé." -ForegroundColor Yellow
+        Write-Host "   💡 Conseil : utilisez le flag -pu (ou sans -pr) pour créer un repo public." -ForegroundColor Cyan
+    }
+    else {
+        Write-Host "✅ Repository public : activation possible"
+        Write-Host "🔧 Activation de GitHub Pages sur la branche 'main'..."
+        
+        # Activer GitHub Pages avec la branche main et le dossier racine
+        gh api -X POST "/repos/$githubUser/$RepoName/pages" `
+            -f "source[branch]=main" `
+            -f "source[path]=/" `
+            2>&1 | Out-Null
+        
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "✅ GitHub Pages activé avec succès !" -ForegroundColor Green
+            Write-Host "🌐 Votre site sera disponible à :  https://$githubUser. github.io/$RepoName" -ForegroundColor Cyan
+            Write-Host "   (Peut prendre 1-2 minutes pour le déploiement initial)" -ForegroundColor Gray
+        }
+        else {
+            Write-Host "⚠️  Attention : Impossible d'activer GitHub Pages automatiquement" -ForegroundColor Yellow
+            Write-Host "   Vous pouvez l'activer manuellement dans Settings > Pages" -ForegroundColor Gray
+        }
     }
 }
 
