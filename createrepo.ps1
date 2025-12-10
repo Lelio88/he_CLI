@@ -1,17 +1,17 @@
 ﻿param(
-    [Parameter(Mandatory=$true, Position=0)]
+    [Parameter(Mandatory = $true, Position = 0)]
     [string] $RepoName,
     
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [switch] $pr,
     
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [switch] $pu,
     
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [switch] $d,
 
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [switch] $pages
 )
 
@@ -24,11 +24,14 @@ $PSDefaultParameterValues['*:Encoding'] = 'utf8'
 $isWindows = $false
 if (Test-Path variable:global:IsWindows) {
     $isWindows = $IsWindows
-} elseif ($env:OS -eq "Windows_NT") {
+}
+elseif ($env:OS -eq "Windows_NT") {
     $isWindows = $true
-} elseif ($PSVersionTable.Platform -eq "Win32NT") {
+}
+elseif ($PSVersionTable.Platform -eq "Win32NT") {
     $isWindows = $true
-} elseif ($PSVersionTable.PSEdition -eq "Desktop") {
+}
+elseif ($PSVersionTable.PSEdition -eq "Desktop") {
     $isWindows = $true
 }
 
@@ -75,7 +78,7 @@ if (-not $ghInstalled) {
         }
         
         # Rafraîchir le PATH pour la session actuelle (tentative)
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
         Write-Host "✅ GitHub CLI installé avec succès" -ForegroundColor Green
     }
     else {
@@ -100,7 +103,8 @@ if (-not $ghInstalled) {
             if (Get-Command brew -ErrorAction SilentlyContinue) {
                 Write-Host "Installation via Homebrew..." -ForegroundColor Cyan
                 brew install gh
-            } else {
+            }
+            else {
                 Write-Host "❌ Homebrew n'est pas installé." -ForegroundColor Red
                 exit 1
             }
@@ -147,7 +151,8 @@ if (-not $ghInstalled) {
     Write-Host ""
     Write-Host "⚠️  NOTE : Si la commande échoue plus loin, redémarrez votre terminal pour recharger le PATH." -ForegroundColor Yellow
     Write-Host ""
-} else {
+}
+else {
     Write-Host "✅ GitHub CLI est déjà installé"
 }
 
@@ -161,7 +166,8 @@ Write-Host "🔐 Vérification de l'authentification GitHub..."
 try {
     $authStatus = gh auth status 2>&1
     if ($LASTEXITCODE -ne 0) { throw "Not logged in" }
-} catch {
+}
+catch {
     Write-Host "❌ Vous n'êtes pas authentifié sur GitHub."
     Write-Host "🔑 Lancement du processus d'authentification..."
     Write-Host ""
@@ -206,10 +212,12 @@ if ($pr -and $pu) {
 if ($pr) {
     $isPublic = $false
     Write-Host "🔒 Le repository sera privé"
-} elseif ($pu) {
+}
+elseif ($pu) {
     $isPublic = $true
     Write-Host "🌍 Le repository sera public"
-} else {
+}
+else {
     Write-Host "❓ Voulez-vous que le repo soit public ou privé ?"
     do {
         $choice = Read-Host "Votre choix (pu/pr)"
@@ -226,7 +234,8 @@ if (-not (Test-Path ".git")) {
     git init
     if ($LASTEXITCODE -ne 0) { throw "Erreur git init" }
     Write-Host "✅ Dépôt Git initialisé"
-} else {
+}
+else {
     Write-Host "✅ Dépôt Git déjà initialisé"
     if (git remote get-url origin 2>$null) {
         git remote remove origin
@@ -294,7 +303,8 @@ Write-Host "🔨 Création du repository GitHub '$RepoName'..."
 
 if ($isPublic) {
     gh repo create $RepoName --public --push=false 2>&1 | Out-Null
-} else {
+}
+else {
     gh repo create $RepoName --private --push=false 2>&1 | Out-Null
 }
 
@@ -309,43 +319,9 @@ if ($d) {
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host "✅ Suppression automatique des branches activée"
-    } else {
-        Write-Host "⚠️  Attention : Impossible d'activer la suppression automatique" -ForegroundColor Yellow
-    }
-}
-
-# Activation de GitHub Pages si flag -pages
-if ($pages) {
-    Write-Host ""
-    Write-Host "📄 Configuration de GitHub Pages..."
-    
-    # Vérifier que le repo est public
-    $repoInfo = gh repo view "$githubUser/$RepoName" --json isPrivate --jq '.isPrivate'
-    
-    if ($repoInfo -eq "true") {
-        Write-Host "❌ ERREUR : GitHub Pages nécessite un repository PUBLIC." -ForegroundColor Red
-        Write-Host "   Le repository '$RepoName' est actuellement privé." -ForegroundColor Yellow
-        Write-Host "   💡 Conseil : utilisez le flag -pu (ou sans -pr) pour créer un repo public." -ForegroundColor Cyan
     }
     else {
-        Write-Host "✅ Repository public : activation possible"
-        Write-Host "🔧 Activation de GitHub Pages sur la branche 'main'..."
-        
-        # Activer GitHub Pages avec la branche main et le dossier racine
-        gh api -X POST "/repos/$githubUser/$RepoName/pages" `
-            -f "source[branch]=main" `
-            -f "source[path]=/" `
-            2>&1 | Out-Null
-        
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "✅ GitHub Pages activé avec succès !" -ForegroundColor Green
-            Write-Host "🌐 Votre site sera disponible à :  https://$githubUser. github.io/$RepoName" -ForegroundColor Cyan
-            Write-Host "   (Peut prendre 1-2 minutes pour le déploiement initial)" -ForegroundColor Gray
-        }
-        else {
-            Write-Host "⚠️  Attention : Impossible d'activer GitHub Pages automatiquement" -ForegroundColor Yellow
-            Write-Host "   Vous pouvez l'activer manuellement dans Settings > Pages" -ForegroundColor Gray
-        }
+        Write-Host "⚠️  Attention : Impossible d'activer la suppression automatique" -ForegroundColor Yellow
     }
 }
 
@@ -361,5 +337,39 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
+if ($pages) {
+    Write-Host ""
+    Write-Host "📄 Configuration de GitHub Pages..."
+    
+    # Vérifier que le repo est public
+    $repoInfo = gh repo view "$githubUser/$RepoName" --json isPrivate --jq '. isPrivate'
+    
+    if ($repoInfo -eq "true") {
+        Write-Host "❌ ERREUR :  GitHub Pages nécessite un repository PUBLIC." -ForegroundColor Red
+        Write-Host "   Le repository '$RepoName' est actuellement privé." -ForegroundColor Yellow
+        Write-Host "   💡 Conseil : utilisez le flag -pu (ou sans -pr) pour créer un repo public." -ForegroundColor Cyan
+    }
+    else {
+        Write-Host "✅ Repository public détecté"
+        Write-Host "🔧 Activation de GitHub Pages sur la branche 'main'..."
+        
+        # Activer GitHub Pages avec la branche main et le dossier racine
+        gh api -X POST "/repos/$githubUser/$RepoName/pages" `
+            -f "source[branch]=main" `
+            -f "source[path]=/" `
+            2>&1 | Out-Null
+        
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "✅ GitHub Pages activé avec succès !" -ForegroundColor Green
+            Write-Host "🌐 Votre site sera disponible à :  https://$githubUser.github.io/$RepoName" -ForegroundColor Cyan
+            Write-Host "   (Peut prendre 1-2 minutes pour le déploiement initial)" -ForegroundColor Gray
+        }
+        else {
+            Write-Host "⚠️  Attention : Impossible d'activer GitHub Pages automatiquement" -ForegroundColor Yellow
+            Write-Host "   Vous pouvez l'activer manuellement dans Settings > Pages" -ForegroundColor Gray
+        }
+    }
+}
+
 Write-Host ""
-Write-Host "✨ Succès ! URL: https://github.com/$githubUser/$RepoName"
+Write-Host "✨ Succès ! URL:  https://github.com/$githubUser/$RepoName"
