@@ -70,7 +70,10 @@ function Invoke-HeReadme {
         [string]$Path = (Get-Location).Path
     )
 
-    $heCliPath = Split-Path -Parent $MyInvocation.MyCommand.Path
+    $heCliPath = $PSScriptRoot
+    if (-not $heCliPath) {
+        $heCliPath = Split-Path -Parent $MyInvocation.MyCommand.Definition
+    }
     $pythonScriptPath = Join-Path -Path $heCliPath -ChildPath "generate_readme.py"
     # Normaliser le path
     $projectPath = Resolve-Path -Path $Path -ErrorAction Stop
