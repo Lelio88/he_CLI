@@ -1,50 +1,77 @@
-# HE CLI
+# 🚀 HE CLI
 
-Un outil CLI puissant pour gérer vos projets Git et GitHub avec simplicité. Créez des repos, synchronisez votre code, gérez vos commits et créez des backups en une seule commande !
+Un outil CLI puissant pour gérer vos projets Git et GitHub avec simplicité. Créez des repos, synchronisez votre code, gérez vos commits, créez des backups et générez de la documentation automatiquement !
+
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/Lelio88/he_CLI)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![PowerShell](https://img.shields.io/badge/PowerShell-5.1+-blue.svg)](https://github.com/PowerShell/PowerShell)
 
 ---
 
-## Table des matières
+## 📑 Table des matières
 
-- [HE CLI](#he-cli)
-  - [Table des matières](#table-des-matières)
-  - [Prérequis](#prérequis)
-  - [Installation](#installation)
+- [🚀 HE CLI](#-he-cli)
+  - [📑 Table des matières](#-table-des-matières)
+  - [✨ Fonctionnalités](#-fonctionnalités)
+  - [📦 Prérequis](#-prérequis)
+    - [Obligatoires](#obligatoires)
+    - [Optionnels (installés automatiquement)](#optionnels-installés-automatiquement)
+  - [⚡ Installation](#-installation)
     - [Windows](#windows)
     - [Linux/macOS](#linuxmacos)
-  - [Commandes](#commandes)
-    - [Gestion de repository](#gestion-de-repository)
-    - [Historique et gestion](#historique-et-gestion)
-    - [Maintenance](#maintenance)
-    - [Utilitaires](#utilitaires)
-  - [Exemples d'utilisation](#exemples-dutilisation)
-    - [Créer un nouveau projet GitHub](#créer-un-nouveau-projet-github)
-    - [Travailler sur un projet existant](#travailler-sur-un-projet-existant)
-    - [Annuler un commit](#annuler-un-commit)
-  - [Mise à jour](#mise-à-jour)
-  - [Désinstallation](#désinstallation)
+  - [📖 Commandes](#-commandes)
+    - [🏗️ Gestion de repository](#️-gestion-de-repository)
+    - [📜 Historique et gestion](#-historique-et-gestion)
+    - [📝 Documentation](#-documentation)
+    - [🔧 Maintenance](#-maintenance)
+    - [🎨 Utilitaires](#-utilitaires)
+  - [| `he flash` | Lance une grenade flash dans le terminal |](#-he-flash--lance-une-grenade-flash-dans-le-terminal-)
+  - [💡 Exemples d'utilisation](#-exemples-dutilisation)
+    - [Créer un nouveau projet GitHub avec documentation automatique](#créer-un-nouveau-projet-github-avec-documentation-automatique)
+    - [Créer un site web avec GitHub Pages](#créer-un-site-web-avec-github-pages)
+    - [Workflow de développement complet](#workflow-de-développement-complet)
+  - [🔄 Mise à jour](#-mise-à-jour)
+  - [🗑️ Désinstallation](#️-désinstallation)
     - [Windows](#windows-1)
     - [Linux/macOS](#linuxmacos-1)
-  - [Compatibilité](#compatibilité)
+  - [🌍 Compatibilité](#-compatibilité)
     - [Shells supportés](#shells-supportés)
-  - [Contribution](#contribution)
-  - [Licence](#licence)
-  - [Auteur](#auteur)
-  - [Support](#support)
+  - [🤝 Contribution](#-contribution)
+  - [📜 Licence](#-licence)
+  - [👤 Auteur](#-auteur)
+  - [💬 Support](#-support)
 
 ---
 
-## Prérequis
+## ✨ Fonctionnalités
 
-- **Git** : [Télécharger Git](https://git-scm.com/)
+- ✅ **Création de repos GitHub** en une commande (avec GitHub Pages optionnel)
+- ✅ **Synchronisation automatique** (commit + pull + push)
+- ✅ **Génération de README automatique** avec IA (Ollama)
+- ✅ **Gestion de l'historique** Git (rollback, logs)
+- ✅ **Backups automatiques** du projet
+- ✅ **Maintenance système** complète (Windows/Linux/macOS)
+- ✅ **Installation automatique** des dépendances
+- ✅ **Cross-platform** (Windows, Linux, macOS)
+
+---
+
+## 📦 Prérequis
+
+### Obligatoires
+- **Git** :  [Télécharger Git](https://git-scm.com/)
 - **PowerShell Core (pwsh)** : Requis pour Linux/macOS
   - Linux : Installé automatiquement lors de l'installation
   - macOS : `brew install --cask powershell`
-- **GitHub CLI** : Installé automatiquement lors de la première utilisation
+
+### Optionnels (installés automatiquement)
+- **GitHub CLI** : Installé lors de la première utilisation de `createrepo`
+- **Python 3.7+** :  Nécessaire pour `he readme` (installation guidée)
+- **Ollama** :  Nécessaire pour `he readme` (installation guidée)
 
 ---
 
-## Installation
+## ⚡ Installation
 
 ### Windows
 
@@ -68,7 +95,7 @@ curl -O https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.bat
 
 **Option 1 : Installation rapide (une ligne)**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Lelio88/he_CLI/main/install. sh | bash
 ```
 
 **Option 2 : Installation manuelle**
@@ -85,64 +112,124 @@ chmod +x install.sh
 
 ---
 
-## Commandes
+## 📖 Commandes
 
-### Gestion de repository
+### 🏗️ Gestion de repository
 
-| Commande | Description | Exemple |
-|----------|-------------|---------|
-| `he createrepo <nom> [-pr\|-pu] [-d]` | Créer un nouveau repository GitHub | `he createrepo mon-projet -pu -d` |
-| `he fastpush <url> [-m] [message]` | Push rapide vers un repository existant | `he fastpush https://github.com/user/repo.git -m "Initial commit"` |
-| `he update [-m message]` | Commit + Pull + Push complet | `he update -m "feat: nouvelle fonctionnalité"` |
+| Commande | Description | Flags |
+|----------|-------------|-------|
+| `he createrepo <nom>` | Créer un nouveau repository GitHub | `-pr` (privé), `-pu` (public), `-d` (auto-delete branches), `-pages` (GitHub Pages) |
+| `he fastpush <url>` | Push rapide vers un repository existant | `-m <message>` (message de commit) |
+| `he update` | Commit + Pull + Push complet | `-m <message>` (message de commit) |
 
-**Flags :**
-- `-pr` : Repository privé
-- `-pu` : Repository public
-- `-d` : Activer la suppression automatique des branches après merge (pour `createrepo`)
-- `-m` : Spécifier un message de commit
+**Exemples :**
+```bash
+# Créer un repo public avec GitHub Pages
+he createrepo mon-site -pu -pages
 
----
+# Créer un repo avec auto-suppression des branches
+he createrepo mon-projet -pu -d
 
-### Historique et gestion
+# Push rapide avec message
+he fastpush https://github.com/user/repo.git -m "Initial commit"
 
-| Commande | Description | Exemple |
-|----------|-------------|---------|
-| `he rollback [-d]` | Annuler le dernier commit (soft reset) | `he rollback` |
-| `he logcommit [nombre]` | Afficher l'historique des commits | `he logcommit 10` |
-| `he backup` | Créer une archive ZIP du projet | `he backup` |
-
-**Flags :**
-- `-d` : Confirmation automatique (pas de prompts interactifs)
+# Synchronisation avec message
+he update -m "feat:  nouvelle fonctionnalité"
+```
 
 ---
 
-### Maintenance
+### 📜 Historique et gestion
+
+| Commande | Description | Arguments |
+|----------|-------------|-----------|
+| `he rollback` | Annuler le dernier commit (soft reset) | `-d` (confirmation auto) |
+| `he logcommit [nombre]` | Afficher l'historique des commits | Nombre de commits (défaut : 10) |
+| `he backup` | Créer une archive ZIP du projet | Aucun |
+
+**Exemples :**
+```bash
+# Annuler le dernier commit
+he rollback
+
+# Voir les 20 derniers commits
+he logcommit 20
+
+# Créer un backup
+he backup
+```
+
+---
+
+### 📝 Documentation
+
+| Commande | Description | Options |
+|----------|-------------|---------|
+| `he readme` | Générer automatiquement un README. md avec IA | `-Path <chemin>` (chemin du projet) |
+
+**Prérequis pour `he readme` :**
+- Python 3.7+ (installation proposée si absent)
+- Ollama installé localement (installation guidée)
+- Modèle `qwen2.5-coder` (téléchargement automatique)
+
+**Fonctionnalités :**
+- ✅ Analyse automatique du code source (respecte `.gitignore`)
+- ✅ Détection des TODOs et FIXME
+- ✅ Génération de la structure (installation, architecture, stack technique)
+- ✅ Backup automatique du README existant (`.bak`)
+- ✅ Choix de la langue (Français/Anglais)
+- ✅ Instructions personnalisables
+- ✅ Optimisation automatique selon la RAM disponible
+- ✅ Fallback :  création d'un README basique si échec
+
+**Exemples :**
+```bash
+# Générer le README du projet actuel
+he readme
+
+# Générer le README d'un projet spécifique
+he readme -Path "C:\MesProjets\MonApp"
+```
+
+---
+
+### 🔧 Maintenance
 
 | Commande | Description | OS supportés |
 |----------|-------------|--------------|
-| `he maintenance` | Maintenance complète du système | Windows, Linux (Ubuntu/Debian/Fedora/RHEL/Arch), macOS |
-| `he selfupdate` | Mettre à jour HE CLI vers la dernière version | Tous |
+| `he maintenance` | Maintenance complète du système | Windows, Linux, macOS |
+| `he selfupdate` | Mettre à jour HE CLI | Tous |
 
 **Maintenance inclut :**
 - **Windows** : Winget update, DISM, SFC, nettoyage disque, CHKDSK
 - **Linux** : APT/DNF/Pacman update, nettoyage packages, journaux systemd
 - **macOS** : Homebrew update & cleanup
 
+**Exemples :**
+```bash
+# Maintenance du système
+he maintenance
+
+# Mise à jour de HE CLI
+he selfupdate
+```
+
 ---
 
-### Utilitaires
+### 🎨 Utilitaires
 
 | Commande | Description |
 |----------|-------------|
 | `he heian` | Afficher le logo Heian Enterprise |
-| `he matrix` | ??? |
+| `he matrix` | Effet Matrix dans le terminal |
 | `he help` | Afficher l'aide complète |
-
+| `he cs` | Lance une partie de cs dans le terminal |
+| `he flash` | Lance une grenade flash dans le terminal |
 ---
 
-## Exemples d'utilisation
+## 💡 Exemples d'utilisation
 
-### Créer un nouveau projet GitHub
+### Créer un nouveau projet GitHub avec documentation automatique
 
 ```bash
 # Créer un dossier et initialiser
@@ -152,65 +239,72 @@ cd mon-projet
 # Créer le repository public sur GitHub
 he createrepo mon-projet -pu
 
-# Ou créer avec suppression automatique des branches après merge
-he createrepo mon-projet -pu -d
+# Ajouter du code... 
+echo "console.log('Hello');" > index.js
 
-# Modifier des fichiers...
-echo "# Mon Projet" > README.md
+# Générer automatiquement le README
+he readme
 
 # Synchroniser avec GitHub
-he update -m "docs: add README"
+he update -m "docs: add auto-generated README"
 ```
 
 ---
 
-### Travailler sur un projet existant
+### Créer un site web avec GitHub Pages
 
 ```bash
-# Cloner le projet
+# Créer le projet
+mkdir mon-site
+cd mon-site
+
+# Ajouter un fichier HTML
+echo "<h1>Mon Site</h1>" > index.html
+
+# Créer le repo avec GitHub Pages activé
+he createrepo mon-site -pu -pages
+
+# Votre site sera disponible à :  https://votre-username.github.io/mon-site
+```
+
+---
+
+### Workflow de développement complet
+
+```bash
+# Cloner un projet existant
 git clone https://github.com/user/repo.git
 cd repo
 
-# Modifier des fichiers...
-
-# Push rapide
-he update -m "fix: correction bug"
+# Faire des modifications...
+echo "New feature" >> feature.js
 
 # Voir l'historique
 he logcommit 5
 
-# Créer un backup
+# Créer un backup avant modification importante
 he backup
-```
 
----
+# Faire d'autres modifications... 
 
-### Annuler un commit
-
-```bash
-# Annuler le dernier commit (fichiers conservés)
+# Annuler le dernier commit si erreur
 he rollback
-
-# Modifier et recommiter
-git add .
-git commit -m "feat: nouveau commit corrigé"
-git push
 ```
 
 ---
 
-## Mise à jour
+## 🔄 Mise à jour
 
 ```bash
 # Mettre à jour HE CLI vers la dernière version
 he selfupdate
 ```
 
-La commande détecte automatiquement votre OS et télécharge la bonne version.
+La commande détecte automatiquement votre OS et télécharge la bonne version. 
 
 ---
 
-## Désinstallation
+## 🗑️ Désinstallation
 
 ### Windows
 
@@ -219,8 +313,6 @@ La commande détecte automatiquement votre OS et télécharge la bonne version.
 curl -O https://raw.githubusercontent.com/Lelio88/he_CLI/main/uninstall.bat
 .\uninstall.bat
 ```
-
----
 
 ### Linux/macOS
 
@@ -236,7 +328,7 @@ La désinstallation :
 
 ---
 
-## Compatibilité
+## 🌍 Compatibilité
 
 | OS | Version minimale | Package Manager | Notes |
 |----|------------------|-----------------|-------|
@@ -254,32 +346,47 @@ La désinstallation :
 
 ---
 
-## Contribution
+## 🤝 Contribution
 
-Les contributions sont les bienvenues ! N'hésitez pas à ouvrir une issue ou une pull request.
+Les contributions sont les bienvenues ! N'hésitez pas à : 
+
+1. 🍴 Forker le projet
+2. 🔧 Créer une branche (`git checkout -b feature/AmazingFeature`)
+3. 💾 Commiter vos changements (`git commit -m 'feat: add amazing feature'`)
+4. 📤 Pusher vers la branche (`git push origin feature/AmazingFeature`)
+5. 🔃 Ouvrir une Pull Request
 
 ---
 
-## Licence
+## 📜 Licence
 
 MIT License - Copyright (c) 2025 Lelio B
 
+Voir le fichier [LICENSE](LICENSE) pour plus de détails.
+
 ---
 
-## Auteur
+## 👤 Auteur
 
 **Lelio B** - [@Lelio88](https://github.com/Lelio88)
 
-Version 1.0.0 - 2025-11-20
+Version **1.2.0** - 2025-12-10
 
 ---
 
-## Support
+## 💬 Support
 
 - 🐛 **Bugs** : [Ouvrir une issue](https://github.com/Lelio88/he_CLI/issues)
-- 💬 **Questions** : [Discussions GitHub](https://github.com/Lelio88/he_CLI/discussions)
-- 📧 **Contact** : Via GitHub
+- 💬 **Questions** :  [Discussions GitHub](https://github.com/Lelio88/he_CLI/discussions)
+- 📧 **Contact** :  Via GitHub
+- 📖 **Documentation** : `he help` ou [README.md](README.md)
 
 ---
 
+<div align="center">
+
 **Made with ❤️ by Lelio B**
+
+⭐ Si ce projet vous aide, n'hésitez pas à lui donner une étoile ! 
+
+</div>
