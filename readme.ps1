@@ -1,4 +1,4 @@
-function Get-PythonExecutable {
+﻿function Get-PythonExecutable {
     # Retourne le chemin de l'exécutable Python (python ou python3) ou $null si aucun trouvé
     $candidates = @("python", "python3")
     foreach ($cand in $candidates) {
