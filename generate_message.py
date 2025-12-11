@@ -96,7 +96,7 @@ def clean_message_aggressive(raw_message):
 def generate_commit_message(status, diff, model):
     """Génère un message avec LLM + nettoyage universel"""
     
-    # Prompt optimisé pour génération propre
+    # Prompt optimisé
     prompt = f"""You are a Git commit expert.  Generate ONE commit message following Conventional Commits format. 
 
 STRICT RULES:
@@ -122,7 +122,7 @@ Commit message:"""
             options={
                 'temperature': 0.2,
                 'num_predict':  20,
-                'num_ctx':  2048,
+                'num_ctx': 2048,
                 'top_p': 0.9,
                 'repeat_penalty': 1.3,
                 'stop': ['\n', '\r', 'Note:', 'Explanation:', '```']
@@ -131,14 +131,25 @@ Commit message:"""
         
         raw_message = response['message']['content']. strip()
         
+        # 🔍 DEBUG : Afficher ce que le LLM a vraiment généré
+        print(f"[DEBUG] LLM brut:   '{raw_message}'", file=sys.stderr)
+        
         # Nettoyage agressif
         cleaned = clean_message_aggressive(raw_message)
         
+        # 🔍 DEBUG : Afficher après nettoyage
+        print(f"[DEBUG] Apres nettoyage:  '{cleaned}'", file=sys. stderr)
+        
         # Validation finale
-        if not re.match(r'^[a-z]+(\ ([a-z0-9/-]+\))?:\s*.{5,}$', cleaned):
-            print(f"Message invalide apres nettoyage:  '{cleaned}'", file=sys.stderr)
-            # Fallback basique mais universel
+        if not re. match(r'^[a-z]+(\([a-z0-9/-]+\))?:\s*.{5,}$', cleaned):
+            print(f"[WARN] Validation echouee, utilisation du fallback", file=sys.stderr)
             return "chore: update files"
+        
+        return cleaned
+        
+    except Exception as e: 
+        print(f"[ERROR] Erreur generation: {e}", file=sys.stderr)
+        return "chore:  update files"
         
         return cleaned
         
