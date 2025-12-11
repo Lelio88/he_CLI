@@ -141,10 +141,10 @@ if ($hasChanges) {
             
             # Trouver le script Python
             $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
-            $pythonScript = Join-Path -Path $scriptPath -ChildPath "generate_commit_message.py"
+            $pythonScript = Join-Path -Path $scriptPath -ChildPath "generate_message.py"
             
             if (-not (Test-Path $pythonScript)) {
-                Write-Host "❌ Script generate_commit_message.py introuvable dans $scriptPath" -ForegroundColor Red
+                Write-Host "❌ Script generate_message.py introuvable dans $scriptPath" -ForegroundColor Red
                 Write-Host "💡 Reinstallez he_CLI avec 'he selfupdate'" -ForegroundColor Yellow
                 Write-Host ""
                 exit 1
