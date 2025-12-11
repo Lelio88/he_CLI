@@ -20,7 +20,8 @@ Write-Host "====================================================================
 Write-Host ""
 
 # Vérifier si on est dans un dépôt Git
-if (-not (Test-Path ". git")) {
+$currentLocation = Get-Location
+if (-not (Test-Path -Path (Join-Path $currentLocation ".git"))) {
     Write-Host "Erreur : Vous n'etes pas dans un depot Git !" -ForegroundColor Red
     Write-Host "Initialisez d'abord Git avec 'git init' ou deplacez-vous dans un projet Git." -ForegroundColor Yellow
     Write-Host ""
