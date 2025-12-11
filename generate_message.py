@@ -1,4 +1,4 @@
-# generate_message.py (VERSION AVEC GÉNÉRATION COMPLÈTE)
+# generate_message. py (VERSION ULTRA-COURTE)
 import sys
 import subprocess
 import ollama
@@ -14,9 +14,9 @@ def get_git_summary():
         ).stdout.strip()
         
         diff_sample = subprocess.run(
-            ['git', 'diff', '--unified=2', 'HEAD'],
+            ['git', 'diff', '--unified=1', 'HEAD'],
             capture_output=True, text=True, encoding='utf-8', errors='replace'
-        ).stdout[:800]
+        ).stdout[:600]
         
         return status, diff_sample
         
@@ -25,213 +25,194 @@ def get_git_summary():
         sys.exit(1)
 
 def generate_commit_message(status, diff, model):
-    """Génère un message avec longueur raisonnable"""
+    """Génère un message ULTRA-COURT"""
     
-    # Few-shot avec exemples de longueur réelle
-    prompt = f"""Voici des exemples de messages de commit Git :  
+    # Prompt avec contrainte STRICTE de longueur
+    prompt = f"""Generate a Git commit message.   MAXIMUM 50 characters total.
 
-Exemple 1:
-Fichiers:   M index.html
-Diff:  +<footer>Copyright 2024</footer>
-Message: feat(html): ajouter footer avec mention de copyright
+Rules:
+- Format: type(scope): description
+- French description
+- Be EXTREMELY concise (like Twitter:  50 chars max)
+- Use short words only
 
-Exemple 2:
-Fichiers:  M style.css
-Diff: +. button {{ color: blue; border-radius: 5px; }}
-Message: style(css): ameliorer apparence des boutons
+Examples (note the length):
+feat(html): add footer                    (22 chars)
+style(css): improve buttons               (27 chars)
+fix(api): resolve null bug                (26 chars)
+docs:  update readme                       (19 chars)
+refactor(js): optimize code               (27 chars)
 
-Exemple 3:
-Fichiers: M api.js
-Diff: -if (user) {{ +if (user && user.id) {{
-Message: fix(api): corriger validation utilisateur dans endpoint
+Your turn (MAX 50 chars):
 
-Exemple 4:
-Fichiers: A images/photo.jpg
-Diff: Binary file added
-Message: feat(assets): ajouter image de presentation produit
+Files:  {status}
+Changes: {diff[: 300]}
 
-Exemple 5:
-Fichiers:   M README.md
-Diff: +## Installation\n+Run npm install
-Message: docs(readme): ajouter instructions installation
-
-Maintenant, genere le message pour ces changements:  
-
-Fichiers:  {status}
-Diff: {diff[: 500]}
 Message: """
 
     try:
-        response = ollama.chat(
+        response = ollama. chat(
             model=model,
-            messages=[{'role': 'user', 'content': prompt}],
+            messages=[{
+                'role': 'system',
+                'content': 'You write ULTRA-SHORT Git commits. Never exceed 50 characters. Be extremely concise.'
+            }, {
+                'role': 'user',
+                'content': prompt
+            }],
             options={
-                'temperature': 0.3,
-                'num_predict':   40,        # 🔧 AUGMENTÉ : 40 tokens = ~25-30 mots
-                'num_ctx':  2048,
-                'top_p':  0.9,
-                'stop': ['\n', '\r']       # 🔧 SEULEMENT newlines, pas d'autres stops
+                'temperature': 0.2,
+                'num_predict':   15,        # 🔧 RÉDUIT :  15 tokens max
+                'num_ctx':  1536,
+                'top_k':  10,
+                'top_p': 0.8,
+                'repeat_penalty': 1.3,
+                'stop': ['\n', '\r', '. ', '!', ',']  # Stop sur ponctuation
             }
         )
         
         raw = response['message']['content']. strip()
-        print(f"[DEBUG] Brut: '{raw}' ({len(raw)} chars)", file=sys.stderr)
+        print(f"[DEBUG] Brut:  '{raw}' ({len(raw)} chars)", file=sys.stderr)
         
-        # Nettoyage léger
+        # Nettoyage
         message = raw.replace('"', '').replace("'", '').replace('`', '').strip()
         
-        # Supprimer préfixes parasites
-        prefixes = ['message:', 'commit:', 'git:', '- ', '* ', '> ']
-        for prefix in prefixes:
+        # Supprimer préfixes
+        for prefix in ['message:', 'commit:', '- ', '* ']:
             if message.lower().startswith(prefix):
                 message = message[len(prefix):].strip()
         
         # Validation
-        valid_types = ['feat', 'fix', 'docs', 'style', 'refactor', 'chore', 'test', 'perf', 'build', 'ci']
+        valid_types = ['feat', 'fix', 'docs', 'style', 'refactor', 'chore', 'test', 'perf', 'build']
         is_valid = any(message.lower().startswith(t) for t in valid_types)
         
-        # Vérifier qu'il ne répète pas le template
-        forbidden_words = ['exemple', 'fichiers:', 'diff:', 'changements:', 'type(scope)']
-        has_forbidden = any(word in message.lower() for word in forbidden_words)
+        forbidden = ['type(scope)', 'example', 'fichiers', 'changes']
+        has_forbidden = any(word in message.lower() for word in forbidden)
         
-        # Limite raisonnable (72 caractères = standard Git)
-        if len(message) > 72:
-            # Couper intelligemment au dernier mot complet
-            message = message[:69]. rsplit(' ', 1)[0]
-            print(f"[INFO] Message tronque a {len(message)} chars", file=sys.stderr)
-        
-        if not is_valid or has_forbidden or len(message) < 10:
-            print(f"[WARN] Message invalide", file=sys.stderr)
-            return try_simple_retry(status, diff, model)
+        # Si trop long OU invalide → retry
+        if len(message) > 55 or not is_valid or has_forbidden or len(message) < 10:
+            if len(message) > 55:
+                print(f"[WARN] Trop long ({len(message)} chars), retry", file=sys.stderr)
+            else:
+                print(f"[WARN] Format invalide, retry", file=sys.stderr)
+            return try_ultra_short_retry(status, diff, model)
         
         print(f"[DEBUG] Final: '{message}' ({len(message)} chars)", file=sys.stderr)
         return message
         
-    except Exception as e: 
+    except Exception as e:
         print(f"[ERROR] {e}", file=sys.stderr)
-        return try_simple_retry(status, diff, model)
+        return try_ultra_short_retry(status, diff, model)
 
-def try_simple_retry(status, diff, model):
-    """Retry simplifié"""
+def try_ultra_short_retry(status, diff, model):
+    """Retry avec prompt encore plus agressif"""
     
-    print(f"[INFO] Retry avec prompt simplifie", file=sys.stderr)
+    print(f"[INFO] Retry ultra-court", file=sys.stderr)
     
-    prompt = f"""Genere un message de commit Git court et descriptif.  
+    # Prompt minimaliste extrême
+    prompt = f"""Git commit (MAX 40 chars):
 
-Format: type(scope): description en francais
+Examples:
+feat(html): add footer
+style:  improve buttons
+fix(api): resolve bug
 
-Exemples:
-- feat(html): ajouter footer avec copyright
-- fix(api): corriger gestion erreurs
-- style:  ameliorer design boutons
-- docs:  mettre a jour guide installation
+Files: {status}
+Changes: {diff[:200]}
 
-Changements:
-{status}
-{diff[: 400]}
-
-Message: """
+Commit: """
 
     try:
         response = ollama.chat(
             model=model,
             messages=[{'role': 'user', 'content': prompt}],
             options={
-                'temperature': 0.25,
-                'num_predict':   35,        # 🔧 AUGMENTÉ
-                'num_ctx':  1536,
-                'stop': ['\n', '\r']
+                'temperature': 0.15,
+                'num_predict':   12,
+                'num_ctx':   1024,
+                'stop': ['\n', ',']
             }
         )
         
         message = response['message']['content'].strip()
         message = message.replace('"', '').replace("'", '').replace('`', '').strip()
         
-        for prefix in ['message:', 'commit:', '- ']:
-            if message. lower().startswith(prefix):
+        for prefix in ['commit:', 'message:', '- ']:
+            if message.lower().startswith(prefix):
                 message = message[len(prefix):].strip()
         
-        if len(message) > 72:
-            message = message[:69].rsplit(' ', 1)[0]
+        print(f"[DEBUG] Retry:  '{message}' ({len(message)} chars)", file=sys.stderr)
         
-        print(f"[DEBUG] Retry result: '{message}' ({len(message)} chars)", file=sys.stderr)
+        # Si ENCORE trop long ou invalide → fallback
+        if len(message) > 55 or ': ' not in message: 
+            print(f"[WARN] Retry failed, using fallback", file=sys.stderr)
+            return generate_smart_fallback(status, diff)
         
-        # Validation minimale
-        if ': ' in message and len(message) >= 10:
-            return message
+        return message
         
-        # Template basique en dernier recours
-        return generate_basic_fallback(status, diff)
-        
-    except:  
-        return generate_basic_fallback(status, diff)
+    except: 
+        return generate_smart_fallback(status, diff)
 
-def generate_basic_fallback(status, diff):
-    """Fallback basique mais intelligent"""
+def generate_smart_fallback(status, diff):
+    """Fallback intelligent et COURT"""
     
-    print(f"[INFO] Utilisation fallback basique", file=sys.stderr)
+    print(f"[INFO] Fallback intelligent", file=sys.stderr)
     
     status_lower = status.lower()
     diff_lower = diff.lower()
     
-    # Détection de fichier
-    if '. html' in status_lower:  
-        if 'footer' in diff_lower and 'copyright' in diff_lower:
-            return "feat(html): ajouter footer avec mention de copyright"
-        elif 'footer' in diff_lower: 
-            return "feat(html): ajouter section footer"
+    # HTML
+    if '.  html' in status_lower:
+        if 'footer' in diff_lower:
+            return "feat(html): add footer"
         elif 'header' in diff_lower:
-            return "feat(html): ajouter section header"
-        elif 'nav' in diff_lower: 
-            return "feat(html): ajouter menu de navigation"
-        return "feat(html): mettre a jour contenu"
+            return "feat(html): add header"
+        elif 'nav' in diff_lower:
+            return "feat(html): add navigation"
+        return "feat(html): update content"
     
-    elif '.css' in status_lower or 'style' in status_lower:  
-        if 'color' in diff_lower or 'background' in diff_lower:
-            return "style(css): modifier palette de couleurs"
-        elif 'button' in diff_lower:
-            return "style(css): ameliorer apparence des boutons"
-        return "style:  mettre a jour styles"
+    # CSS
+    elif '. css' in status_lower or 'style' in status_lower: 
+        if 'button' in diff_lower:
+            return "style(css): improve buttons"
+        elif 'color' in diff_lower:
+            return "style(css): update colors"
+        elif 'link' in diff_lower or '<a' in diff_lower:
+            return "style(css): improve links"
+        return "style:  update styles"
     
-    elif '.js' in status_lower or '. ts' in status_lower:
-        if 'function' in diff_lower or 'const' in diff_lower:
-            return "refactor(js): reorganiser fonctions"
-        elif 'error' in diff_lower or 'catch' in diff_lower: 
-            return "fix(js): ameliorer gestion des erreurs"
-        return "refactor(js): ameliorer code"
+    # JavaScript
+    elif '.js' in status_lower or '. ts' in status_lower: 
+        if 'error' in diff_lower or 'catch' in diff_lower:
+            return "fix(js): handle errors"
+        elif 'function' in diff_lower: 
+            return "refactor(js): optimize code"
+        return "refactor(js): improve code"
     
+    # Python
     elif '.py' in status_lower: 
-        if 'def ' in diff_lower:  
-            return "refactor:  reorganiser fonctions"
-        elif 'import' in diff_lower:
-            return "chore:  mettre a jour dependances"
-        return "refactor: ameliorer code"
+        if 'def ' in diff_lower:
+            return "refactor:  add functions"
+        return "refactor: improve code"
     
-    elif 'readme' in status_lower or '. md' in status_lower:  
-        if 'install' in diff_lower: 
-            return "docs(readme): ajouter instructions installation"
-        return "docs:  mettre a jour documentation"
+    # Documentation
+    elif 'readme' in status_lower or '. md' in status_lower:
+        return "docs: update readme"
     
-    elif any(ext in status_lower for ext in ['.jpg', '.png', '.gif', '.svg', '. webp', 'image', 'asset']):
-        # Détecter le type d'image
-        if 'lake' in status_lower or 'lac' in status_lower:
-            return "feat(assets): ajouter image de lac pour banniere"
-        elif 'logo' in status_lower: 
-            return "feat(assets): ajouter nouveau logo"
-        elif 'icon' in status_lower:
-            return "feat(assets): ajouter nouvelles icones"
-        return "feat(assets): ajouter nouvelles images"
+    # Assets
+    elif any(ext in status_lower for ext in ['.jpg', '.png', '.gif', '.svg', 'image', 'asset']):
+        return "feat(assets): add images"
     
-    # Actions génériques
+    # Générique
     if 'A ' in status or '? ?' in status:
-        return "feat:  ajouter nouveaux fichiers"
+        return "feat:  add new files"
     elif 'D ' in status: 
-        return "chore: supprimer fichiers obsoletes"
+        return "chore: remove files"
     else:
-        return "chore: mettre a jour fichiers"
+        return "chore: update files"
 
 if __name__ == "__main__":  
-    parser = argparse. ArgumentParser()
+    parser = argparse.ArgumentParser()
     parser.add_argument('--fast', action='store_true')
     args = parser.parse_args()
     
@@ -239,19 +220,19 @@ if __name__ == "__main__":
     
     try:
         subprocess.run(['git', 'rev-parse', '--git-dir'], 
-                    capture_output=True, check=True)
-    except subprocess. CalledProcessError:
+                      capture_output=True, check=True)
+    except subprocess.CalledProcessError:
         print("Pas un repo Git", file=sys.stderr)
         sys.exit(1)
     
     status, diff = get_git_summary()
     
     if not status:
-        print("Aucune modification", file=sys.stderr)
+        print("Aucune modification", file=sys. stderr)
         sys.exit(1)
     
     mode_name = "gemma2:2b" if args.fast else "phi3:mini"
-    print(f"Analyse avec {mode_name}.. .", file=sys.stderr)
+    print(f"Analyse avec {mode_name}..  .", file=sys.stderr)
     
     message = generate_commit_message(status, diff, MODEL)
     print(message)
