@@ -15,7 +15,7 @@ def get_git_summary():
         diff_sample = subprocess.run(
             ['git', 'diff', '--unified=1', 'HEAD'],
             capture_output=True, text=True, encoding='utf-8', errors='replace'
-        ).stdout[:500]  # Encore plus court
+        ).stdout[:600]
         
         return status, diff_sample
         
@@ -23,107 +23,151 @@ def get_git_summary():
         print(f"Erreur diff:  {e}", file=sys.stderr)
         sys.exit(1)
 
-def clean_message_ultra(raw_message):
-    """Nettoyage ULTRA agressif"""
-    
-    message = raw_message.strip()
-    
-    # 1. Extraire UNIQUEMENT type(scope): + premiers mots
-    # Regex pour capturer type(scope): description
-    match = re.match(r'^([a-z]+)(\([^)]+\))?:\s*(. +)$', message, re.IGNORECASE)
-    
-    if not match:
-        return message[: 50]  # Fallback brutal
-    
-    msg_type = match.group(1).lower()
-    scope = match.group(2) if match.group(2) else ""
-    description = match.group(3).strip()
-    
-    # 2. Nettoyer la description agressivement
-    
-    # Supprimer tout après une parenthèse/crochet
-    description = re.split(r'[\(\[\{]', description)[0]. strip()
-    
-    # Supprimer mots inutiles en début (Ajout de, Mise à jour de, etc.)
-    description = re.sub(r'^(ajout|mise|suppression|modification|creation)\s+(de|d\'|du|des)\s+', '', description, flags=re.IGNORECASE)
-    description = re.sub(r'^(une? |le|la|les|des)\s+', '', description, flags=re.IGNORECASE)
-    
-    # Limiter à 5 mots maximum
-    words = description.split()
-    if len(words) > 5:
-        description = ' '.join(words[:5])
-    
-    # Supprimer mots de liaison orphelins à la fin
-    description = re. sub(r'\s+(pour|dans|avec|de|du|des|le|la|les|un|une|et|ou|a|à)\s*$', '', description, flags=re.IGNORECASE)
-    
-    # Première lettre en minuscule (convention)
-    if description:
-        description = description[0].lower() + description[1:]
-    
-    # Reconstruire
-    message = f"{msg_type}{scope}: {description}"
-    
-    # Limiter à 60 caractères MAX
-    if len(message) > 60:
-        message = message[:57] + '...'
-    
-    return message. strip()
-
 def generate_commit_message(status, diff, model):
-    """Génère un message avec LLM"""
+    """Génère un message COURT avec LLM"""
     
-    # Prompt ULTRA minimaliste
-    prompt = f"""Git commit in format type(scope): description
+    # Prompt avec exemples COURTS
+    prompt = f"""Generate ONE short Git commit message in Conventional Commits format. 
 
-Rules:  French, max 40 chars, concise
+STRICT RULES:
+1. Format: type(scope): description
+2. Types:  feat, fix, docs, style, refactor, chore
+3. Description in French, 2-4 words MAX
+4. Total length: MAX 40 characters
+5. NO articles (le, la, une, des)
+6. NO prepositions at end (dans, pour, avec)
 
+EXAMPLES (follow this length):
+feat(html): ajouter footer
+fix(api): corriger bug
+style: mettre a jour
+docs: modifier readme
+
+Files changed:
 {status}
 
+Diff:
+{diff[: 400]}
+
+Your SHORT message:"""
+
+    try:
+        response = ollama. chat(
+            model=model,
+            messages=[{
+                'role': 'system',
+                'content': 'You generate concise Git commit messages. Never exceed 40 characters.'
+            }, {
+                'role': 'user',
+                'content': prompt
+            }],
+            options={
+                'temperature': 0.2,
+                'num_predict':  10,      # TRÈS court (10 tokens = ~6-8 mots)
+                'num_ctx': 1024,
+                'top_k': 10,
+                'top_p': 0.8,
+                'repeat_penalty': 1.5,
+                'stop': ['\n', '\r', '. ', '!', '?']
+            }
+        )
+        
+        raw = response['message']['content']. strip()
+        print(f"[DEBUG] Brut: '{raw}' ({len(raw)} chars)", file=sys.stderr)
+        
+        # Nettoyage minimal
+        message = raw
+        
+        # Supprimer guillemets/backticks
+        message = message.replace('"', '').replace("'", '').replace('`', '').strip()
+        
+        # Supprimer prépositions orphelines à la fin
+        message = re. sub(r'\s+(dans|pour|avec|de|du|des|le|la|les|un|une)\s*$', '', message, flags=re.IGNORECASE)
+        
+        # Validation
+        if not re.match(r'^[a-z]+(\([a-z]+\))?:\s*.{3,}$', message, re.IGNORECASE):
+            print(f"[WARN] Format invalide", file=sys.stderr)
+            # Retry avec prompt encore plus simple
+            return retry_simple_prompt(status, diff, model)
+        
+        # Vérifier longueur
+        if len(message) > 50:
+            print(f"[WARN] Trop long ({len(message)} chars), truncate", file=sys.stderr)
+            # Couper au dernier mot avant 50 chars
+            message = message[:47]. rsplit(' ', 1)[0]
+        
+        print(f"[DEBUG] Final: '{message}' ({len(message)} chars)", file=sys.stderr)
+        return message
+        
+    except Exception as e:
+        print(f"[ERROR] {e}", file=sys.stderr)
+        return retry_simple_prompt(status, diff, model)
+
+def retry_simple_prompt(status, diff, model):
+    """Retry avec un prompt ultra-simple si échec"""
+    
+    print(f"[INFO] Retry avec prompt simplifie", file=sys.stderr)
+    
+    # Détecter le type de fichier pour guider
+    if '. html' in status. lower():
+        file_hint = "HTML file"
+        scope = "html"
+    elif '. css' in status.lower():
+        file_hint = "CSS file"
+        scope = "style"
+    elif '.js' in status.lower():
+        file_hint = "JavaScript file"
+        scope = "js"
+    elif '.py' in status.lower():
+        file_hint = "Python file"
+        scope = "core"
+    elif 'readme' in status.lower() or '. md' in status.lower():
+        file_hint = "Documentation"
+        scope = "docs"
+    else:
+        file_hint = "file"
+        scope = None
+    
+    # Prompt ultra-simple
+    simple_prompt = f"""Git commit message for {file_hint} change. 
+
+Format: type(scope): short description (French, max 4 words)
+
+Changes:
 {diff[: 300]}
 
 Message:"""
 
     try:
-        response = ollama. chat(
+        response = ollama.chat(
             model=model,
-            messages=[{'role': 'user', 'content': prompt}],
+            messages=[{'role': 'user', 'content': simple_prompt}],
             options={
-                'temperature': 0.2,
-                'num_predict':  15,  # TRÈS court
-                'num_ctx':  1024,    # Contexte minimal
-                'top_k': 10,        # Moins de variété
-                'top_p': 0.8,
-                'repeat_penalty': 1.5,
-                'stop': ['\n', '\r']
+                'temperature':  0.15,
+                'num_predict':  8,
+                'num_ctx': 1024,
+                'stop': ['\n']
             }
         )
         
-        raw = response['message']['content']. strip()
-        print(f"[DEBUG] Brut: '{raw}'", file=sys.stderr)
+        message = response['message']['content'].strip()
+        message = message.replace('"', '').replace("'", '').replace('`', '')
         
-        cleaned = clean_message_ultra(raw)
-        print(f"[DEBUG] Nettoye: '{cleaned}'", file=sys.stderr)
-        print(f"[DEBUG] Longueur: {len(cleaned)} caracteres", file=sys.stderr)
+        print(f"[DEBUG] Retry result: '{message}'", file=sys.stderr)
         
-        # Validation
-        if re.match(r'^[a-z]+(\([^)]+\))?:\s*.{3,}$', cleaned, re.IGNORECASE) and len(cleaned) <= 60:
-            return cleaned
-        else:
-            print(f"[WARN] Validation failed, using fallback", file=sys.stderr)
-            # Fallback ultra-basique
-            if 'html' in status.lower():
-                return "feat(html): update content"
-            elif 'footer' in diff.lower():
-                return "feat:  add footer"
-            elif 'css' in status.lower():
-                return "style: update styles"
-            elif '. js' in status.lower():
-                return "refactor: improve code"
+        # Si toujours invalide, template basique
+        if not re.match(r'^[a-z]+(\([a-z]+\))?:\s*.+$', message, re.IGNORECASE):
+            if scope:
+                return f"feat({scope}): update content"
             else:
-                return "chore:  update files"
+                return "chore: update files"
         
-    except Exception as e:
-        print(f"[ERROR] {e}", file=sys.stderr)
+        return message[: 50]
+        
+    except: 
+        # Dernier recours
+        if scope:
+            return f"feat({scope}): update content"
         return "chore: update files"
 
 if __name__ == "__main__": 
@@ -131,7 +175,7 @@ if __name__ == "__main__":
     parser.add_argument('--fast', action='store_true')
     args = parser.parse_args()
     
-    MODEL = "gemma2:2b" if args.fast else "phi3:mini"
+    MODEL = "gemma2:2b" if args. fast else "phi3:mini"
     
     try:
         subprocess. run(['git', 'rev-parse', '--git-dir'], 
@@ -146,8 +190,8 @@ if __name__ == "__main__":
         print("Aucune modification", file=sys.stderr)
         sys.exit(1)
     
-    mode = "gemma2:2b" if args.fast else "phi3:mini"
-    print(f"Analyse avec {mode}...", file=sys. stderr)
+    mode_name = "gemma2:2b" if args.fast else "phi3:mini"
+    print(f"Analyse avec {mode_name}...", file=sys.stderr)
     
     message = generate_commit_message(status, diff, MODEL)
     print(message)
