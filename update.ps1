@@ -1,11 +1,11 @@
 ﻿param(
-    [Parameter(Mandatory=$false, Position=0)]
+    [Parameter(Mandatory = $false, Position = 0)]
     [string]$message = "",
     
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [switch]$a,  # Auto-génération avec phi3:mini
     
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory = $false)]
     [switch]$f   # Mode ultra-rapide (gemma2:2b)
 )
 
@@ -160,7 +160,6 @@ if ($hasChanges) {
                     $pythonArgs += "--fast"
                 }
                 
-                # Capturer stderr et stdout séparément
                 $output = & $python @pythonArgs 2>&1
                 $message = $output | Where-Object { $_ -is [string] -and $_ -notmatch "^🤖|^❌" } | Select-Object -Last 1
                 
@@ -189,7 +188,8 @@ if ($hasChanges) {
                     $message = Read-Host "  "
                 }
                 
-            } catch {
+            }
+            catch {
                 Write-Host "❌ Erreur:  $_" -ForegroundColor Red
                 Write-Host ""
                 exit 1
@@ -239,7 +239,8 @@ if ($hasChanges) {
     Write-Host "Commit cree :  " -ForegroundColor Green -NoNewline
     Write-Host "$message" -ForegroundColor White
     Write-Host ""
-} else {
+}
+else {
     Write-Host "Aucun fichier a commiter" -ForegroundColor Green
     Write-Host ""
 }
@@ -263,7 +264,8 @@ if ($LASTEXITCODE -ne 0) {
         Write-Host "  4. he update" -ForegroundColor Gray
         Write-Host ""
         exit 1
-    } else {
+    }
+    else {
         Write-Host "Erreur lors du pull !" -ForegroundColor Red
         Write-Host "$pullOutput" -ForegroundColor Gray
         Write-Host ""
@@ -274,7 +276,8 @@ if ($LASTEXITCODE -ne 0) {
 # Vérifier le résultat du pull
 if ($pullOutput -match "Already up to date|Déjà à jour") {
     Write-Host "Deja a jour" -ForegroundColor Green
-} else {
+}
+else {
     Write-Host "Changements recuperes :" -ForegroundColor Green
     Write-Host "$pullOutput" -ForegroundColor Gray
 }
@@ -303,7 +306,8 @@ if ($LASTEXITCODE -ne 0) {
 # Vérifier le résultat du push
 if ($pushOutput -match "Everything up-to-date|Tout est déjà à jour") {
     Write-Host "Aucun commit a envoyer" -ForegroundColor Green
-} else {
+}
+else {
     Write-Host "Commits envoyes avec succes" -ForegroundColor Green
 }
 
