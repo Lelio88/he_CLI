@@ -13,59 +13,73 @@ def get_git_summary():
         ).stdout.strip()
         
         diff_sample = subprocess.run(
-            ['git', 'diff', '--unified=2', 'HEAD'],
+            ['git', 'diff', '--unified=1', 'HEAD'],
             capture_output=True, text=True, encoding='utf-8', errors='replace'
-        ).stdout[:1000]
+        ).stdout[:500]  # Encore plus court
         
         return status, diff_sample
         
     except Exception as e:  
-        print(f"Erreur diff: {e}", file=sys.stderr)
+        print(f"Erreur diff:  {e}", file=sys.stderr)
         sys.exit(1)
 
-def clean_message(raw_message):
-    """Nettoyage intelligent du message"""
+def clean_message_ultra(raw_message):
+    """Nettoyage ULTRA agressif"""
     
     message = raw_message.strip()
     
-    # 1. Supprimer les métadonnées entre parenthèses À LA FIN
-    # (25 caractères), (3 lignes), etc.
-    message = re.sub(r'\s*\([^\)]*\d+[^\)]*\)\s*$', '', message)
-    message = re.sub(r'\s*\[[^\]]*\d+[^\]]*\]\s*$', '', message)
+    # 1. Extraire UNIQUEMENT type(scope): + premiers mots
+    # Regex pour capturer type(scope): description
+    match = re.match(r'^([a-z]+)(\([^)]+\))?:\s*(. +)$', message, re.IGNORECASE)
     
-    # 2. Supprimer "avec N..." à la fin
-    message = re.sub(r'\s+(avec|pour|dans)\s*$', '', message, flags=re.IGNORECASE)
+    if not match:
+        return message[: 50]  # Fallback brutal
     
-    # 3. Nettoyer espaces multiples
-    message = ' '.join(message.split())
+    msg_type = match.group(1).lower()
+    scope = match.group(2) if match.group(2) else ""
+    description = match.group(3).strip()
     
-    # 4. Limiter à 72 caractères max (mais couper intelligemment)
-    if len(message) > 72:
-        # Couper au dernier mot complet avant 72 caractères
-        message = message[:72].rsplit(' ', 1)[0]
+    # 2. Nettoyer la description agressivement
     
-    # 5. Enlever les mots de liaison orphelins à la fin
-    message = re. sub(r'\s+(pour|dans|avec|de|le|la|les|un|une|des)\s*$', '', message, flags=re.IGNORECASE)
+    # Supprimer tout après une parenthèse/crochet
+    description = re.split(r'[\(\[\{]', description)[0]. strip()
+    
+    # Supprimer mots inutiles en début (Ajout de, Mise à jour de, etc.)
+    description = re.sub(r'^(ajout|mise|suppression|modification|creation)\s+(de|d\'|du|des)\s+', '', description, flags=re.IGNORECASE)
+    description = re.sub(r'^(une? |le|la|les|des)\s+', '', description, flags=re.IGNORECASE)
+    
+    # Limiter à 5 mots maximum
+    words = description.split()
+    if len(words) > 5:
+        description = ' '.join(words[:5])
+    
+    # Supprimer mots de liaison orphelins à la fin
+    description = re. sub(r'\s+(pour|dans|avec|de|du|des|le|la|les|un|une|et|ou|a|à)\s*$', '', description, flags=re.IGNORECASE)
+    
+    # Première lettre en minuscule (convention)
+    if description:
+        description = description[0].lower() + description[1:]
+    
+    # Reconstruire
+    message = f"{msg_type}{scope}: {description}"
+    
+    # Limiter à 60 caractères MAX
+    if len(message) > 60:
+        message = message[:57] + '...'
     
     return message. strip()
 
 def generate_commit_message(status, diff, model):
     """Génère un message avec LLM"""
     
-    prompt = f"""You are a Git expert. Generate ONE concise commit message. 
+    # Prompt ULTRA minimaliste
+    prompt = f"""Git commit in format type(scope): description
 
-Rules:
-- Format: type(scope): description
-- Types:  feat, fix, docs, style, refactor, chore
-- Description in French
-- Max 50 characters TOTAL
-- NO extra text, NO explanations, NO metadata
+Rules:  French, max 40 chars, concise
 
-Files:  
 {status}
 
-Diff: 
-{diff[: 600]}
+{diff[: 300]}
 
 Message:"""
 
@@ -74,37 +88,41 @@ Message:"""
             model=model,
             messages=[{'role': 'user', 'content': prompt}],
             options={
-                'temperature': 0.3,
-                'num_predict': 20,  # Plus court
-                'num_ctx': 2048,
-                'stop': ['\n', '\r', '(', '[']  # Stop dès parenthèse
+                'temperature': 0.2,
+                'num_predict':  15,  # TRÈS court
+                'num_ctx':  1024,    # Contexte minimal
+                'top_k': 10,        # Moins de variété
+                'top_p': 0.8,
+                'repeat_penalty': 1.5,
+                'stop': ['\n', '\r']
             }
         )
         
         raw = response['message']['content']. strip()
         print(f"[DEBUG] Brut: '{raw}'", file=sys.stderr)
         
-        cleaned = clean_message(raw)
+        cleaned = clean_message_ultra(raw)
         print(f"[DEBUG] Nettoye: '{cleaned}'", file=sys.stderr)
+        print(f"[DEBUG] Longueur: {len(cleaned)} caracteres", file=sys.stderr)
         
-        # Validation permissive
-        if re.match(r'^[a-z]+(\([^)]+\))?:\s*. {3,}$', cleaned, re.IGNORECASE):
+        # Validation
+        if re.match(r'^[a-z]+(\([^)]+\))?:\s*.{3,}$', cleaned, re.IGNORECASE) and len(cleaned) <= 60:
             return cleaned
-        else: 
-            print(f"[WARN] Validation failed", file=sys.stderr)
-            # Fallback intelligent basé sur les fichiers
+        else:
+            print(f"[WARN] Validation failed, using fallback", file=sys.stderr)
+            # Fallback ultra-basique
             if 'html' in status.lower():
                 return "feat(html): update content"
-            elif 'css' in status.lower() or 'style' in status. lower():
-                return "style:  update styles"
-            elif 'js' in status.lower():
+            elif 'footer' in diff.lower():
+                return "feat:  add footer"
+            elif 'css' in status.lower():
+                return "style: update styles"
+            elif '. js' in status.lower():
                 return "refactor: improve code"
-            elif 'md' in status.lower() or 'readme' in status.lower():
-                return "docs: update documentation"
             else:
                 return "chore:  update files"
         
-    except Exception as e: 
+    except Exception as e:
         print(f"[ERROR] {e}", file=sys.stderr)
         return "chore: update files"
 
@@ -116,7 +134,7 @@ if __name__ == "__main__":
     MODEL = "gemma2:2b" if args.fast else "phi3:mini"
     
     try:
-        subprocess.run(['git', 'rev-parse', '--git-dir'], 
+        subprocess. run(['git', 'rev-parse', '--git-dir'], 
                     capture_output=True, check=True)
     except subprocess.CalledProcessError:
         print("Pas un repo Git", file=sys.stderr)
@@ -129,7 +147,7 @@ if __name__ == "__main__":
         sys.exit(1)
     
     mode = "gemma2:2b" if args.fast else "phi3:mini"
-    print(f"Analyse avec {mode}...", file=sys.stderr)
+    print(f"Analyse avec {mode}...", file=sys. stderr)
     
     message = generate_commit_message(status, diff, MODEL)
     print(message)
