@@ -33,15 +33,15 @@ def generate_commit_message(status, diff, model):
 Rules:
 - Format: type(scope): description
 - French description
-- Be EXTREMELY concise (like Twitter:  50 chars max)
+- Be EXTREMELY concise (like Twitter:   50 chars max)
 - Use short words only
 
 Examples (note the length):
-feat(html): add footer                    (22 chars)
-style(css): improve buttons               (27 chars)
-fix(api): resolve null bug                (26 chars)
-docs:  update readme                       (19 chars)
-refactor(js): optimize code               (27 chars)
+feat(html): add footer
+style(css): improve buttons
+fix(api): resolve null bug
+docs:  update readme
+refactor(js): optimize code
 
 Your turn (MAX 50 chars):
 
@@ -51,7 +51,7 @@ Changes: {diff[: 300]}
 Message: """
 
     try:
-        response = ollama. chat(
+        response = ollama.chat(
             model=model,
             messages=[{
                 'role': 'system',
@@ -62,17 +62,17 @@ Message: """
             }],
             options={
                 'temperature': 0.2,
-                'num_predict':   15,        # 🔧 RÉDUIT :  15 tokens max
+                'num_predict':   15,
                 'num_ctx':  1536,
                 'top_k':  10,
                 'top_p': 0.8,
                 'repeat_penalty': 1.3,
-                'stop': ['\n', '\r', '. ', '!', ',']  # Stop sur ponctuation
+                'stop': ['\n', '\r', '. ', '!', ',']
             }
         )
         
         raw = response['message']['content']. strip()
-        print(f"[DEBUG] Brut:  '{raw}' ({len(raw)} chars)", file=sys.stderr)
+        print(f"[DEBUG] LLM genere: '{raw}'", file=sys.stderr)
         
         # Nettoyage
         message = raw.replace('"', '').replace("'", '').replace('`', '').strip()
@@ -84,7 +84,7 @@ Message: """
         
         # Validation
         valid_types = ['feat', 'fix', 'docs', 'style', 'refactor', 'chore', 'test', 'perf', 'build']
-        is_valid = any(message.lower().startswith(t) for t in valid_types)
+        is_valid = any(message. lower().startswith(t) for t in valid_types)
         
         forbidden = ['type(scope)', 'example', 'fichiers', 'changes']
         has_forbidden = any(word in message.lower() for word in forbidden)
@@ -92,12 +92,11 @@ Message: """
         # Si trop long OU invalide → retry
         if len(message) > 55 or not is_valid or has_forbidden or len(message) < 10:
             if len(message) > 55:
-                print(f"[WARN] Trop long ({len(message)} chars), retry", file=sys.stderr)
+                print(f"[WARN] Message trop long, retry", file=sys.stderr)
             else:
-                print(f"[WARN] Format invalide, retry", file=sys.stderr)
+                print(f"[WARN] Format invalide, retry", file=sys. stderr)
             return try_ultra_short_retry(status, diff, model)
         
-        print(f"[DEBUG] Final: '{message}' ({len(message)} chars)", file=sys.stderr)
         return message
         
     except Exception as e:
@@ -118,7 +117,7 @@ style:  improve buttons
 fix(api): resolve bug
 
 Files: {status}
-Changes: {diff[:200]}
+Changes: {diff[: 200]}
 
 Commit: """
 
@@ -141,7 +140,7 @@ Commit: """
             if message.lower().startswith(prefix):
                 message = message[len(prefix):].strip()
         
-        print(f"[DEBUG] Retry:  '{message}' ({len(message)} chars)", file=sys.stderr)
+        print(f"[DEBUG] Retry result:  '{message}'", file=sys.stderr)
         
         # Si ENCORE trop long ou invalide → fallback
         if len(message) > 55 or ': ' not in message: 
@@ -220,7 +219,7 @@ if __name__ == "__main__":
     
     try:
         subprocess.run(['git', 'rev-parse', '--git-dir'], 
-                      capture_output=True, check=True)
+                    capture_output=True, check=True)
     except subprocess.CalledProcessError:
         print("Pas un repo Git", file=sys.stderr)
         sys.exit(1)
