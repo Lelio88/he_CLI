@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Mandatory=$false, Position=0)]
     [string]$message = "",
     
