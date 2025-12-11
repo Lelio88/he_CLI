@@ -7,23 +7,23 @@ import argparse
 def get_git_summary():
     """Récupère un résumé compact des modifications"""
     try:
-        # Fichiers modifiés (très compact)
+        # Fichiers modifiés
         status = subprocess.run(
             ['git', 'status', '--short'],
-            capture_output=True, text=True, encoding='utf-8'
-        ).stdout. strip()
+            capture_output=True, text=True, encoding='utf-8', errors='replace'
+        ).stdout.strip()
         
-        # Stats (lignes +/- par fichier)
+        # Stats
         diffstat = subprocess.run(
             ['git', 'diff', '--stat', 'HEAD'],
-            capture_output=True, text=True, encoding='utf-8'
-        ).stdout.strip()[:300]  # Max 300 caractères
+            capture_output=True, text=True, encoding='utf-8', errors='replace'
+        ).stdout.strip()[:200]
         
-        # Échantillon du diff (contexte minimal)
+        # Diff sample (réduit à 600 caractères pour plus de rapidité)
         diff_sample = subprocess.run(
-            ['git', 'diff', '--unified=1', 'HEAD'],
-            capture_output=True, text=True, encoding='utf-8'
-        ).stdout[:1500]  # Max 1500 caractères
+            ['git', 'diff', '--unified=0', 'HEAD'],  # Pas de contexte
+            capture_output=True, text=True, encoding='utf-8', errors='replace'
+        ).stdout[:600]
         
         return status, diffstat, diff_sample
         
@@ -32,110 +32,109 @@ def get_git_summary():
         sys.exit(1)
 
 def generate_commit_message(status, diffstat, diff_sample, model):
-    """Génère un message ultra-rapide"""
+    """Génère un message ultra-court et technique"""
     
-    # Prompt optimisé (sans caractères spéciaux)
-    prompt = f"""Tu es un expert Git.  Analyse les changements et genere UN SEUL message de commit. 
+    # Prompt minimal et direct
+    prompt = f"""Generate ONE commit message.  Format:  type(scope): description
 
-REGLES STRICTES:
-- Format: type(scope): description
-- Types:  feat, fix, docs, style, refactor, test, chore, perf
-- Description en francais, max 50 caracteres
-- UNE SEULE LIGNE
-- Commence directement par le type (pas de texte avant)
+Rules:
+- Types: feat, fix, docs, style, refactor, chore
+- Max 50 characters TOTAL
+- French description
+- NO explanations, NO extra text
 
-FICHIERS MODIFIES:
+Files: 
 {status}
 
-STATISTIQUES:
-{diffstat}
+Changes:
+{diff_sample[: 400]}
 
-DIFFERENCES: 
-{diff_sample[: 800]}
-
-Genere maintenant le message de commit: """
+Commit message: """
 
     try:
-        response = ollama. chat(
+        response = ollama.chat(
             model=model,
             messages=[{'role': 'user', 'content': prompt}],
             options={
-                'temperature': 0.2,        # Un peu moins déterministe
-                'num_predict': 30,         # Max 30 tokens
-                'num_ctx': 2048,           # Contexte minimal
-                'top_p': 0.9,              # Diversité
-                'stop': ['\n', '\r', '```']  # Stop à la ligne
+                'temperature': 0.15,
+                'num_predict':  20,      # Encore plus court
+                'num_ctx': 1536,        # Contexte réduit
+                'top_p': 0.85,
+                'repeat_penalty': 1.2,  # Évite les répétitions
+                'stop': ['\n', '\r', '. ', '!', '?', '"', '(']  # Stop agressif
             }
         )
         
         message = response['message']['content']. strip()
         
-        # Nettoyage agressif
-        message = message. replace('"', '').replace('`', '').replace('*', '').strip()
+        # Nettoyage ultra-agressif
+        # Supprimer tout après le premier caractère problématique
+        for char in ['. ', '!', '?', '"', "'", '(', ')', '[', ']', '\n', '\r']:
+            if char in message:
+                message = message.split(char)[0].strip()
         
-        # Supprimer les préfixes indésirables
-        prefixes_to_remove = [
-            'Message commit',
-            'Voici',
-            'Le message',
-            'Commit: ',
-            '→',
-            '-',
-            'type(scope):',
-            'Message:'
+        # Supprimer les préfixes courants
+        bad_starts = [
+            'voici', 'le message', 'message', 'commit', 
+            'here', 'the commit', '- ', '* ', '> '
         ]
         
-        for prefix in prefixes_to_remove:
-            if message.lower().startswith(prefix.lower()):
+        message_lower = message.lower()
+        for prefix in bad_starts:
+            if message_lower.startswith(prefix):
                 message = message[len(prefix):].strip()
-                message = message.lstrip(': ').lstrip('-').strip()
+                message = message.lstrip(': ').lstrip('-').lstrip('*').strip()
         
-        # Prendre seulement la première ligne
-        message = message.split('\n')[0].strip()
+        # Limiter à 60 caractères
+        if len(message) > 60:
+            message = message[:60]. strip()
         
-        # Limiter à 72 caractères
-        if len(message) > 72:
-            message = message[:72]
+        # Validation:  doit commencer par un type
+        valid_types = ['feat', 'fix', 'docs', 'style', 'refactor', 'test', 'chore', 'perf']
+        is_valid = any(message.lower().startswith(t + '(') or message.lower().startswith(t + ':') for t in valid_types)
         
-        # Vérifier que le message est valide (commence par un type)
-        valid_types = ['feat', 'fix', 'docs', 'style', 'refactor', 'test', 'chore', 'perf', 'build', 'ci']
-        is_valid = any(message.lower().startswith(t) for t in valid_types)
-        
-        if not is_valid or len(message) < 10:
-            # Fallback:  générer un message basique
-            if 'M ' in status:
-                message = "chore:  update files"
+        # Fallback si invalide
+        if not is_valid or len(message) < 8:
+            # Analyse basique du statut
+            if 'index.html' in status:
+                message = "fix(ui): update index"
+            elif 'style.css' in status or '. css' in status:
+                message = "style:  update styles"
+            elif 'README' in status:
+                message = "docs: update readme"
+            elif '. js' in status or '. ts' in status: 
+                message = "refactor:  improve code"
             elif 'A ' in status:
                 message = "feat: add new files"
             elif 'D ' in status:
                 message = "chore: remove files"
             else:
-                message = "chore: update project"
+                message = "chore: update files"
         
         return message
         
     except Exception as e: 
-        print(f"Erreur generation:  {e}", file=sys.stderr)
+        print(f"Erreur generation: {e}", file=sys.stderr)
         sys.exit(1)
 
-if __name__ == "__main__": 
+if __name__ == "__main__":
     # Arguments
     parser = argparse.ArgumentParser()
-    parser.add_argument('--fast', action='store_true', help='Mode ultra-rapide (gemma2:2b)')
+    parser.add_argument('--fast', action='store_true')
     args = parser.parse_args()
     
-    # Choix du modèle
+    # Modèle
     MODEL = "gemma2:2b" if args.fast else "phi3:mini"
     
-    # Vérif repo Git
+    # Vérif Git
     try:
-        subprocess.run(['git', 'rev-parse', '--git-dir'], 
-            capture_output=True, check=True)
+        subprocess. run(['git', 'rev-parse', '--git-dir'], 
+                    capture_output=True, check=True)
     except subprocess.CalledProcessError:
         print("Pas un repo Git", file=sys.stderr)
         sys.exit(1)
     
-    # Récupération rapide
+    # Récupération
     status, diffstat, diff = get_git_summary()
     
     if not status:
@@ -143,10 +142,10 @@ if __name__ == "__main__":
         sys.exit(1)
     
     # Génération
-    mode_name = "ultra-rapide (gemma2:2b)" if args.fast else "rapide (phi3:mini)"
-    print(f"Analyse {mode_name}...", file=sys.stderr)
+    mode_name = "gemma2:2b" if args.fast else "phi3:mini"
+    print(f"Analyse avec {mode_name}...", file=sys.stderr)
     
     message = generate_commit_message(status, diffstat, diff, MODEL)
     
-    # Output (stdout uniquement)
+    # Output
     print(message)
