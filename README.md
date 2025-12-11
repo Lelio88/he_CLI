@@ -135,6 +135,14 @@ he fastpush https://github.com/user/repo.git -m "Initial commit"
 
 # Synchronisation avec message
 he update -m "feat:  nouvelle fonctionnalité"
+HE CLI peut générer automatiquement des messages de commit intelligents en analysant vos modifications avec IA locale (Ollama).
+
+**Prérequis** : Python 3.7+ et Ollama installés
+
+| Commande | Modèle | Vitesse | Description |
+|----------|--------|---------|-------------|
+| `he update -a` | phi3:mini | 1-2s | **Recommandé** - Bon équilibre vitesse/qualité |
+| `he update -a -f` | gemma2:2b | <1s | Ultra-rapide pour commits fréquents |
 ```
 
 ---

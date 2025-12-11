@@ -74,17 +74,19 @@ Write-Host "      he fastpush https://github.com/user/repo.git" -ForegroundColor
 Write-Host "      he fastpush https://github.com/user/repo.git -m ""Premier commit""" -ForegroundColor Cyan
 Write-Host ""
 
-Write-Host "  he update [-m message]" -ForegroundColor Yellow
-Write-Host "    Synchronisation complète : Commit + Pull + Push" -ForegroundColor Gray
+Write-Host "  he update [-m message] [-a] [-f]" -ForegroundColor Yellow
+Write-Host "    Synchronisation complète :  Commit + Pull + Push" -ForegroundColor Gray
 Write-Host ""
 Write-Host "    Options :" -ForegroundColor White
-Write-Host "      -m <message>   Message de commit" -ForegroundColor Gray
-Write-Host "      (sans -m)      Demande interactive du message" -ForegroundColor Gray
+Write-Host "      -m <message>   Message de commit manuel" -ForegroundColor Gray
+Write-Host "      -a             Génération auto du message (phi3:mini, 1-2s)" -ForegroundColor Gray
+Write-Host "      -f             Mode ultra-rapide (gemma2:2b, <1s) - Nécessite -a" -ForegroundColor Gray
 Write-Host ""
 Write-Host "    Exemples :" -ForegroundColor White
-Write-Host "      he update" -ForegroundColor Cyan
-Write-Host "      he update -m ""feat: nouvelle fonctionnalité""" -ForegroundColor Cyan
-Write-Host "      he update -m ""fix: correction bug""" -ForegroundColor Cyan
+Write-Host "      he update                    # Mode manuel" -ForegroundColor Cyan
+Write-Host "      he update -a                 # IA rapide (recommandé)" -ForegroundColor Cyan
+Write-Host "      he update -a -f              # IA ultra-rapide" -ForegroundColor Cyan
+Write-Host "      he update -m ""fix: bug""      # Message direct" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "    Fonctionnalités :" -ForegroundColor White
 Write-Host "      • Ajoute tous les fichiers modifiés (git add . )" -ForegroundColor Gray

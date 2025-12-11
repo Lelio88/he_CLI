@@ -1,6 +1,12 @@
 param(
     [Parameter(Mandatory=$false, Position=0)]
-    [string]$message = ""
+    [string]$message = "",
+    
+    [Parameter(Mandatory=$false)]
+    [switch]$a,  # Auto-génération avec phi3:mini
+    
+    [Parameter(Mandatory=$false)]
+    [switch]$f   # Mode ultra-rapide (gemma2:2b)
 )
 
 # Commande update - Commit + Pull + Push automatique
@@ -84,18 +90,124 @@ if ($hasChanges) {
     Write-Host ""
     
     # Demander le message de commit si non fourni
-    if (-not $message -or $message.Trim() -eq "") {
-        Write-Host "Message de commit :" -ForegroundColor Yellow
-        $message = Read-Host "  "
+if (-not $message -or $message. Trim() -eq "") {
+    
+    # Mode auto-génération
+    if ($a) {
+        # Déterminer le mode
+        $modeName = if ($f) { "ultra-rapide (gemma2:2b)" } else { "rapide (phi3:mini)" }
+        $modelEmoji = if ($f) { "⚡" } else { "🤖" }
         
-        if (-not $message -or $message.Trim() -eq "") {
+        Write-Host "$modelEmoji Génération automatique du message ($modeName)..." -ForegroundColor Cyan
+        Write-Host ""
+        
+        # Vérifier Python
+        $python = Get-Command python -ErrorAction SilentlyContinue
+        if (-not $python) {
+            $python = Get-Command python3 -ErrorAction SilentlyContinue
+        }
+        
+        if (-not $python) {
+            Write-Host "❌ Python non trouvé (requis pour -a)" -ForegroundColor Red
+            Write-Host "💡 Installez Python ou utilisez 'he update' sans -a" -ForegroundColor Yellow
             Write-Host ""
-            Write-Host "Erreur : Le message de commit ne peut pas etre vide !" -ForegroundColor Red
-            Write-Host "Annulation de l'operation." -ForegroundColor Yellow
+            exit 1
+        }
+        
+        # Vérifier Ollama
+        $ollamaInstalled = Get-Command ollama -ErrorAction SilentlyContinue
+        if (-not $ollamaInstalled) {
+            Write-Host "❌ Ollama non trouvé (requis pour -a)" -ForegroundColor Red
+            Write-Host "💡 Installez Ollama:  https://ollama.com" -ForegroundColor Yellow
+            Write-Host ""
+            exit 1
+        }
+        
+        # Vérifier que le modèle est installé
+        $modelToCheck = if ($f) { "gemma2:2b" } else { "phi3:mini" }
+        $modelExists = ollama list 2>&1 | Select-String -Pattern $modelToCheck -Quiet
+        
+        if (-not $modelExists) {
+            Write-Host "📥 Modèle $modelToCheck non trouvé, téléchargement..." -ForegroundColor Yellow
+            ollama pull $modelToCheck
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "❌ Échec du téléchargement du modèle" -ForegroundColor Red
+                exit 1
+            }
+            Write-Host "✅ Modèle téléchargé" -ForegroundColor Green
+            Write-Host ""
+        }
+        
+        # Trouver le script Python
+        $scriptPath = Split-Path -Parent $MyInvocation.MyCommand. Path
+        $pythonScript = Join-Path -Path $scriptPath -ChildPath "generate_commit_message.py"
+        
+        if (-not (Test-Path $pythonScript)) {
+            Write-Host "❌ Script generate_commit_message.py introuvable dans $scriptPath" -ForegroundColor Red
+            Write-Host "💡 Réinstallez he_CLI avec 'he selfupdate'" -ForegroundColor Yellow
+            Write-Host ""
+            exit 1
+        }
+        
+        # Générer le message
+        try {
+            $startTime = Get-Date
+            
+            # Passer --fast si flag -f
+            $pythonArgs = @($pythonScript)
+            if ($f) {
+                $pythonArgs += "--fast"
+            }
+            
+            # Capturer stderr et stdout séparément
+            $output = & $python @pythonArgs 2>&1
+            $message = $output | Where-Object { $_ -is [string] -and $_ -notmatch "^🤖|^❌" } | Select-Object -Last 1
+            
+            $duration = ((Get-Date) - $startTime).TotalSeconds
+            
+            if ($LASTEXITCODE -ne 0 -or -not $message -or $message.Trim() -eq "") {
+                Write-Host "❌ Échec de la génération du message" -ForegroundColor Red
+                Write-Host "💡 Utilisez 'he update' sans -a pour saisir manuellement" -ForegroundColor Yellow
+                Write-Host ""
+                exit 1
+            }
+            
+            $message = $message.Trim()
+            
+            Write-Host "✅ Message généré en " -ForegroundColor Green -NoNewline
+            Write-Host "$([math]::Round($duration, 1))s" -ForegroundColor Cyan -NoNewline
+            Write-Host " :  " -ForegroundColor Green -NoNewline
+            Write-Host "$message" -ForegroundColor White
+            Write-Host ""
+            
+            # Demander confirmation
+            $confirm = Read-Host "Utiliser ce message? [O/n]"
+            if ($confirm -match '^[nN]') {
+                Write-Host ""
+                Write-Host "Message de commit (saisie manuelle):" -ForegroundColor Yellow
+                $message = Read-Host "  "
+            }
+            
+        } catch {
+            Write-Host "❌ Erreur:  $_" -ForegroundColor Red
             Write-Host ""
             exit 1
         }
     }
+    else {
+        # Mode classique:  demande interactive
+        Write-Host "Message de commit:" -ForegroundColor Yellow
+        $message = Read-Host "  "
+    }
+    
+    if (-not $message -or $message. Trim() -eq "") {
+        Write-Host ""
+        Write-Host "Erreur: Le message de commit ne peut pas etre vide!" -ForegroundColor Red
+        Write-Host "Annulation de l'operation." -ForegroundColor Yellow
+        Write-Host ""
+        exit 1
+    }
+}
     
     Write-Host ""
     Write-Host "Ajout de tous les fichiers..." -ForegroundColor Yellow
