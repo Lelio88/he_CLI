@@ -13,9 +13,9 @@ def get_git_summary():
         ).stdout.strip()
         
         diff_sample = subprocess.run(
-            ['git', 'diff', '--unified=1', 'HEAD'],
+            ['git', 'diff', '--unified=2', 'HEAD'],
             capture_output=True, text=True, encoding='utf-8', errors='replace'
-        ).stdout[:500]
+        ).stdout[:800]
         
         return status, diff_sample
         
@@ -24,53 +24,59 @@ def get_git_summary():
         sys.exit(1)
 
 def generate_commit_message(status, diff, model):
-    """Génère un message avec approche few-shot"""
+    """Génère un message avec longueur raisonnable"""
     
-    # Few-shot learning : montrer des exemples, ne PAS expliquer
+    # Few-shot avec exemples de longueur réelle
     prompt = f"""Voici des exemples de messages de commit Git : 
 
 Exemple 1:
 Fichiers:  M index.html
-Changements: +<footer>Copyright 2024</footer>
-Message: feat(html): ajouter footer
+Diff: +<footer>Copyright 2024</footer>
+Message: feat(html): ajouter footer avec mention de copyright
 
 Exemple 2:
-Fichiers: M style.css
-Changements: +color: blue; +font-size: 16px;
-Message: style: modifier couleurs
+Fichiers: M style. css
+Diff: +. button {{ color: blue; border-radius: 5px; }}
+Message: style(css): ameliorer apparence des boutons
 
 Exemple 3:
 Fichiers: M api. js
-Changements: -if (user) {{ +if (user && user.id) {{
-Message: fix(api): corriger validation
+Diff: -if (user) {{ +if (user && user.id) {{
+Message: fix(api): corriger validation utilisateur dans endpoint
 
 Exemple 4:
-Fichiers: M README.md
-Changements: +## Installation
-Message: docs: ajouter installation
+Fichiers: A images/photo.jpg
+Diff: Binary file added
+Message: feat(assets): ajouter image de presentation produit
+
+Exemple 5:
+Fichiers:  M README.md
+Diff: +## Installation\n+Run npm install
+Message: docs(readme): ajouter instructions installation
 
 Maintenant, genere le message pour ces changements: 
 
 Fichiers: {status}
-Changements: {diff[: 300]}
+Diff: {diff[: 500]}
 Message: """
 
     try:
-        response = ollama. chat(
+        response = ollama.chat(
             model=model,
             messages=[{'role': 'user', 'content': prompt}],
             options={
-                'temperature': 0.25,
-                'num_predict':  12,
-                'num_ctx':  1536,
+                'temperature': 0.3,
+                'num_predict':  25,        # Plus de tokens pour message complet
+                'num_ctx':  2048,
+                'top_p': 0.9,
                 'stop': ['\n', '\r']
             }
         )
         
         raw = response['message']['content'].strip()
-        print(f"[DEBUG] Brut: '{raw}'", file=sys.stderr)
+        print(f"[DEBUG] Brut: '{raw}' ({len(raw)} chars)", file=sys.stderr)
         
-        # Nettoyage
+        # Nettoyage léger
         message = raw. replace('"', '').replace("'", '').replace('`', '').strip()
         
         # Supprimer préfixes parasites
@@ -79,52 +85,60 @@ Message: """
             if message.lower().startswith(prefix):
                 message = message[len(prefix):].strip()
         
-        # Validation stricte
-        valid_types = ['feat', 'fix', 'docs', 'style', 'refactor', 'chore', 'test', 'perf']
+        # Validation
+        valid_types = ['feat', 'fix', 'docs', 'style', 'refactor', 'chore', 'test', 'perf', 'build', 'ci']
         is_valid = any(message.lower().startswith(t) for t in valid_types)
         
         # Vérifier qu'il ne répète pas le template
-        forbidden_words = ['type(scope)', 'example', 'fichiers:', 'changements:', 'global', 'french', 'description']
+        forbidden_words = ['exemple', 'fichiers:', 'diff:', 'changements:', 'type(scope)']
         has_forbidden = any(word in message.lower() for word in forbidden_words)
         
-        if not is_valid or has_forbidden or len(message) > 60 or len(message) < 10:
-            print(f"[WARN] Message invalide ou copie du template", file=sys.stderr)
-            # Essayer avec un modèle différent ou une approche plus simple
-            return try_ultra_simple(status, diff, model)
+        # Limite raisonnable (72 caractères = standard Git)
+        if len(message) > 72:
+            # Couper intelligemment au dernier mot complet
+            message = message[:69]. rsplit(' ', 1)[0]
+            print(f"[INFO] Message tronque a {len(message)} chars", file=sys.stderr)
+        
+        if not is_valid or has_forbidden or len(message) < 10:
+            print(f"[WARN] Message invalide", file=sys.stderr)
+            return try_simple_retry(status, diff, model)
         
         print(f"[DEBUG] Final: '{message}' ({len(message)} chars)", file=sys.stderr)
         return message
         
     except Exception as e:
         print(f"[ERROR] {e}", file=sys.stderr)
-        return try_ultra_simple(status, diff, model)
+        return try_simple_retry(status, diff, model)
 
-def try_ultra_simple(status, diff, model):
-    """Approche ultra-simple si few-shot échoue"""
+def try_simple_retry(status, diff, model):
+    """Retry simplifié"""
     
-    print(f"[INFO] Tentative avec prompt ultra-simple", file=sys. stderr)
+    print(f"[INFO] Retry avec prompt simplifie", file=sys.stderr)
     
-    # Prompt minimaliste sans instruction
-    prompt = f"""Git commit examples: 
-feat(html): add footer
-fix(api): resolve bug
-style: update colors
-docs: improve readme
+    prompt = f"""Genere un message de commit Git court et descriptif. 
 
-Changes:
+Format: type(scope): description en francais
+
+Exemples:
+- feat(html): ajouter footer avec copyright
+- fix(api): corriger gestion erreurs
+- style: ameliorer design boutons
+- docs: mettre a jour guide installation
+
+Changements:
 {status}
-{diff[:200]}
+{diff[:400]}
 
-Commit: """
+Message: """
 
     try:
         response = ollama.chat(
             model=model,
             messages=[{'role': 'user', 'content': prompt}],
             options={
-                'temperature': 0.15,
-                'num_predict': 10,
-                'num_ctx':  1024,
+                'temperature': 0.25,
+                'num_predict':  20,
+                'num_ctx':  1536,
                 'stop': ['\n']
             }
         )
@@ -132,53 +146,81 @@ Commit: """
         message = response['message']['content'].strip()
         message = message.replace('"', '').replace("'", '').replace('`', '').strip()
         
-        # Enlever préfixes
-        for prefix in ['commit:', 'message:', '- ', '* ']:
+        for prefix in ['message:', 'commit:', '- ']:
             if message.lower().startswith(prefix):
                 message = message[len(prefix):].strip()
         
-        print(f"[DEBUG] Ultra-simple result: '{message}'", file=sys.stderr)
+        if len(message) > 72:
+            message = message[:69].rsplit(' ', 1)[0]
+        
+        print(f"[DEBUG] Retry result: '{message}'", file=sys.stderr)
         
         # Validation minimale
-        if ': ' in message and len(message) > 10 and len(message) < 60:
+        if ': ' in message and len(message) >= 10:
             return message
         
-        # Dernier recours :  template basique
-        print(f"[WARN] Utilisation template basique", file=sys.stderr)
-        return generate_basic_template(status, diff)
+        # Template basique en dernier recours
+        return generate_basic_fallback(status, diff)
         
     except: 
-        return generate_basic_template(status, diff)
+        return generate_basic_fallback(status, diff)
 
-def generate_basic_template(status, diff):
-    """Template basique si tout échoue (sans analyse sémantique, juste type de fichier)"""
+def generate_basic_fallback(status, diff):
+    """Fallback basique mais intelligent"""
     
-    print(f"[INFO] Fallback template basique", file=sys.stderr)
+    print(f"[INFO] Utilisation fallback basique", file=sys. stderr)
     
     status_lower = status.lower()
     diff_lower = diff.lower()
     
-    # Type de fichier
+    # Détection de fichier
     if '. html' in status_lower: 
-        if 'footer' in diff_lower or 'copyright' in diff_lower:
-            return "feat(html): add footer"
-        return "feat(html): update content"
-    elif '.css' in status_lower:
-        return "style: update styles"
-    elif '.js' in status_lower or '.ts' in status_lower:
-        return "refactor(js): improve code"
-    elif '.py' in status_lower:
-        return "refactor:  improve code"
-    elif 'readme' in status_lower or '. md' in status_lower: 
-        return "docs: update documentation"
+        if 'footer' in diff_lower and 'copyright' in diff_lower:
+            return "feat(html): ajouter footer avec mention de copyright"
+        elif 'footer' in diff_lower:
+            return "feat(html): ajouter section footer"
+        elif 'header' in diff_lower:
+            return "feat(html): ajouter section header"
+        elif 'nav' in diff_lower:
+            return "feat(html): ajouter menu de navigation"
+        return "feat(html): mettre a jour contenu"
     
-    # Type d'action
-    if 'A ' in status: 
-        return "feat:  add new files"
+    elif '.css' in status_lower or 'style' in status_lower: 
+        if 'color' in diff_lower or 'background' in diff_lower:
+            return "style(css): modifier palette de couleurs"
+        elif 'button' in diff_lower:
+            return "style(css): ameliorer apparence des boutons"
+        return "style:  mettre a jour styles"
+    
+    elif '.js' in status_lower or '.ts' in status_lower:
+        if 'function' in diff_lower or 'const' in diff_lower:
+            return "refactor(js): reorganiser fonctions"
+        elif 'error' in diff_lower or 'catch' in diff_lower:
+            return "fix(js): ameliorer gestion des erreurs"
+        return "refactor(js): ameliorer code"
+    
+    elif '.py' in status_lower:
+        if 'def ' in diff_lower: 
+            return "refactor:  reorganiser fonctions"
+        elif 'import' in diff_lower:
+            return "chore:  mettre a jour dependances"
+        return "refactor: ameliorer code"
+    
+    elif 'readme' in status_lower or '. md' in status_lower: 
+        if 'install' in diff_lower:
+            return "docs(readme): ajouter instructions installation"
+        return "docs:  mettre a jour documentation"
+    
+    elif any(ext in status_lower for ext in ['.jpg', '.png', '.gif', '.svg', '.webp']):
+        return "feat(assets): ajouter nouvelles images"
+    
+    # Actions génériques
+    if 'A ' in status:
+        return "feat:  ajouter nouveaux fichiers"
     elif 'D ' in status:
-        return "chore: remove files"
+        return "chore: supprimer fichiers obsoletes"
     else:
-        return "chore:  update files"
+        return "chore: mettre a jour fichiers"
 
 if __name__ == "__main__": 
     parser = argparse.ArgumentParser()
