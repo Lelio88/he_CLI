@@ -5,7 +5,7 @@ import argparse
 import re
 import os
 
-# Assurer encodage UTF-8 pour Windows
+# Assurer encodage UTF-8
 sys.stdout.reconfigure(encoding='utf-8')
 
 def get_git_summary():
@@ -17,9 +17,9 @@ def get_git_summary():
         ).stdout.strip()
         
         diff_sample = subprocess.run(
-            ['git', 'diff', '--unified=1', 'HEAD'],
+            ['git', 'diff', '--unified=2', 'HEAD'],
             capture_output=True, text=True, encoding='utf-8', errors='replace'
-        ).stdout[:600]
+        ).stdout[:1000]  # Plus de contexte
         
         return status, diff_sample
         
@@ -27,202 +27,176 @@ def get_git_summary():
         print(f"Erreur diff:  {e}", file=sys.stderr)
         sys.exit(1)
 
-def generate_commit_message(status, diff, model):
-    """Génère un message ULTRA-COURT"""
+def generate_with_llm(status, diff, model, attempt=1, max_attempts=3):
+    """Génère avec LLM, retry jusqu'à réussite"""
     
-    # Prompt avec contrainte STRICTE de longueur
-    prompt = f"""Generate a Git commit message.  MAXIMUM 50 characters total. 
+    # Adapter le prompt selon la tentative
+    if attempt == 1:
+        # Tentative 1: Prompt détaillé
+        prompt = f"""Generate ONE Git commit message.   Maximum 50 characters. 
 
-Rules:
-- Format: type(scope): description OR type:  description
-- French description
-- Be EXTREMELY concise
-- Use short words only
+Format:  type(scope): description OR type:  description
+French description, be concise.
 
-Examples (note the length):
+Examples:
 feat(html): add footer
 style(css): improve buttons
 fix(api): resolve bug
 docs:  update readme
-refactor(js): optimize code
+refactor(py): optimize code
+chore(deps): update packages
 
-Your turn (MAX 50 chars):
+Files changed:
+{status}
 
-Files: {status}
-Changes: {diff[: 300]}
+Code changes:
+{diff[:500]}
 
-Message: """
+Commit message: """
+        
+        temperature = 0.2
+        num_predict = 15
+        
+    elif attempt == 2:
+        # Tentative 2: Prompt plus directif
+        prompt = f"""Git commit (40 chars max, French):
 
+{status}
+
+{diff[:400]}
+
+Message:"""
+        
+        temperature = 0.15
+        num_predict = 12
+        
+    else:
+        # Tentative 3: Prompt ultra-simple
+        prompt = f"""Short Git commit: 
+
+{status[: 100]}
+
+Commit: """
+        
+        temperature = 0.1
+        num_predict = 10
+    
     try:
+        print(f"[INFO] Tentative {attempt}/{max_attempts} avec {model}", file=sys.stderr)
+        
         response = ollama.chat(
             model=model,
             messages=[{
                 'role': 'system',
-                'content': 'You write ULTRA-SHORT Git commits. Never exceed 50 characters. Be extremely concise.'
+                'content': 'You write concise Git commit messages. Maximum 50 characters.  Follow Conventional Commits format.'
             }, {
                 'role': 'user',
                 'content': prompt
             }],
             options={
-                'temperature': 0.2,
-                'num_predict':  15,
-                'num_ctx': 1536,
+                'temperature': temperature,
+                'num_predict': num_predict,
+                'num_ctx': 2048,
                 'top_k': 10,
-                'top_p': 0.8,
-                'repeat_penalty': 1.3,
-                'stop': ['\n', '\r', '. ', '!', ',']
+                'top_p': 0.85,
+                'repeat_penalty':  1.3,
+                'stop': ['\n', '\r', ',', '.  ']
             }
         )
         
-        raw = response['message']['content']. strip()
+        raw = response['message']['content'].strip()
+        print(f"[DEBUG] LLM genere: '{raw}'", file=sys.stderr)
         
-        # Nettoyage
+        # Nettoyage léger
         message = raw.replace('"', '').replace("'", '').replace('`', '').strip()
         
-        # Supprimer préfixes
-        for prefix in ['message:', 'commit:', '- ', '* ']: 
+        # Supprimer préfixes parasites
+        for prefix in ['message:', 'commit:', 'git:', '- ', '* ', '> ']:
             if message.lower().startswith(prefix):
                 message = message[len(prefix):].strip()
         
-        # Validation améliorée
-        valid_types = ['feat', 'fix', 'docs', 'style', 'refactor', 'chore', 'test', 'perf', 'build']
-        is_valid = any(
+        # Validation
+        valid_types = ['feat', 'fix', 'docs', 'style', 'refactor', 'chore', 'test', 'perf', 'build', 'ci']
+        
+        # Vérifier format
+        has_colon = ': ' in message
+        starts_with_type = any(
             message.lower().startswith(t + ':') or 
-            message. lower().startswith(t + '(')
+            message.lower().startswith(t + '(')
             for t in valid_types
         )
         
-        forbidden = ['type(scope)', 'example', 'fichiers', 'changes']
+        # Mots interdits (répétition du prompt)
+        forbidden = ['type(scope)', 'example', 'maximum', 'format:', 'files:', 'changes:']
         has_forbidden = any(word in message.lower() for word in forbidden)
         
-        # Si trop long OU invalide → retry
-        if len(message) > 55 or not is_valid or has_forbidden or len(message) < 10:
-            return try_ultra_short_retry(status, diff, model)
-        
-        return message
-        
-    except Exception as e:
-        print(f"[ERROR] {e}", file=sys.stderr)
-        return try_ultra_short_retry(status, diff, model)
-
-def try_ultra_short_retry(status, diff, model):
-    """Retry avec prompt encore plus agressif"""
-    
-    # Prompt minimaliste extrême
-    prompt = f"""Git commit (MAX 40 chars):
-
-Examples:
-feat(html): add footer
-style:  improve buttons
-fix(api): resolve bug
-
-Files: {status}
-Changes: {diff[:200]}
-
-Commit: """
-
-    try: 
-        response = ollama.chat(
-            model=model,
-            messages=[{'role': 'user', 'content': prompt}],
-            options={
-                'temperature': 0.15,
-                'num_predict': 12,
-                'num_ctx':  1024,
-                'stop': ['\n', ',']
-            }
+        # Validation
+        is_valid = (
+            has_colon and 
+            starts_with_type and 
+            not has_forbidden and 
+            10 <= len(message) <= 60
         )
         
-        message = response['message']['content'].strip()
-        message = message.replace('"', '').replace("'", '').replace('`', '').strip()
+        if is_valid:
+            print(f"[SUCCESS] Message valide", file=sys.stderr)
+            return message, True
+        else:
+            reasons = []
+            if not has_colon:  reasons.append("pas de ':'")
+            if not starts_with_type: reasons.append("type invalide")
+            if has_forbidden: reasons.append("mots interdits")
+            if len(message) > 60: reasons.append(f"trop long ({len(message)} chars)")
+            if len(message) < 10: reasons.append("trop court")
+            
+            print(f"[WARN] Message invalide:  {', '.join(reasons)}", file=sys.stderr)
+            
+            # Retry si on n'a pas atteint le max
+            if attempt < max_attempts:
+                print(f"[INFO] Nouvelle tentative.. .", file=sys.stderr)
+                return generate_with_llm(status, diff, model, attempt + 1, max_attempts)
+            else:
+                return None, False
         
-        for prefix in ['commit:', 'message:', '- ']: 
-            if message.lower().startswith(prefix):
-                message = message[len(prefix):].strip()
+    except Exception as e: 
+        print(f"[ERROR] Tentative {attempt} echouee: {e}", file=sys. stderr)
         
-        # Si ENCORE trop long ou invalide → fallback
-        if len(message) > 55 or ': ' not in message:  
-            return generate_smart_fallback(status, diff)
-        
+        if attempt < max_attempts: 
+            print(f"[INFO] Nouvelle tentative...", file=sys.stderr)
+            return generate_with_llm(status, diff, model, attempt + 1, max_attempts)
+        else:
+            return None, False
+
+def generate_commit_message(status, diff, model):
+    """Point d'entrée principal"""
+    
+    # Essayer avec le modèle choisi (jusqu'à 3 tentatives)
+    message, success = generate_with_llm(status, diff, model, attempt=1, max_attempts=3)
+    
+    if success: 
         return message
+    
+    # Si échec avec phi3:mini, essayer gemma2: 2b automatiquement
+    if model == "phi3:mini":
+        print(f"[INFO] Echec avec phi3:mini, tentative avec gemma2:2b.. .", file=sys.stderr)
+        message, success = generate_with_llm(status, diff, "gemma2:2b", attempt=1, max_attempts=2)
         
-    except:  
-        return generate_smart_fallback(status, diff)
+        if success:
+            return message
+    
+    # Si vraiment tout échoue
+    print(f"[ERROR] Impossible de generer un message valide apres toutes les tentatives", file=sys.stderr)
+    print(f"[ERROR] Veuillez saisir le message manuellement", file=sys.stderr)
+    sys.exit(1)
 
-def generate_smart_fallback(status, diff):
-    """Fallback intelligent et COURT"""
-    
-    status_lower = status.lower()
-    diff_lower = diff.lower()
-    
-    # HTML
-    if '.html' in status_lower:
-        if 'footer' in diff_lower:
-            return "feat(html): add footer"
-        elif 'header' in diff_lower:
-            return "feat(html): add header"
-        elif 'nav' in diff_lower: 
-            return "feat(html): add navigation"
-        return "feat(html): update content"
-    
-    # CSS
-    elif '. css' in status_lower or 'style' in status_lower:  
-        if 'button' in diff_lower:
-            return "style(css): improve buttons"
-        elif 'color' in diff_lower:
-            return "style(css): update colors"
-        elif 'link' in diff_lower or '<a' in diff_lower:
-            return "style(css): improve links"
-        return "style: update styles"
-    
-    # JavaScript
-    elif '.js' in status_lower or '. ts' in status_lower: 
-        if 'error' in diff_lower or 'catch' in diff_lower:
-            return "fix(js): handle errors"
-        elif 'function' in diff_lower: 
-            return "refactor(js): optimize code"
-        return "refactor(js): improve code"
-    
-    # Python
-    elif '.py' in status_lower: 
-        if 'def ' in diff_lower:
-            return "refactor: add functions"
-        return "refactor: improve code"
-    
-    # Documentation
-    elif 'readme' in status_lower or '. md' in status_lower: 
-        return "docs: update readme"
-    
-    # Assets (amélioré)
-    elif any(ext in status_lower for ext in ['. jpg', '.png', '.gif', '.svg', 'image', 'asset']):
-        # Essayer d'être plus spécifique
-        files = [line.split()[-1] for line in status.split('\n') if line.strip()]
-        if files and len(files) == 1:
-            filename = os.path.basename(files[0]).lower()
-            if 'lake' in filename or 'lac' in filename: 
-                return "feat(assets): add lake image"
-            elif 'logo' in filename:
-                return "feat(assets): add logo"
-            elif 'icon' in filename:
-                return "feat(assets): add icon"
-        return "feat(assets): add images"
-    
-    # Générique
-    if 'A ' in status or '? ?' in status:
-        return "feat: add new files"
-    elif 'D ' in status:  
-        return "chore:  remove files"
-    else: 
-        return "chore: update files"
-
-if __name__ == "__main__":  
+if __name__ == "__main__":   
     parser = argparse.ArgumentParser()
     parser.add_argument('--fast', action='store_true')
     args = parser.parse_args()
     
     MODEL = "gemma2:2b" if args.fast else "phi3:mini"
     
-    try: 
+    try:
         subprocess.run(['git', 'rev-parse', '--git-dir'], 
                     capture_output=True, check=True)
     except subprocess.CalledProcessError:
