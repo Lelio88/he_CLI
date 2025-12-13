@@ -31,17 +31,17 @@ def generate_commit_message(status, diff, model):
     prompt = f"""Generate a Git commit message.   MAXIMUM 50 characters total.
 
 Rules:
-- Format: type(scope): description
+- Format: type: description
 - French description
-- Be EXTREMELY concise (like Twitter:   50 chars max)
+- Be EXTREMELY concise
 - Use short words only
 
 Examples (note the length):
-feat(html): add footer
-style(css): improve buttons
-fix(api): resolve null bug
+html: add footer
+css: improve buttons
+api: resolve null bug
 docs:  update readme
-refactor(js): optimize code
+js: optimize code
 
 Your turn (MAX 50 chars):
 
