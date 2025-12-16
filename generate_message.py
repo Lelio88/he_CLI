@@ -268,6 +268,42 @@ docs(readme): actualizar instrucciones de instalación
 
 Genera SOLO el mensaje de commit, nada más:"""
     
+    elif language == 'de':
+        prompt = f"""Generiere eine Git-Commit-Nachricht für diese Änderungen:
+
+GEÄNDERTE DATEIEN ({context['file_count']} Dateien):
+{files_section}
+
+DIFF (erste 4000 Zeichen):
+{context['diff']}
+
+"""
+        if guidelines:
+            prompt += f"""PROJEKTRICHTLINIEN:
+{guidelines}
+
+"""
+        
+        prompt += """ANWEISUNGEN:
+1. Verwende das Format conventional commits: typ(bereich): beschreibung
+2. Gültige Typen: feat, fix, docs, style, refactor, chore, test, perf, build
+3. Bereich ist optional aber empfohlen
+4. Beschreibung muss kleingeschrieben sein nach ':'
+5. Kein Punkt am Ende
+6. Sei spezifisch und beschreibend (nicht generisch wie "Code aktualisieren")
+7. Länge: 10-72 Zeichen
+8. Sprache: Deutsch
+9. Keine Emojis (außer in Projektrichtlinien)
+10. Fokus auf WAS sich geändert hat und WARUM
+11. Nur eine Zeile
+
+GÜLTIGE BEISPIELE:
+feat(api): fügt Authentifizierungs-Endpoint hinzu
+fix(parser): behandelt Nullwerte in Konfiguration
+docs(readme): aktualisiert Installationsanweisungen
+
+Generiere NUR die Commit-Nachricht, nichts anderes:"""
+    
     else:  # French (default)
         prompt = f"""Génère un message de commit Git pour ces modifications:
 
