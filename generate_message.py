@@ -5,6 +5,7 @@ import argparse
 import re
 import os
 from pathlib import Path
+from collections import Counter
 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -16,6 +17,13 @@ CONVENTIONAL_TYPES = [
     'feat', 'fix', 'docs', 'style', 'refactor', 
     'chore', 'test', 'perf', 'build', 'ci', 'revert'
 ]
+
+# Validation scoring constants
+MIN_LENGTH = 10
+MAX_LENGTH = 72
+MAX_LENGTH_PARTIAL = 100
+MIN_DESCRIPTIVE_LENGTH = 15
+MIN_GENERIC_LENGTH = 20
 
 SECRET_PATTERNS = [
     # API Keys
@@ -406,8 +414,6 @@ def clean_message(message):
 
 def auto_correct_message(message):
     """Corrige automatiquement les erreurs mineures"""
-    original = message
-    
     # Remove trailing period
     if message.endswith('.'):
         message = message[:-1]
@@ -460,13 +466,13 @@ def validate_commit_message(message, strict=False):
     
     # Check 2: Length (2 points)
     length = len(message)
-    if 10 <= length <= 72:
+    if MIN_LENGTH <= length <= MAX_LENGTH:
         score += 2
-    elif length < 10:
-        issues.append(f"Trop court ({length} chars, min 10)")
-    elif length > 72:
-        issues.append(f"Trop long ({length} chars, max 72)")
-        if length <= 100:
+    elif length < MIN_LENGTH:
+        issues.append(f"Trop court ({length} chars, min {MIN_LENGTH})")
+    elif length > MAX_LENGTH:
+        issues.append(f"Trop long ({length} chars, max {MAX_LENGTH})")
+        if length <= MAX_LENGTH_PARTIAL:
             score += 1  # Partial credit
     
     # Check 3: Descriptive (2 points)
@@ -479,11 +485,11 @@ def validate_commit_message(message, strict=False):
     message_lower = message.lower()
     is_generic = any(term in message_lower for term in generic_terms)
     
-    if not is_generic and length >= 15:
+    if not is_generic and length >= MIN_DESCRIPTIVE_LENGTH:
         score += 2
     elif is_generic:
         issues.append("Message trop générique")
-        if length >= 20:
+        if length >= MIN_GENERIC_LENGTH:
             score += 1  # Partial credit if at least it's long
     
     # Check 4: Lowercase after colon (1 point)
@@ -633,7 +639,6 @@ def generate_fallback_message(context):
     # Get most common directory as scope
     dirs = [os.path.dirname(f['path']) for f in files if os.path.dirname(f['path'])]
     if dirs:
-        from collections import Counter
         most_common_dir = Counter(dirs).most_common(1)[0][0]
         scope = most_common_dir.split('/')[0] if most_common_dir else None
     else:
