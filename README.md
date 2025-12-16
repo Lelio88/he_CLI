@@ -135,14 +135,86 @@ he fastpush https://github.com/user/repo.git -m "Initial commit"
 
 # Synchronisation avec message
 he update -m "feat:  nouvelle fonctionnalité"
+#### 🤖 Génération automatique de messages de commit
+
 HE CLI peut générer automatiquement des messages de commit intelligents en analysant vos modifications avec IA locale (Ollama).
 
 **Prérequis** : Python 3.7+ et Ollama installés
 
 | Commande | Modèle | Vitesse | Description |
 |----------|--------|---------|-------------|
-| `he update -a` | phi3:mini | 1-2s | **Recommandé** - Bon équilibre vitesse/qualité |
-| `he update -a -f` | gemma2:2b | <1s | Ultra-rapide pour commits fréquents |
+| `he update -a` | phi3:mini | 2-3s | **Recommandé** - Meilleure qualité |
+| `he update -a -f` | gemma2:2b | 1-2s | Ultra-rapide pour commits fréquents |
+
+**Options avancées du générateur :**
+
+```bash
+# Génération basique (qualité normale)
+python generate_message.py
+
+# Mode strict (score >= 9/10) avec feedback détaillé
+python generate_message.py --strict --verbose
+
+# Analyse seulement les fichiers staged
+python generate_message.py --staged
+
+# Génération en anglais
+python generate_message.py --language en
+
+# Combinaison : rapide + staged
+python generate_message.py --fast --staged
+```
+
+**Fonctionnalités :**
+- ✅ **Analyse intelligente** : 4000 caractères de diff (10x plus qu'avant)
+- ✅ **Sécurité** : Masquage automatique des secrets (.env, API keys, tokens)
+- ✅ **Validation** : Score de qualité 0-10 avec feedback détaillé
+- ✅ **Auto-correction** : Corrige majuscules, points finaux, préfixes
+- ✅ **Guidelines projet** : Support de `COMMIT_MESSAGE.md` personnalisé
+- ✅ **Multi-langues** : Français (défaut), anglais, espagnol, etc.
+- ✅ **Retry intelligent** : Jusqu'à 3 tentatives avec ajustement du prompt
+
+**Exemple avec feedback (mode verbose) :**
+```bash
+$ python generate_message.py --verbose
+
+✅ Guidelines trouvées : COMMIT_MESSAGE.md
+🔄 Collecte du contexte Git...
+   • 3 fichiers modifiés
+   • Diff : 2847 caractères
+   • Secrets masqués : 2 patterns
+
+🔄 Tentative 1/3...
+📊 Score : 9/10
+Message : feat(cli): ajoute la commande backup automatique
+
+💡 Suggestions :
+   ✅ Scope présent (bonne pratique)
+   ✅ Format conventionnel
+
+✅ Message validé !
+
+feat(cli): ajoute la commande backup automatique
+```
+
+**Créer des guidelines personnalisées :**
+
+Créez un fichier `COMMIT_MESSAGE.md` à la racine de votre projet :
+
+```markdown
+# Règles de commit pour mon projet
+
+## Format requis
+- Type : feat, fix, docs, style, refactor, chore
+- Scope obligatoire : cli, git, backup, config
+- Maximum 60 caractères
+- En français uniquement
+
+## Exemples valides
+- feat(cli): ajoute la commande backup
+- fix(git): corrige l'encodage UTF-8
+- docs(readme): met à jour les instructions
+```
 ```
 
 ---
