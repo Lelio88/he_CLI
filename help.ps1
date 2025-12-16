@@ -62,6 +62,45 @@ Write-Host "      • Fait le premier push automatiquement" -ForegroundColor Gra
 Write-Host "      • Installe GitHub CLI si nécessaire (Windows/Linux/macOS)" -ForegroundColor Gray
 Write-Host ""
 
+Write-Host "============================================================================" -ForegroundColor Cyan
+Write-Host "  GÉNÉRATION DE MESSAGES DE COMMIT (IA)" -ForegroundColor Cyan
+Write-Host "============================================================================" -ForegroundColor Cyan
+Write-Host ""
+
+Write-Host "  Génération automatique via he update -a" -ForegroundColor Yellow
+Write-Host "    he update -a              Message de commit généré par IA (phi3:mini)" -ForegroundColor Gray
+Write-Host "    he update -a -f           Version ultra-rapide (gemma2:2b)" -ForegroundColor Gray
+Write-Host ""
+
+Write-Host "  Utilisation directe du générateur" -ForegroundColor Yellow
+Write-Host "    python generate_message.py [options]" -ForegroundColor Gray
+Write-Host ""
+Write-Host "    Options :" -ForegroundColor White
+Write-Host "      --verbose, -v       Affiche le score et les suggestions détaillées" -ForegroundColor Gray
+Write-Host "      --strict            Mode strict (score >= 9/10 au lieu de 7/10)" -ForegroundColor Gray
+Write-Host "      --language <code>   Langue du message (fr, en, es, de, etc.)" -ForegroundColor Gray
+Write-Host "      --staged            Analyse uniquement les changements staged" -ForegroundColor Gray
+Write-Host "      --fast              Utilise gemma2:2b (plus rapide)" -ForegroundColor Gray
+Write-Host ""
+Write-Host "    Exemples :" -ForegroundColor White
+Write-Host "      python generate_message.py --verbose" -ForegroundColor Cyan
+Write-Host "      python generate_message.py --strict --staged" -ForegroundColor Cyan
+Write-Host "      python generate_message.py --language en --verbose" -ForegroundColor Cyan
+Write-Host "      python generate_message.py --fast --staged" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "    Fonctionnalités :" -ForegroundColor White
+Write-Host "      • Score de qualité 0-10 avec feedback détaillé (--verbose)" -ForegroundColor Gray
+Write-Host "      • Masquage automatique des secrets (.env, API keys, tokens)" -ForegroundColor Gray
+Write-Host "      • Auto-correction (majuscules, points finaux, préfixes)" -ForegroundColor Gray
+Write-Host "      • Support de guidelines personnalisées (COMMIT_MESSAGE.md)" -ForegroundColor Gray
+Write-Host "      • Retry intelligent avec ajustement du prompt" -ForegroundColor Gray
+Write-Host "      • Multi-langues (français par défaut)" -ForegroundColor Gray
+Write-Host ""
+Write-Host "    Guidelines personnalisées :" -ForegroundColor White
+Write-Host "      Créez un fichier COMMIT_MESSAGE.md à la racine pour définir" -ForegroundColor Gray
+Write-Host "      vos propres règles (format, emojis, scopes, etc.)" -ForegroundColor Gray
+Write-Host ""
+
 Write-Host "  he fastpush <url> [-m] [message]" -ForegroundColor Yellow
 Write-Host "    Push rapide vers un repository existant" -ForegroundColor Gray
 Write-Host ""
