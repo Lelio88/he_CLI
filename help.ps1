@@ -1,6 +1,6 @@
 ﻿# help.ps1 - Aide complète de HE CLI
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-[Console]::InputEncoding = [System.Text. Encoding]::UTF8
+[Console]::InputEncoding = [System.Text.Encoding]::UTF8
 
 Write-Host ""
 Write-Host "============================================================================" -ForegroundColor Cyan
