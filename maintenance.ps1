@@ -315,9 +315,9 @@ if (-not $pythonCmd) {
         }
         
         # 2. Lister les packages obsolètes
-        $outdatedJson = python -m pip list --outdated --format=json 2>&1
+        $outdatedJson = python -m pip list --outdated --format=json 2>$null
         
-        if ($LASTEXITCODE -ne 0) {
+        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($outdatedJson)) {
             Write-Host "⚠️  Erreur lors de la récupération de la liste des packages obsolètes" -ForegroundColor Yellow
         } else {
             # Parser le JSON
@@ -364,6 +364,8 @@ if (-not $pythonCmd) {
                         $successCount = 0
                         $failCount = 0
                         
+                        # Update packages one by one for better error reporting
+                        # (batch update would fail entirely if one package fails)
                         foreach ($pkg in $packagesToUpdate) {
                             $result = python -m pip install --upgrade $pkg.name 2>&1
                             if ($LASTEXITCODE -eq 0) {
