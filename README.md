@@ -275,15 +275,35 @@ he readme -Path "C:\MesProjets\MonApp"
 
 ### 🔧 Maintenance
 
-| Commande | Description | OS supportés |
-|----------|-------------|--------------|
-| `he maintenance` | Maintenance complète du système | Windows, Linux, macOS |
-| `he selfupdate` | Mettre à jour HE CLI | Tous |
+| Commande | Description | Options | OS supportés |
+|----------|-------------|---------|--------------|
+| `he maintenance` | Maintenance complète du système | `--preview` (aperçu sans modification)<br>`--exclude <packages>` (exclure des packages Python) | Windows, Linux, macOS |
+| `he selfupdate` | Mettre à jour HE CLI | Aucune | Tous |
 
 **Maintenance inclut :**
+- **Tous les OS** : Mise à jour des packages Python globaux (pip, packages obsolètes)
 - **Windows** : Winget update, DISM, SFC, nettoyage disque, CHKDSK
 - **Linux** : APT/DNF/Pacman update, nettoyage packages, journaux systemd
 - **macOS** : Homebrew update & cleanup
+
+**Options avancées :**
+
+```bash
+# Aperçu des mises à jour sans les effectuer
+he maintenance --preview
+
+# Exclure certains packages Python de la mise à jour
+he maintenance --exclude numpy tensorflow torch
+
+# Combinaison : aperçu avec exclusions
+he maintenance --preview --exclude pandas scikit-learn
+```
+
+**Packages Python mis à jour :**
+- ✅ pip (toujours mis à jour en premier)
+- ✅ Tous les packages obsolètes détectés
+- ✅ Support des exclusions pour packages critiques
+- ✅ Affichage des versions (actuelle → nouvelle)
 
 **Exemples :**
 ```bash

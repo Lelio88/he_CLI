@@ -226,11 +226,18 @@ Write-Host "  MAINTENANCE" -ForegroundColor Cyan
 Write-Host "============================================================================" -ForegroundColor Cyan
 Write-Host ""
 
-Write-Host "  he maintenance" -ForegroundColor Yellow
+Write-Host "  he maintenance [--preview] [--exclude <packages>]" -ForegroundColor Yellow
 Write-Host "    Maintenance complète du système (Windows/Linux/macOS)" -ForegroundColor Gray
+Write-Host ""
+Write-Host "    Options :" -ForegroundColor White
+Write-Host "      --preview           Affiche ce qui serait fait sans effectuer les modifications" -ForegroundColor Gray
+Write-Host "      --exclude <list>    Packages Python à exclure de la mise à jour (séparés par des espaces)" -ForegroundColor Gray
 Write-Host ""
 Write-Host "    Exemples :" -ForegroundColor White
 Write-Host "      he maintenance" -ForegroundColor Cyan
+Write-Host "      he maintenance --preview" -ForegroundColor Cyan
+Write-Host "      he maintenance --exclude numpy tensorflow torch" -ForegroundColor Cyan
+Write-Host "      he maintenance --preview --exclude pandas" -ForegroundColor Cyan
 Write-Host ""
 
 if ($isWindows) {
@@ -243,6 +250,7 @@ if ($isWindows) {
     Write-Host "      • Nettoyage Windows Update" -ForegroundColor Gray
     Write-Host "      • CHKDSK /scan" -ForegroundColor Gray
     Write-Host "      • Nettoyage disque système" -ForegroundColor Gray
+    Write-Host "      • Mise à jour des packages Python globaux" -ForegroundColor Gray
 } else {
     Write-Host "    Opérations Linux/macOS :" -ForegroundColor White
     Write-Host "      • Détection automatique de la distribution" -ForegroundColor Gray
@@ -253,6 +261,7 @@ if ($isWindows) {
     Write-Host "      • Nettoyage journaux systemd (Linux)" -ForegroundColor Gray
     Write-Host "      • Vérification SMART du disque" -ForegroundColor Gray
     Write-Host "      • Affichage des services en échec" -ForegroundColor Gray
+    Write-Host "      • Mise à jour des packages Python globaux" -ForegroundColor Gray
 }
 Write-Host ""
 
