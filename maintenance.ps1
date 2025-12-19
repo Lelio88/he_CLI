@@ -3,6 +3,11 @@
 # Compatible PowerShell Core (pwsh)
 # ============================================
 
+param(
+    [switch]$Preview,
+    [string[]]$Exclude = @()
+)
+
 # Vérification des droits administrateur sur Windows
 if ($PSVersionTable.Platform -eq "Win32NT" -or $IsWindows) {
     $currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
@@ -284,6 +289,106 @@ else {
         systemctl --failed
 
         Write-Host "`nPour les mises à jour, utilisez le gestionnaire de paquets de votre distribution." -ForegroundColor Yellow
+    }
+}
+
+# ========== Mise à jour des packages Python ==========
+Write-Host "`n--- Mise à jour des packages Python ---"
+
+# Détecter si Python est installé
+$pythonCmd = Get-Command python -ErrorAction SilentlyContinue
+
+if (-not $pythonCmd) {
+    Write-Host "⚠️  Python n'est pas installé ou n'est pas dans le PATH" -ForegroundColor Yellow
+    Write-Host "   La mise à jour des packages Python sera ignorée.`n" -ForegroundColor Gray
+} else {
+    try {
+        # Afficher le mode
+        if ($Preview) {
+            Write-Host "--- Aperçu des packages Python ---"
+        }
+        
+        # 1. Mise à jour de pip (sauf en mode preview)
+        if (-not $Preview) {
+            Write-Host "🔄 Mise à jour de pip..." -ForegroundColor Cyan
+            python -m pip install --upgrade pip 2>&1 | Out-Null
+        }
+        
+        # 2. Lister les packages obsolètes
+        $outdatedJson = python -m pip list --outdated --format=json 2>$null
+        
+        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($outdatedJson)) {
+            Write-Host "⚠️  Erreur lors de la récupération de la liste des packages obsolètes" -ForegroundColor Yellow
+        } else {
+            # Parser le JSON
+            try {
+                $outdatedPackages = $outdatedJson | ConvertFrom-Json
+                
+                # Filtrer les packages exclus
+                $packagesToUpdate = @()
+                $excludedPackages = @()
+                
+                foreach ($pkg in $outdatedPackages) {
+                    if ($Exclude -contains $pkg.name) {
+                        $excludedPackages += $pkg
+                    } else {
+                        $packagesToUpdate += $pkg
+                    }
+                }
+                
+                # Afficher les exclusions
+                if ($excludedPackages.Count -gt 0) {
+                    Write-Host "⏭️  $($excludedPackages.Count) package(s) exclu(s) de la mise à jour" -ForegroundColor Yellow
+                }
+                
+                # Afficher le nombre de packages à mettre à jour
+                if ($packagesToUpdate.Count -eq 0) {
+                    Write-Host "✅ Tous les packages Python sont à jour !" -ForegroundColor Green
+                } else {
+                    Write-Host "📦 $($packagesToUpdate.Count) package(s) à mettre à jour..." -ForegroundColor Cyan
+                    
+                    # Afficher la liste des packages
+                    foreach ($pkg in $packagesToUpdate) {
+                        if ($Preview) {
+                            Write-Host "  📋 $($pkg.name): $($pkg.version) → $($pkg.latest_version)" -ForegroundColor Gray
+                        } else {
+                            Write-Host "  ⬆️  $($pkg.name): $($pkg.version) → $($pkg.latest_version)" -ForegroundColor Gray
+                        }
+                    }
+                    
+                    # Mettre à jour les packages (sauf en mode preview)
+                    if ($Preview) {
+                        Write-Host "`n💡 Utilisez 'he maintenance' sans --preview pour effectuer les mises à jour" -ForegroundColor Yellow
+                    } else {
+                        Write-Host ""
+                        $successCount = 0
+                        $failCount = 0
+                        
+                        # Update packages one by one for better error reporting
+                        # (batch update would fail entirely if one package fails)
+                        foreach ($pkg in $packagesToUpdate) {
+                            $result = python -m pip install --upgrade $pkg.name 2>&1
+                            if ($LASTEXITCODE -eq 0) {
+                                $successCount++
+                            } else {
+                                $failCount++
+                                Write-Host "  ❌ Erreur lors de la mise à jour de $($pkg.name)" -ForegroundColor Red
+                            }
+                        }
+                        
+                        if ($failCount -eq 0) {
+                            Write-Host "✅ Tous les packages ont été mis à jour" -ForegroundColor Green
+                        } else {
+                            Write-Host "⚠️  $successCount package(s) mis à jour, $failCount échec(s)" -ForegroundColor Yellow
+                        }
+                    }
+                }
+            } catch {
+                Write-Host "⚠️  Erreur lors du parsing de la liste des packages : $_" -ForegroundColor Red
+            }
+        }
+    } catch {
+        Write-Host "⚠️  Erreur lors de la mise à jour des packages Python : $_" -ForegroundColor Red
     }
 }
 
