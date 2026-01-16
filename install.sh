@@ -125,34 +125,58 @@ install_to_directory() {
         mkdir -p "$install_dir"
     fi
     
-    # Téléchargement des fichiers
-    echo "[2/4] Téléchargement des fichiers..."
+    # Vérification de unzip
+    if ! command -v unzip &> /dev/null; then
+        echo "⚠️  'unzip' n'est pas installé."
+        echo "   Installation de unzip..."
+        if [ "$need_sudo" = "true" ]; then
+             if command -v apt-get &> /dev/null; then sudo apt-get update && sudo apt-get install -y unzip
+             elif command -v dnf &> /dev/null; then sudo dnf install -y unzip
+             elif command -v yum &> /dev/null; then sudo yum install -y unzip
+             elif command -v brew &> /dev/null; then brew install unzip
+             fi
+        else
+             echo "❌ Veuillez installer 'unzip' pour continuer."
+             exit 1
+        fi
+    fi
+
+    # Téléchargement de l'archive
+    echo "[2/4] Téléchargement de l'archive..."
     
     REPO_URL="https://raw.githubusercontent.com/Lelio88/he_CLI/main"
-    FILES=(
-        "he" "main.ps1" "createrepo.ps1" "fastpush.ps1"
-        "update.ps1" "rollback.ps1" "logcommit.ps1" "backup.ps1"
-        "selfupdate.ps1" "maintenance.ps1" "heian.ps1" "matrix.ps1"
-        "flash.ps1" "help.ps1" "uninstall.sh" "cs.ps1" "readme.ps1"
-        "generate_readme.py" "generate_message.py"
-    )
+    ZIP_FILE="release.zip"
     
-    for file in "${FILES[@]}"; do
-        echo "      Téléchargement de $file..."
-        if [ "$need_sudo" = "true" ]; then
-            sudo curl -fsSL "$REPO_URL/$file" -o "$install_dir/$file"
-        else
-            curl -fsSL "$REPO_URL/$file" -o "$install_dir/$file"
-        fi
-    done
+    # Télécharger dans un dossier temporaire
+    TEMP_DIR=$(mktemp -d)
+    
+    echo "      Téléchargement de $ZIP_FILE..."
+    curl -fsSL "$REPO_URL/$ZIP_FILE" -o "$TEMP_DIR/$ZIP_FILE"
+    
+    if [ ! -f "$TEMP_DIR/$ZIP_FILE" ]; then
+        echo "❌ Erreur de téléchargement. Vérifiez que $ZIP_FILE existe sur le dépôt."
+        rm -rf "$TEMP_DIR"
+        exit 1
+    fi
+    
+    echo "      Extraction..."
+    unzip -q "$TEMP_DIR/$ZIP_FILE" -d "$TEMP_DIR/extracted"
+    
+    echo "      Installation des fichiers..."
+    if [ "$need_sudo" = "true" ]; then
+        sudo cp -r "$TEMP_DIR/extracted/"* "$install_dir/"
+    else
+        cp -r "$TEMP_DIR/extracted/"* "$install_dir/"
+    fi
     
     # --- CRÉATION DU MANIFESTE ---
     echo "      Génération du manifeste (manifest.txt)..."
     
-    # On crée le contenu du fichier ligne par ligne
-    MANIFEST_CONTENT=$(printf "%s\n" "${FILES[@]}")
-    # On ajoute le fichier manifeste lui-même à la liste pour qu'il soit supprimé à la fin
-    MANIFEST_CONTENT="$MANIFEST_CONTENT
+    # Lister les fichiers extraits
+    FILES=$(ls "$TEMP_DIR/extracted")
+    
+    # On ajoute le fichier manifeste lui-même à la liste
+    MANIFEST_CONTENT="$FILES
 manifest.txt"
     
     if [ "$need_sudo" = "true" ]; then
@@ -160,6 +184,9 @@ manifest.txt"
     else
         echo "$MANIFEST_CONTENT" > "$install_dir/manifest.txt"
     fi
+    
+    # Nettoyage
+    rm -rf "$TEMP_DIR"
     # ---------------------------------------
     
     echo ""

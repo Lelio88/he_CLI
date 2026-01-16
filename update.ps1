@@ -109,44 +109,27 @@ if ($hasChanges) {
             }
             
             if (-not $python) {
-                Write-Host "❌ Python non trouve (requis pour -a)" -ForegroundColor Red
-                Write-Host "💡 Installez Python ou utilisez 'he update' sans -a" -ForegroundColor Yellow
+                Write-Host "❌ Python non trouve" -ForegroundColor Red
+                Write-Host "💡 Le mode automatique necessite Python." -ForegroundColor Yellow
                 Write-Host ""
                 exit 1
             }
             
-            # Vérifier Ollama
+            # Vérifier Clé API Gemini (Optionnel)
+            $geminiKey = [Environment]::GetEnvironmentVariable("GEMINI_API_KEY", "User")
+            if (-not $geminiKey) {
+                $geminiKey = $env:GEMINI_API_KEY # Essayer la variable de session
+            }
+
+            # Vérifier Ollama (Optionnel maintenant)
             $ollamaInstalled = Get-Command ollama -ErrorAction SilentlyContinue
-            if (-not $ollamaInstalled) {
-                Write-Host "❌ Ollama non trouve (requis pour -a)" -ForegroundColor Red
-                Write-Host "💡 Installez Ollama:  https://ollama.com" -ForegroundColor Yellow
-                Write-Host ""
-                exit 1
-            }
-            
-            # Vérifier que le modèle est installé
-            $modelToCheck = if ($f) { "gemma2:2b" } else { "phi3:mini" }
-            $modelExists = ollama list 2>&1 | Select-String -Pattern $modelToCheck -Quiet
-            
-            if (-not $modelExists) {
-                Write-Host "📥 Modele $modelToCheck non trouve, telechargement..." -ForegroundColor Yellow
-                ollama pull $modelToCheck
-                if ($LASTEXITCODE -ne 0) {
-                    Write-Host "❌ Echec du telechargement du modele" -ForegroundColor Red
-                    exit 1
-                }
-                Write-Host "✅ Modele telecharge" -ForegroundColor Green
-                Write-Host ""
-            }
             
             # Trouver le script Python
             $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
             $pythonScript = Join-Path -Path $scriptPath -ChildPath "generate_message.py"
             
             if (-not (Test-Path $pythonScript)) {
-                Write-Host "❌ Script generate_message.py introuvable dans $scriptPath" -ForegroundColor Red
-                Write-Host "💡 Reinstallez he_CLI avec 'he selfupdate'" -ForegroundColor Yellow
-                Write-Host ""
+                Write-Host "❌ Script generate_message.py introuvable" -ForegroundColor Red
                 exit 1
             }
             
@@ -154,22 +137,40 @@ if ($hasChanges) {
             try {
                 $startTime = Get-Date
                 
-                # Passer --fast si flag -f
+                # Construction des arguments
                 $pythonArgs = @($pythonScript)
-                if ($f) {
-                    $pythonArgs += "--fast"
+                
+                if ($f) { $pythonArgs += "--fast" }
+                
+                # Si on a une clé Gemini, on l'utilise
+                if ($geminiKey) {
+                    $pythonArgs += "--key"
+                    $pythonArgs += "$geminiKey"
+                    Write-Host "✨ Utilisation de Gemini API..." -ForegroundColor Cyan
+                }
+                # Sinon si Ollama est là
+                elseif ($ollamaInstalled) {
+                     # Vérifier le modèle seulement si on va utiliser Ollama
+                    $modelToCheck = if ($f) { "gemma2:2b" } else { "phi3:mini" }
+                    $modelExists = ollama list 2>&1 | Select-String -Pattern $modelToCheck -Quiet
+                    
+                    if (-not $modelExists) {
+                        Write-Host "📥 Modele $modelToCheck non trouve, telechargement..." -ForegroundColor Yellow
+                        ollama pull $modelToCheck
+                    }
+                    Write-Host "🦙 Utilisation de Ollama ($modelToCheck)..." -ForegroundColor Cyan
+                }
+                else {
+                    Write-Host "⚡ Mode simple (pas d'IA detectee)..." -ForegroundColor Cyan
                 }
                 
                 $output = & $python @pythonArgs 2>&1
-                $message = $output | Where-Object { $_ -is [string] -and $_ -notmatch "^🤖|^❌" } | Select-Object -Last 1
+                $message = $output | Where-Object { $_ -is [string] -and $_ -notmatch "^🤖|^❌|^✨|^🦙|^⚡" } | Select-Object -Last 1
                 
                 $duration = ((Get-Date) - $startTime).TotalSeconds
                 
                 if ($LASTEXITCODE -ne 0 -or -not $message -or $message.Trim() -eq "") {
-                    Write-Host "❌ Echec de la generation du message" -ForegroundColor Red
-                    Write-Host "💡 Utilisez 'he update' sans -a pour saisir manuellement" -ForegroundColor Yellow
-                    Write-Host ""
-                    exit 1
+                    throw "Aucun message retourne"
                 }
                 
                 $message = $message.Trim()

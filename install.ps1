@@ -116,84 +116,67 @@ else {
 }
 Write-Host ""
 
-# Télécharger les fichiers depuis GitHub
-Write-Host "[2/5] Telechargement des fichiers depuis GitHub..." -ForegroundColor Yellow
+# Télécharger release.zip depuis GitHub
+Write-Host "[2/5] Telechargement de l'archive..." -ForegroundColor Yellow
 
 $repoUrl = "https://raw.githubusercontent.com/Lelio88/he_CLI/main"
-$files = @(
-    "he.cmd",
-    "he",
-    "uninstall.bat",
-    "main.ps1",
-    "createrepo.ps1",
-    "fastpush.ps1",
-    "update.ps1",
-    "rollback.ps1",
-    "logcommit.ps1",
-    "backup.ps1",
-    "selfupdate.ps1",
-    "maintenance.ps1",
-    "heian.ps1",
-    "matrix.ps1",
-    "cs.ps1",
-    "flash.ps1",
-    "readme.ps1",
-    "generate_readme.py",
-    "generate_message.py",
-    "help.ps1"
-)
+$zipFile = "release.zip"
+$zipPath = Join-Path $installPath $zipFile
 
-$downloadSuccess = $true
-
-foreach ($file in $files) {
-    try {
-        $url = "$repoUrl/$file"
-        $destination = Join-Path $installPath $file
+try {
+    $url = "$repoUrl/$zipFile"
+    Write-Host "      Telechargement de $zipFile..." -ForegroundColor Gray
+    
+    if ($needSudo) {
+        $tempZip = [System.IO.Path]::GetTempFileName()
+        Invoke-WebRequest -Uri $url -OutFile $tempZip -ErrorAction Stop
         
-        Write-Host "      Telechargement de $file..." -ForegroundColor Gray
+        # Extraction avec sudo (compliqué avec Expand-Archive qui n'a pas sudo)
+        # On extrait dans temp puis on déplace
+        $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ([Guid]::NewGuid().ToString())
+        New-Item -ItemType Directory -Path $tempDir | Out-Null
         
-        if ($needSudo) {
-            # Télécharger dans un fichier temporaire puis déplacer avec sudo
-            $tempFile = [System.IO.Path]::GetTempFileName()
-            Invoke-WebRequest -Uri $url -OutFile $tempFile -ErrorAction Stop
-            sudo mv $tempFile $destination
-            
-            if ($LASTEXITCODE -ne 0) {
-                throw "Erreur lors du déplacement avec sudo"
-            }
-        }
-        else {
-            Invoke-WebRequest -Uri $url -OutFile $destination -ErrorAction Stop
-        }
+        Expand-Archive -Path $tempZip -DestinationPath $tempDir -Force
         
-        Write-Host "      $file telecharge" -ForegroundColor Green
+        # Déplacer les fichiers
+        sudo cp -r "$tempDir/*" "$installPath/"
+        if ($LASTEXITCODE -ne 0) { throw "Erreur lors de la copie des fichiers" }
+        
+        # Nettoyage
+        Remove-Item $tempZip -Force
+        Remove-Item $tempDir -Recurse -Force
     }
-    catch {
-        Write-Host "      Erreur lors du telechargement de $file : $_" -ForegroundColor Red
-        $downloadSuccess = $false
+    else {
+        Invoke-WebRequest -Uri $url -OutFile $zipPath -ErrorAction Stop
+        
+        Write-Host "      Extraction de l'archive..." -ForegroundColor Gray
+        Expand-Archive -Path $zipPath -DestinationPath $installPath -Force
+        
+        # Supprimer le zip après extraction
+        Remove-Item $zipPath -Force
     }
+    
+    Write-Host "      Installation reussie" -ForegroundColor Green
 }
-
-if (-not $downloadSuccess) {
-    Write-Host ""
-    Write-Host "Erreur : Certains fichiers n'ont pas pu etre telecharges." -ForegroundColor Red
-    Write-Host "Verifiez votre connexion Internet et reessayez." -ForegroundColor Red
+catch {
+    Write-Host "      Erreur lors du telechargement ou de l'extraction : $_" -ForegroundColor Red
+    Write-Host "      Verifiez que 'release.zip' existe sur le depot." -ForegroundColor Yellow
     exit 1
 }
+
 try {
     Write-Host "      Création du manifeste d'installation..." -ForegroundColor Gray
+    # Liste des fichiers extraits (approximation basée sur le contenu attendu)
+    $installedFiles = Get-ChildItem -Path $installPath -File | Select-Object -ExpandProperty Name
     $manifestPath = Join-Path $installPath "manifest.txt"
     
     if ($needSudo) {
-        # Si on est en mode sudo (Linux/macOS system), on doit passer par un fichier temp
         $tempManifest = [System.IO.Path]::GetTempFileName()
-        $files | Out-File -FilePath $tempManifest -Encoding UTF8 -Force
+        $installedFiles | Out-File -FilePath $tempManifest -Encoding UTF8 -Force
         sudo mv $tempManifest $manifestPath
-        if ($LASTEXITCODE -ne 0) { throw "Erreur permission manifeste" }
     }
     else {
-        # Windows ou Linux user mode (pas besoin de sudo)
-        $files | Out-File -FilePath $manifestPath -Encoding UTF8 -Force
+        $installedFiles | Out-File -FilePath $manifestPath -Encoding UTF8 -Force
     }
 }
 catch {

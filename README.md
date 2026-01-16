@@ -133,36 +133,64 @@ he createrepo mon-projet -pu -d
 # Push rapide avec message
 he fastpush https://github.com/user/repo.git -m "Initial commit"
 
-# Synchronisation avec message
-he update -m "feat:  nouvelle fonctionnalité"
-#### 🤖 Génération automatique de messages de commit
+**Synchronisation avec message**
+he update -m "feat: nouvelle fonctionnalité"
+```
 
-HE CLI peut générer automatiquement des messages de commit intelligents en analysant vos modifications avec IA locale (Ollama).
+---
 
-**Prérequis** : Python 3.7+ et Ollama installés
+## 🤖 Configuration IA (Messages de Commit)
+
+HE CLI peut générer des messages de commit intelligents en utilisant soit **Google Gemini** (Cloud, plus rapide), soit **Ollama** (Local, privé).
+
+### 1. Google Gemini (Recommandé pour la vitesse)
+Pour utiliser Gemini, vous devez définir une variable d'environnement `GEMINI_API_KEY`.
+
+**Windows (PowerShell) :**
+```powershell
+# Temporaire (pour la session actuelle)
+$env:GEMINI_API_KEY = "votre_cle_api_ici"
+
+# Permanent (nécessite un redémarrage du terminal)
+[System.Environment]::SetEnvironmentVariable("GEMINI_API_KEY", "votre_cle_api_ici", "User")
+```
+
+**Linux/macOS :**
+```bash
+# Ajoutez ceci à votre .bashrc ou .zshrc
+export GEMINI_API_KEY="votre_cle_api_ici"
+```
+
+### 2. Ollama (Local & Privé)
+Si aucune clé Gemini n'est trouvée, HE CLI cherchera Ollama installé localement.
 
 | Commande | Modèle | Vitesse | Description |
 |----------|--------|---------|-------------|
 | `he update -a` | phi3:mini | 2-3s | **Recommandé** - Meilleure qualité |
 | `he update -a -f` | gemma2:2b | 1-2s | Ultra-rapide pour commits fréquents |
 
+### 3. Ordre de priorité
+1. **Gemini API** (si `GEMINI_API_KEY` est présente)
+2. **Ollama** (si installé)
+3. **Mode Simple** (analyse des extensions de fichiers)
+
+---
+
+### 🤖 Génération de messages de commit (Détails)
+
+**Prérequis** : Python 3.7+ est toujours requis.
+
 **Options avancées du générateur :**
 
 ```bash
-# Génération basique (qualité normale)
+# Génération basique (utilise Gemini ou Ollama selon config)
 python generate_message.py
+
+# Forcer l'utilisation d'une clé spécifique
+python generate_message.py --key "AIzaSy..."
 
 # Mode strict (score >= 9/10) avec feedback détaillé
 python generate_message.py --strict --verbose
-
-# Analyse seulement les fichiers staged
-python generate_message.py --staged
-
-# Génération en anglais
-python generate_message.py --language en
-
-# Combinaison : rapide + staged
-python generate_message.py --fast --staged
 ```
 
 **Fonctionnalités :**
@@ -214,7 +242,6 @@ Créez un fichier `COMMIT_MESSAGE.md` à la racine de votre projet :
 - feat(cli): ajoute la commande backup
 - fix(git): corrige l'encodage UTF-8
 - docs(readme): met à jour les instructions
-```
 ```
 
 ---

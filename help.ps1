@@ -67,9 +67,19 @@ Write-Host "  GÉNÉRATION DE MESSAGES DE COMMIT (IA)" -ForegroundColor Cyan
 Write-Host "============================================================================" -ForegroundColor Cyan
 Write-Host ""
 
-Write-Host "  Génération automatique via he update -a" -ForegroundColor Yellow
-Write-Host "    he update -a              Message de commit généré par IA (phi3:mini)" -ForegroundColor Gray
-Write-Host "    he update -a -f           Version ultra-rapide (gemma2:2b)" -ForegroundColor Gray
+Write-Host "  he update -a [-f]" -ForegroundColor Yellow
+Write-Host "    Génère un message de commit automatiquement." -ForegroundColor Gray
+Write-Host ""
+Write-Host "    Priorité des IA :" -ForegroundColor White
+Write-Host "      1. Google Gemini (Si clé API configurée)" -ForegroundColor Cyan
+Write-Host "      2. Ollama (Si installé localement)" -ForegroundColor Cyan
+Write-Host "      3. Mode Simple (Analyse des fichiers)" -ForegroundColor Gray
+Write-Host ""
+
+Write-Host "  Configuration Gemini (Optionnel)" -ForegroundColor Yellow
+Write-Host "    Pour utiliser Gemini (plus rapide), définissez la variable d'environnement :" -ForegroundColor Gray
+Write-Host "    Windows : `$env:GEMINI_API_KEY = 'votre_cle'`" -ForegroundColor White
+Write-Host "    Linux/Mac : export GEMINI_API_KEY='votre_cle'" -ForegroundColor White
 Write-Host ""
 
 Write-Host "  Utilisation directe du générateur" -ForegroundColor Yellow
