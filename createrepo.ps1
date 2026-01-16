@@ -111,29 +111,49 @@ if (-not $ghInstalled) {
         }
         elseif ($distro -match "ubuntu|debian") {
             # Ubuntu/Debian : APT
-            Write-Host "Installation via APT..." -ForegroundColor Cyan
-            
-            # Setup repo
-            bash -c "curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg"
-            bash -c "echo 'deb [arch=\$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main' | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null"
-            
-            sudo apt update
-            sudo apt install gh -y
+            if (Get-Command sudo -ErrorAction SilentlyContinue) {
+                Write-Host "Installation via APT..." -ForegroundColor Cyan
+                
+                # Setup repo
+                bash -c "curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg"
+                bash -c "echo 'deb [arch=\$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main' | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null"
+                
+                sudo apt update
+                sudo apt install gh -y
+            } else {
+                Write-Host "❌ 'sudo' non trouvé. Impossible d'installer gh automatiquement." -ForegroundColor Red
+                exit 1
+            }
         }
         elseif ($distro -match "fedora") {
             # Fedora : DNF
-            Write-Host "Installation via DNF..." -ForegroundColor Cyan
-            sudo dnf install gh -y
+            if (Get-Command sudo -ErrorAction SilentlyContinue) {
+                Write-Host "Installation via DNF..." -ForegroundColor Cyan
+                sudo dnf install gh -y
+            } else {
+                Write-Host "❌ 'sudo' non trouvé. Impossible d'installer gh automatiquement." -ForegroundColor Red
+                exit 1
+            }
         }
         elseif ($distro -match "rhel|centos") {
             # RHEL/CentOS
-            Write-Host "Installation via DNF..." -ForegroundColor Cyan
-            sudo dnf install gh -y
+             if (Get-Command sudo -ErrorAction SilentlyContinue) {
+                Write-Host "Installation via DNF..." -ForegroundColor Cyan
+                sudo dnf install gh -y
+             } else {
+                Write-Host "❌ 'sudo' non trouvé. Impossible d'installer gh automatiquement." -ForegroundColor Red
+                exit 1
+             }
         }
         elseif ($distro -match "arch|manjaro") {
             # Arch Linux : Pacman
-            Write-Host "Installation via Pacman..." -ForegroundColor Cyan
-            sudo pacman -S github-cli --noconfirm
+            if (Get-Command sudo -ErrorAction SilentlyContinue) {
+                Write-Host "Installation via Pacman..." -ForegroundColor Cyan
+                sudo pacman -S github-cli --noconfirm
+            } else {
+                Write-Host "❌ 'sudo' non trouvé. Impossible d'installer gh automatiquement." -ForegroundColor Red
+                exit 1
+            }
         }
         else {
             Write-Host "❌ Distribution Linux non supportée pour l'auto-installation : $distro" -ForegroundColor Red

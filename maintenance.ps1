@@ -1,5 +1,5 @@
 ﻿# ============================================
-# Script de maintenance Windows + Linux
+# Script de maintenance Windows + Linux + macOS
 # Compatible PowerShell Core (pwsh)
 # ============================================
 
@@ -7,6 +7,31 @@ param(
     [switch]$Preview,
     [string[]]$Exclude = @()
 )
+
+# --- FONCTIONS UTILITAIRES ---
+
+function Test-IsRoot {
+    # Vérifie si l'utilisateur est root (UID 0) sur Unix
+    if ($IsWindows) { return $false }
+    try {
+        $uid = id -u
+        return $uid -eq 0
+    } catch { return $false }
+}
+
+function Invoke-Elevated {
+    param([string]$Command)
+    
+    if (Test-IsRoot) {
+        # Déjà root, on exécute directement
+        Invoke-Expression $Command
+    } else {
+        # Pas root, on utilise sudo
+        Invoke-Expression "sudo $Command"
+    }
+}
+
+# --- DÉBUT DU SCRIPT ---
 
 # Vérification des droits administrateur sur Windows
 if ($PSVersionTable.Platform -eq "Win32NT" -or $IsWindows) {
@@ -150,7 +175,9 @@ else {
 
     if ($PSVersionTable.Platform -eq "Unix") {
         # Détecter macOS
-        if (Test-Path "/System/Library/CoreServices/SystemVersion.plist") {
+        # On vérifie uname pour être sûr (plus fiable que le path seul)
+        $uname = uname 2>$null
+        if ($uname -eq "Darwin" -or (Test-Path "/System/Library/CoreServices/SystemVersion.plist")) {
             $isMacOS = $true
             Write-Host "Système d'exploitation : macOS`n" -ForegroundColor Cyan
         }
@@ -175,7 +202,8 @@ else {
             
             Write-Host "`n--- Nettoyage Homebrew ---"
             brew cleanup
-            brew autoremove
+            # Sur macOS, autoremove n'existe pas toujours par défaut dans brew, on évite l'erreur
+            try { brew autoremove } catch {}
         } else {
             Write-Host "Homebrew n'est pas installé. Installez-le depuis https://brew.sh" -ForegroundColor Yellow
         }
@@ -187,31 +215,31 @@ else {
     elseif ($distro -match "ubuntu|debian") {
         # ========== Ubuntu/Debian ==========
         Write-Host "--- Mise à jour des paquets (APT) ---"
-        sudo apt update
-        sudo apt upgrade -y
+        Invoke-Elevated "apt update"
+        Invoke-Elevated "apt upgrade -y"
 
         Write-Host "`n--- Nettoyage APT ---"
-        sudo apt autoremove -y
-        sudo apt autoclean
+        Invoke-Elevated "apt autoremove -y"
+        Invoke-Elevated "apt autoclean"
 
         Write-Host "`n--- Réparation des paquets cassés ---"
-        sudo apt --fix-broken install -y
+        Invoke-Elevated "apt --fix-broken install -y"
 
         Write-Host "`n--- Nettoyage du journal systemd ---"
-        sudo journalctl --vacuum-size=100M
+        Invoke-Elevated "journalctl --vacuum-size=100M"
 
         Write-Host "`n--- Services en échec ---"
         systemctl --failed
 
         Write-Host "`n--- Vérification du disque (fsck dry-run) ---"
-        sudo fsck -N /
+        Invoke-Elevated "fsck -N /"
 
         # SMART
         if (Get-Command smartctl -ErrorAction SilentlyContinue) {
             Write-Host "`n--- SMART (état du disque) ---"
             $diskDevice = (lsblk -d -o NAME,TYPE | Select-String "disk" | Select-Object -First 1) -replace '\s.*', ''
             if ($diskDevice) {
-                sudo smartctl -H "/dev/$diskDevice"
+                Invoke-Elevated "smartctl -H /dev/$diskDevice"
             }
         } else {
             Write-Host "`nsmartctl non installé (sudo apt install smartmontools pour l'activer)" -ForegroundColor Yellow
@@ -221,27 +249,27 @@ else {
     elseif ($distro -match "fedora|rhel|centos") {
         # ========== Fedora/RHEL/CentOS ==========
         Write-Host "--- Mise à jour des paquets (DNF) ---"
-        sudo dnf update -y
+        Invoke-Elevated "dnf update -y"
 
         Write-Host "`n--- Nettoyage DNF ---"
-        sudo dnf autoremove -y
-        sudo dnf clean all
+        Invoke-Elevated "dnf autoremove -y"
+        Invoke-Elevated "dnf clean all"
 
         Write-Host "`n--- Nettoyage du journal systemd ---"
-        sudo journalctl --vacuum-size=100M
+        Invoke-Elevated "journalctl --vacuum-size=100M"
 
         Write-Host "`n--- Services en échec ---"
         systemctl --failed
 
         Write-Host "`n--- Vérification du disque (fsck dry-run) ---"
-        sudo fsck -N /
+        Invoke-Elevated "fsck -N /"
 
         # SMART
         if (Get-Command smartctl -ErrorAction SilentlyContinue) {
             Write-Host "`n--- SMART (état du disque) ---"
             $diskDevice = (lsblk -d -o NAME,TYPE | Select-String "disk" | Select-Object -First 1) -replace '\s.*', ''
             if ($diskDevice) {
-                sudo smartctl -H "/dev/$diskDevice"
+                Invoke-Elevated "smartctl -H /dev/$diskDevice"
             }
         } else {
             Write-Host "`nsmartctl non installé (sudo dnf install smartmontools pour l'activer)" -ForegroundColor Yellow
@@ -251,26 +279,26 @@ else {
     elseif ($distro -match "arch|manjaro") {
         # ========== Arch Linux/Manjaro ==========
         Write-Host "--- Mise à jour des paquets (Pacman) ---"
-        sudo pacman -Syu --noconfirm
+        Invoke-Elevated "pacman -Syu --noconfirm"
 
         Write-Host "`n--- Nettoyage Pacman ---"
-        sudo pacman -Sc --noconfirm
+        Invoke-Elevated "pacman -Sc --noconfirm"
 
         Write-Host "`n--- Nettoyage du journal systemd ---"
-        sudo journalctl --vacuum-size=100M
+        Invoke-Elevated "journalctl --vacuum-size=100M"
 
         Write-Host "`n--- Services en échec ---"
         systemctl --failed
 
         Write-Host "`n--- Vérification du disque (fsck dry-run) ---"
-        sudo fsck -N /
+        Invoke-Elevated "fsck -N /"
 
         # SMART
         if (Get-Command smartctl -ErrorAction SilentlyContinue) {
             Write-Host "`n--- SMART (état du disque) ---"
             $diskDevice = (lsblk -d -o NAME,TYPE | Select-String "disk" | Select-Object -First 1) -replace '\s.*', ''
             if ($diskDevice) {
-                sudo smartctl -H "/dev/$diskDevice"
+                Invoke-Elevated "smartctl -H /dev/$diskDevice"
             }
         } else {
             Write-Host "`nsmartctl non installé (sudo pacman -S smartmontools pour l'activer)" -ForegroundColor Yellow
@@ -283,7 +311,7 @@ else {
         Write-Host "`nOpérations de maintenance génériques :" -ForegroundColor Cyan
         
         Write-Host "`n--- Nettoyage du journal systemd ---"
-        sudo journalctl --vacuum-size=100M
+        Invoke-Elevated "journalctl --vacuum-size=100M"
 
         Write-Host "`n--- Services en échec ---"
         systemctl --failed
