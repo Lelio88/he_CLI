@@ -137,13 +137,13 @@ if (-not $ghInstalled) {
         }
         elseif ($distro -match "rhel|centos") {
             # RHEL/CentOS
-             if (Get-Command sudo -ErrorAction SilentlyContinue) {
+            if (Get-Command sudo -ErrorAction SilentlyContinue) {
                 Write-Host "Installation via DNF..." -ForegroundColor Cyan
                 sudo dnf install gh -y
-             } else {
+            } else {
                 Write-Host "❌ 'sudo' non trouvé. Impossible d'installer gh automatiquement." -ForegroundColor Red
                 exit 1
-             }
+            }
         }
         elseif ($distro -match "arch|manjaro") {
             # Arch Linux : Pacman
@@ -324,6 +324,9 @@ if ($largeFiles) {
             git lfs track $file.Name 2>&1 | Out-Null
             Write-Host "   ➕ Tracking LFS ajouté pour : $($file.Name)" -ForegroundColor Green
         }
+
+        # Forcer l'ajout de .gitattributes pour qu'il soit pris en compte immédiatement
+        git add .gitattributes
         
     } else {
         Write-Host "❌ Git LFS n'est pas installé sur cette machine." -ForegroundColor Red
