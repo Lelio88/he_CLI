@@ -297,6 +297,40 @@ if (-not (Test-Path ".gitignore")) {
     )
     $ignoreContent | Out-File -FilePath ".gitignore" -Encoding UTF8
 }
+
+# --- GESTION LFS (Large File Storage) ---
+Write-Host "⚖️  Analyse de la taille des fichiers..."
+$largeFiles = Get-ChildItem -Path . -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Length -gt 50MB -and $_.FullName -notmatch "\\.git\\" }
+
+if ($largeFiles) {
+    Write-Host "⚠️  Fichiers volumineux (>50MB) détectés :" -ForegroundColor Yellow
+    $largeFiles | Select-Object Name, @{Name="Size(MB)";Expression={[math]::Round($_.Length / 1MB, 2)}} | Format-Table -AutoSize | Out-String | Write-Host
+
+    if (Get-Command "git-lfs" -ErrorAction SilentlyContinue) {
+        Write-Host "🔧 Installation et configuration de Git LFS..." -ForegroundColor Cyan
+        git lfs install 2>&1 | Out-Null
+        
+        $extensions = $largeFiles | Select-Object -ExpandProperty Extension -Unique
+        foreach ($ext in $extensions) {
+            if (-not [string]::IsNullOrWhiteSpace($ext)) {
+                git lfs track "*$ext" 2>&1 | Out-Null
+                Write-Host "   ➕ Tracking LFS ajouté pour : *$ext" -ForegroundColor Green
+            }
+        }
+        
+        # Gestion des fichiers sans extension
+        $noExtFiles = $largeFiles | Where-Object { [string]::IsNullOrWhiteSpace($_.Extension) }
+        foreach ($file in $noExtFiles) {
+            git lfs track $file.Name 2>&1 | Out-Null
+            Write-Host "   ➕ Tracking LFS ajouté pour : $($file.Name)" -ForegroundColor Green
+        }
+        
+    } else {
+        Write-Host "❌ Git LFS n'est pas installé sur cette machine." -ForegroundColor Red
+        Write-Host "   Le push risque d'échouer si des fichiers dépassent 100MB." -ForegroundColor Yellow
+        Write-Host "   Installez-le via : winget install GitHub.GitLFS" -ForegroundColor Gray
+    }
+}
 # ----------------------------------------------
 
 Write-Host "📝 Ajout des fichiers..."
