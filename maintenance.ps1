@@ -53,6 +53,17 @@ if ($PSVersionTable.Platform -eq "Win32NT" -or $IsWindows) {
 
 Write-Host "`n===== MAINTENANCE CROSS-PLATFORM =====`n"
 
+# --- MESURE ESPACE DISQUE (DEBUT) ---
+$startFreeSpace = 0
+try {
+    if ($PSVersionTable.Platform -eq "Win32NT" -or $IsWindows) { 
+        $startFreeSpace = (Get-PSDrive C -ErrorAction SilentlyContinue).Free 
+    }
+    else { 
+        $startFreeSpace = (Get-PSDrive '/' -PSProvider FileSystem -ErrorAction SilentlyContinue).Free 
+    }
+} catch {}
+
 # Détection OS corrigée
 $isWindows = $false
 
@@ -418,6 +429,269 @@ if (-not $pythonCmd) {
     } catch {
         Write-Host "⚠️  Erreur lors de la mise à jour des packages Python : $_" -ForegroundColor Red
     }
+}
+
+# ========== Mise à jour des packages NPM globaux ==========
+Write-Host "`n--- Mise à jour des packages NPM globaux ---"
+
+$npmCmd = Get-Command npm -ErrorAction SilentlyContinue
+
+if (-not $npmCmd) {
+    Write-Host "⚠️  NPM (Node Package Manager) n'est pas installé ou n'est pas dans le PATH" -ForegroundColor Yellow
+    Write-Host "   La mise à jour des packages NPM sera ignorée.`n" -ForegroundColor Gray
+} else {
+    try {
+        if ($Preview) {
+            Write-Host "--- Aperçu des packages NPM obsolètes ---"
+            npm outdated -g --parseable
+            Write-Host "`n💡 Utilisez 'he maintenance' sans --preview pour effectuer les mises à jour" -ForegroundColor Yellow
+        } else {
+            Write-Host "🔄 Mise à jour des packages NPM globaux..." -ForegroundColor Cyan
+            # Sur Windows, npm update -g peut parfois être capricieux sans shell admin, 
+            # mais le script vérifie déjà les droits admin au début pour Windows.
+            # Sur Linux/macOS, cela peut nécessiter sudo si npm est installé dans /usr/local
+            
+            if ($IsWindows) {
+                npm update -g
+            } else {
+                # Test si l'utilisateur a besoin de sudo pour npm
+                # On tente une commande simple dry-run ou on vérifie le owner du dossier npm
+                # Simplification : On utilise Invoke-Elevated si ce n'est pas inscriptible
+                
+                $npmPrefix = npm config get prefix
+                if (-not (Test-Path "$npmPrefix" -IsValid)) {
+                     # Fallback si prefix vide ou erreur
+                     Invoke-Elevated "npm update -g"
+                } else {
+                     # Vérifier si on a les droits d'écriture
+                     try {
+                        $testFile = Join-Path $npmPrefix ".test_write_perm"
+                        New-Item -ItemType File -Path $testFile -Force -ErrorAction Stop | Out-Null
+                        Remove-Item $testFile -Force
+                        # On a les droits, on lance direct
+                        npm update -g
+                     } catch {
+                        # Pas les droits, sudo
+                        Invoke-Elevated "npm update -g"
+                     }
+                }
+            }
+            
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "✅ Packages NPM mis à jour." -ForegroundColor Green
+            } else {
+                Write-Host "⚠️  Erreur lors de la mise à jour NPM." -ForegroundColor Yellow
+            }
+        }
+    } catch {
+        Write-Host "⚠️  Erreur lors de l'exécution de NPM : $_" -ForegroundColor Red
+    }
+}
+
+# ========== Nettoyage Docker (Safe) ==========
+Write-Host "`n--- Nettoyage Docker (Safe Mode) ---"
+
+$dockerCmd = Get-Command docker -ErrorAction SilentlyContinue
+
+if (-not $dockerCmd) {
+    Write-Host "ℹ️  Docker n'est pas détecté. Nettoyage ignoré." -ForegroundColor Gray
+} else {
+    try {
+        # Vérifier si le daemon Docker tourne
+        docker info > $null 2>&1
+        if ($LASTEXITCODE -ne 0) {
+             Write-Host "⚠️  Le daemon Docker ne semble pas démarré. Nettoyage impossible." -ForegroundColor Yellow
+        } else {
+            if ($Preview) {
+                Write-Host "--- Aperçu du nettoyage Docker ---"
+                Write-Host "Seront supprimés :"
+                Write-Host "  1. Conteneurs arrêtés depuis > 1 semaine (168h)"
+                Write-Host "  2. Images 'dangling' (intermédiaires/orphelines)"
+            } else {
+                Write-Host "🧹 Nettoyage des conteneurs arrêtés (> 1 semaine)..." -ForegroundColor Cyan
+                # Supprime les conteneurs arrêtés depuis plus de 1 semaine (168h)
+                docker container prune -f --filter "until=168h"
+                
+                Write-Host "🧹 Nettoyage des images orphelines (dangling)..." -ForegroundColor Cyan
+                # Supprime uniquement les images <none> (builds intermédiaires inutilisés)
+                docker image prune -f
+                
+                Write-Host "✅ Nettoyage Docker terminé." -ForegroundColor Green
+            }
+        }
+    } catch {
+        Write-Host "⚠️  Erreur lors du nettoyage Docker : $_" -ForegroundColor Red
+    }
+}
+
+# ========== Mise à jour YARN & PNPM (Si détectés) ==========
+
+# --- YARN ---
+$yarnCmd = Get-Command yarn -ErrorAction SilentlyContinue
+if ($yarnCmd) {
+    Write-Host "`n--- Mise à jour YARN (Global) ---"
+    try {
+        if ($Preview) {
+            Write-Host "Aperçu : yarn global upgrade"
+        } else {
+            Write-Host "🔄 Mise à jour des packages Yarn globaux..." -ForegroundColor Cyan
+            # Yarn global upgrade peut demander d'être interactif parfois, on tente le non-interactif si possible
+            # Yarn v1 vs v2+ diffère, mais 'global upgrade' est surtout v1. 
+            # Pour v2+, c'est 'yarn dlx' ou gestion par projet. On suppose v1 classic ici.
+            cmd /c "yarn global upgrade --latest" 2>&1 | Out-Null
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "✅ Yarn global mis à jour." -ForegroundColor Green
+            } else {
+                Write-Host "⚠️  Erreur ou rien à mettre à jour pour Yarn." -ForegroundColor Yellow
+            }
+        }
+    } catch {
+        Write-Host "⚠️  Erreur Yarn : $_" -ForegroundColor Red
+    }
+}
+
+# --- PNPM ---
+$pnpmCmd = Get-Command pnpm -ErrorAction SilentlyContinue
+if ($pnpmCmd) {
+    Write-Host "`n--- Mise à jour PNPM (Global) ---"
+    try {
+        if ($Preview) {
+            Write-Host "Aperçu : pnpm update -g"
+        } else {
+            Write-Host "🔄 Mise à jour des packages PNPM globaux..." -ForegroundColor Cyan
+            pnpm update -g
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "✅ PNPM global mis à jour." -ForegroundColor Green
+            } else {
+                Write-Host "⚠️  Erreur PNPM." -ForegroundColor Yellow
+            }
+        }
+    } catch {
+        Write-Host "⚠️  Erreur PNPM : $_" -ForegroundColor Red
+    }
+}
+
+# ========== Windows Extra Managers (Chocolatey / Scoop) ==========
+if ($IsWindows) {
+    
+    # --- CHOCOLATEY ---
+    $chocoCmd = Get-Command choco -ErrorAction SilentlyContinue
+    if ($chocoCmd) {
+        Write-Host "`n--- Mise à jour Chocolatey ---"
+        # Nécessite Admin, déjà vérifié au début du script pour Windows
+        if ($isAdmin) {
+             if ($Preview) {
+                Write-Host "Aperçu : choco upgrade all -y"
+             } else {
+                Write-Host "🍫 Mise à jour de tous les paquets Chocolatey..." -ForegroundColor Cyan
+                choco upgrade all -y
+             }
+        } else {
+            Write-Host "⚠️  Chocolatey détecté mais ignoré (nécessite Admin)." -ForegroundColor Yellow
+        }
+    }
+
+    # --- SCOOP ---
+    $scoopCmd = Get-Command scoop -ErrorAction SilentlyContinue
+    if ($scoopCmd) {
+        Write-Host "`n--- Mise à jour Scoop ---"
+        # Scoop est utilisateur, pas besoin d'admin
+        if ($Preview) {
+            Write-Host "Aperçu : scoop update *"
+        } else {
+            Write-Host "🍨 Mise à jour de tous les paquets Scoop..." -ForegroundColor Cyan
+            try {
+                scoop update *
+                Write-Host "✅ Scoop mis à jour." -ForegroundColor Green
+            } catch {
+                Write-Host "⚠️  Erreur Scoop : $_" -ForegroundColor Red
+            }
+        }
+    }
+}
+
+# ========== Vider la Corbeille (Recycle Bin) ==========
+Write-Host "`n--- Vidage de la Corbeille ---"
+if ($Preview) {
+    Write-Host "Aperçu : La corbeille sera vidée."
+} else {
+    if ($IsWindows) {
+        # Windows
+        try {
+            # Utilisation de l'API Shell pour vider sans confirmation popup (sauf erreur)
+            # Clear-RecycleBin est dispo depuis PS 5
+            $bins = Get-ChildItem "C:\`$Recycle.Bin" -Force -ErrorAction SilentlyContinue
+            if ($bins) {
+                Write-Host "🗑️  Suppression des fichiers de la corbeille..." -ForegroundColor Cyan
+                Clear-RecycleBin -Force -ErrorAction SilentlyContinue
+                Write-Host "✅ Corbeille vidée." -ForegroundColor Green
+            } else {
+                Write-Host "✅ Corbeille déjà vide ou inaccessible." -ForegroundColor Gray
+            }
+        } catch {
+            Write-Host "⚠️  Impossible de vider la corbeille (droits ?)." -ForegroundColor Yellow
+        }
+    } elseif ($isMacOS) {
+        # macOS
+        try {
+            # rm -rf ~/.Trash/* est risqué si mal interprété, mais c'est le standard
+            # On utilise une méthode plus sûre si possible, sinon rm
+            Write-Host "🗑️  Vidage de la corbeille (macOS)..." -ForegroundColor Cyan
+            rm -rf ~/.Trash/*
+            Write-Host "✅ Corbeille vidée." -ForegroundColor Green
+        } catch {
+            Write-Host "⚠️  Erreur." -ForegroundColor Red
+        }
+    } elseif ($isLinux) {
+        # Linux (Standard FreeDesktop)
+        $trashPath = "$env:HOME/.local/share/Trash"
+        if (Test-Path $trashPath) {
+            Write-Host "🗑️  Vidage de la corbeille (Linux)..." -ForegroundColor Cyan
+            try {
+                Remove-Item "$trashPath/files/*" -Recurse -Force -ErrorAction SilentlyContinue
+                Remove-Item "$trashPath/info/*" -Recurse -Force -ErrorAction SilentlyContinue
+                Write-Host "✅ Corbeille vidée." -ForegroundColor Green
+            } catch {
+                Write-Host "⚠️  Erreur lors du vidage." -ForegroundColor Yellow
+            }
+        }
+    }
+}
+
+# ========== RAPPORT ESPACE DISQUE ==========
+try {
+    $endFreeSpace = 0
+    if ($PSVersionTable.Platform -eq "Win32NT" -or $IsWindows) { 
+        $endFreeSpace = (Get-PSDrive C -ErrorAction SilentlyContinue).Free 
+    }
+    else { 
+        $endFreeSpace = (Get-PSDrive '/' -PSProvider FileSystem -ErrorAction SilentlyContinue).Free 
+    }
+
+    if ($startFreeSpace -gt 0 -and $endFreeSpace -gt 0) {
+        $diff = $endFreeSpace - $startFreeSpace
+        
+        # Formatage
+        $startStr = "{0:N2}" -f ($startFreeSpace / 1GB)
+        $endStr = "{0:N2}" -f ($endFreeSpace / 1GB)
+        
+        Write-Host "`n📊 RAPPORT D'ESPACE DISQUE" -ForegroundColor Magenta
+        Write-Host "   Avant : $startStr GB" -ForegroundColor Gray
+        Write-Host "   Après : $endStr GB" -ForegroundColor Gray
+        
+        if ($diff -gt 0) {
+            $gainStr = "{0:N2} MB" -f ($diff / 1MB)
+            if ($diff -gt 1GB) { $gainStr = "{0:N2} GB" -f ($diff / 1GB) }
+            Write-Host "   🎉 Gain : +$gainStr d'espace libre !" -ForegroundColor Green
+        } elseif ($diff -lt 0) {
+            $lossStr = "{0:N2} MB" -f ([math]::Abs($diff) / 1MB)
+            Write-Host "   📉 Espace utilisé : -$lossStr (Mises à jour installées)" -ForegroundColor Yellow
+        } else {
+            Write-Host "   ➡️  Espace inchangé." -ForegroundColor Gray
+        }
+    }
+} catch {
+    # Silencieux si erreur de calcul
 }
 
 Write-Host "`n===== FIN DE MAINTENANCE =====`n"
