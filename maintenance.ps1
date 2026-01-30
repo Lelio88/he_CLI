@@ -48,12 +48,12 @@ function Show-Menu {
         # Nettoyage et affichage
         try { [Console]::SetCursorPosition(0, 0) } catch { Clear-Host } # Fallback si le curseur échoue
         Write-Host "===== SÉLECTION DES TÂCHES DE MAINTENANCE =====" -ForegroundColor Cyan
-        Write-Host " [↑/↓] Naviguer | [Espace] Cocher/Décocher | [Entrée] Valider" -ForegroundColor Gray
+        Write-Host " [UP/DOWN] Naviguer | [Espace] Cocher/Decocher | [Entree] Valider" -ForegroundColor Gray
         Write-Host "--------------------------------------------------------"
 
         # Gestion du "Tout cocher"
         $marker = if ($cursorIndex -eq 0) { ">" } else { " " }
-        $check = if ($selectAllState) { "[x]" } else { "[ ]" }
+        $check = if ($selectAllState) { "[X]" } else { "[ ]" }
         $color = if ($cursorIndex -eq 0) { "Yellow" } else { "White" }
         Write-Host "$marker $check TOUT SÉLECTIONNER" -ForegroundColor $color
 
@@ -61,7 +61,7 @@ function Show-Menu {
         for ($i = 0; $i -lt $Tasks.Count; $i++) {
             $task = $Tasks[$i]
             $marker = if ($cursorIndex -eq ($i + 1)) { ">" } else { " " }
-            $check = if ($task.Selected) { "[x]" } else { "[ ]" }
+            $check = if ($task.Selected) { "[X]" } else { "[ ]" }
             $color = if ($cursorIndex -eq ($i + 1)) { "Yellow" } else { "Gray" }
             
             Write-Host "$marker $check $($task.Name)" -ForegroundColor $color
@@ -134,7 +134,7 @@ if ($isWindows) {
     $currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
     $isAdmin = $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
     if (-not $isAdmin) {
-        Write-Host "`n⚠️  Certaines tâches nécessitent des droits administrateur." -ForegroundColor Yellow
+        Write-Host "`n[!] Certaines taches necessitent des droits administrateur." -ForegroundColor Yellow
         # On ne force pas le redémarrage ici pour laisser le choix des tâches à l'utilisateur,
         # mais les tâches admin échoueront ou seront ignorées si cochées.
     }
@@ -474,12 +474,12 @@ try {
     if ($startFreeSpace -gt 0 -and $endFreeSpace -gt 0) {
         $diff = $endFreeSpace - $startFreeSpace
         
-        Write-Host "`n📊 RAPPORT D'ESPACE DISQUE" -ForegroundColor Magenta
+        Write-Host "`n=== RAPPORT D'ESPACE DISQUE ===" -ForegroundColor Magenta
         Write-Host "   Avant : $('{0:N2}' -f ($startFreeSpace / 1GB)) GB" -ForegroundColor Gray
         Write-Host "   Après : $('{0:N2}' -f ($endFreeSpace / 1GB)) GB" -ForegroundColor Gray
         
         if ($diff -gt 0) {
-            Write-Host "   🎉 Gain : +$('{0:N2}' -f ($diff / 1MB)) MB" -ForegroundColor Green
+            Write-Host "   + Gain : +$('{0:N2}' -f ($diff / 1MB)) MB" -ForegroundColor Green
         }
     }
 } catch {}
