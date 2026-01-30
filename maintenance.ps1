@@ -399,7 +399,10 @@ if (Get-Command docker -ErrorAction SilentlyContinue) {
 if (Get-Command yarn -ErrorAction SilentlyContinue) {
     $taskList.Add([PSCustomObject]@{
         Name = "Yarn : Upgrade Global"
-        Action = { cmd /c "yarn global upgrade --latest" 2>&1 | Out-Null }
+        Action = { 
+            if ($isWindows) { cmd /c "yarn global upgrade --latest" 2>&1 | Out-Null }
+            else { yarn global upgrade --latest 2>&1 | Out-Null }
+        }
         Selected = $true
     })
 }
@@ -457,7 +460,7 @@ foreach ($task in $taskList) {
             try {
                 & $task.Action
             } catch {
-                Write-Host "    ❌ Erreur : $_" -ForegroundColor Red
+                Write-Host "    [ERREUR] : $_" -ForegroundColor Red
             }
         }
     } else {
