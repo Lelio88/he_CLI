@@ -28,11 +28,6 @@ try {
     Compress-Archive -Path $files.FullName -DestinationPath $zipPath -CompressionLevel Optimal
     Write-Host "✅ release.zip créé avec succès !" -ForegroundColor Green
     Write-Host "   Taille : $(("{0:N2} KB" -f ((Get-Item $zipPath).Length / 1kb)))" -ForegroundColor Gray
-    Write-Host ""
-    Write-Host "N'oubliez pas de commit et push ce fichier :" -ForegroundColor Yellow
-    Write-Host "git add release.zip" -ForegroundColor White
-    Write-Host "git commit -m 'chore: update release archive'" -ForegroundColor White
-    Write-Host "git push" -ForegroundColor White
 }
 catch {
     Write-Host "❌ Erreur lors de la création du zip : $_" -ForegroundColor Red
