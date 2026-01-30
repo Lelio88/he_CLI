@@ -3,6 +3,11 @@
 # Compatible PowerShell Core (pwsh)
 # ============================================
 
+# Force l'encodage UTF-8 pour l'affichage
+try {
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+} catch {}
+
 param(
     [switch]$Preview,
     [switch]$All,
@@ -47,7 +52,7 @@ function Show-Menu {
     while ($running) {
         # Nettoyage et affichage
         try { [Console]::SetCursorPosition(0, 0) } catch { Clear-Host } # Fallback si le curseur échoue
-        Write-Host "===== SÉLECTION DES TÂCHES DE MAINTENANCE =====" -ForegroundColor Cyan
+        Write-Host "===== SELECTION DES TACHES DE MAINTENANCE =====" -ForegroundColor Cyan
         Write-Host " [UP/DOWN] Naviguer | [Espace] Cocher/Decocher | [Entree] Valider" -ForegroundColor Gray
         Write-Host "--------------------------------------------------------"
 
@@ -55,7 +60,7 @@ function Show-Menu {
         $marker = if ($cursorIndex -eq 0) { ">" } else { " " }
         $check = if ($selectAllState) { "[X]" } else { "[ ]" }
         $color = if ($cursorIndex -eq 0) { "Yellow" } else { "White" }
-        Write-Host "$marker $check TOUT SÉLECTIONNER" -ForegroundColor $color
+        Write-Host "$marker $check TOUT SELECTIONNER" -ForegroundColor $color
 
         # Affichage des tâches
         for ($i = 0; $i -lt $Tasks.Count; $i++) {
