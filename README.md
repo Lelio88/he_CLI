@@ -517,3 +517,9 @@ Version **1.2.0** - 2025-12-10
 ⭐ Si ce projet vous aide, n'hésitez pas à lui donner une étoile ! 
 
 </div>
+
+---
+
+## 🔒 Licence et Droits
+
+Ce repository est sous licence propriétaire. Vous n'êtes pas autorisé à modifier ce CLI et à le partager ou le redistribuer sans l'accord explicite de l'auteur. Toute modification non autorisée est strictement interdite.
