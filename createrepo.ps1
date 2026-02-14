@@ -20,20 +20,8 @@
 [Console]::InputEncoding = [System.Text.Encoding]::UTF8
 $PSDefaultParameterValues['*:Encoding'] = 'utf8'
 
-# Détecter l'OS
-$isWindows = $false
-if (Test-Path variable:global:IsWindows) {
-    $isWindows = $IsWindows
-}
-elseif ($env:OS -eq "Windows_NT") {
-    $isWindows = $true
-}
-elseif ($PSVersionTable.Platform -eq "Win32NT") {
-    $isWindows = $true
-}
-elseif ($PSVersionTable.PSEdition -eq "Desktop") {
-    $isWindows = $true
-}
+# Charger la détection OS partagée
+. (Join-Path $PSScriptRoot "common.ps1")
 
 # ==========================================
 # GESTION DE GITHUB CLI (Installation Auto)
@@ -82,22 +70,7 @@ if (-not $ghInstalled) {
         Write-Host "✅ GitHub CLI installé avec succès" -ForegroundColor Green
     }
     else {
-        # ========== Linux/macOS ==========
-        $isMacOS = $false
-        $distro = ""
-        
-        # Détecter macOS
-        if (Test-Path "/System/Library/CoreServices/SystemVersion.plist") {
-            $isMacOS = $true
-        }
-        # Détecter la distribution Linux
-        elseif (Test-Path "/etc/os-release") {
-            $osRelease = Get-Content "/etc/os-release" -Raw
-            if ($osRelease -match 'ID=([^\s]+)') {
-                $distro = $matches[1] -replace '"', ''
-            }
-        }
-        
+        # ========== Linux/macOS (détection via common.ps1) ==========
         if ($isMacOS) {
             # macOS : Homebrew
             if (Get-Command brew -ErrorAction SilentlyContinue) {
@@ -308,26 +281,44 @@ if ($largeFiles) {
 
     if (Get-Command "git-lfs" -ErrorAction SilentlyContinue) {
         Write-Host "🔧 Installation et configuration de Git LFS..." -ForegroundColor Cyan
-        git lfs install 2>&1 | Out-Null
-        
+        $lfsOutput = git lfs install 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "❌ Erreur lors de l'initialisation de Git LFS :" -ForegroundColor Red
+            Write-Host "   $lfsOutput" -ForegroundColor Gray
+            Write-Host "   Le push risque d'échouer pour les fichiers volumineux." -ForegroundColor Yellow
+        } else {
+            Write-Host "   ✅ Git LFS initialisé" -ForegroundColor Green
+        }
+
+        # Configurer le buffer HTTP pour les gros uploads (500MB)
+        git config http.postBuffer 524288000
+
         $extensions = $largeFiles | Select-Object -ExpandProperty Extension -Unique
         foreach ($ext in $extensions) {
             if (-not [string]::IsNullOrWhiteSpace($ext)) {
-                git lfs track "*$ext" 2>&1 | Out-Null
-                Write-Host "   ➕ Tracking LFS ajouté pour : *$ext" -ForegroundColor Green
+                $trackOutput = git lfs track "*$ext" 2>&1
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Host "   ⚠️ Erreur tracking LFS pour *$ext : $trackOutput" -ForegroundColor Yellow
+                } else {
+                    Write-Host "   ➕ Tracking LFS ajouté pour : *$ext" -ForegroundColor Green
+                }
             }
         }
-        
+
         # Gestion des fichiers sans extension
         $noExtFiles = $largeFiles | Where-Object { [string]::IsNullOrWhiteSpace($_.Extension) }
         foreach ($file in $noExtFiles) {
-            git lfs track $file.Name 2>&1 | Out-Null
-            Write-Host "   ➕ Tracking LFS ajouté pour : $($file.Name)" -ForegroundColor Green
+            $trackOutput = git lfs track $file.Name 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "   ⚠️ Erreur tracking LFS pour $($file.Name) : $trackOutput" -ForegroundColor Yellow
+            } else {
+                Write-Host "   ➕ Tracking LFS ajouté pour : $($file.Name)" -ForegroundColor Green
+            }
         }
 
         # Forcer l'ajout de .gitattributes pour qu'il soit pris en compte immédiatement
         git add .gitattributes
-        
+
     } else {
         Write-Host "❌ Git LFS n'est pas installé sur cette machine." -ForegroundColor Red
         Write-Host "   Le push risque d'échouer si des fichiers dépassent 100MB." -ForegroundColor Yellow
@@ -338,6 +329,19 @@ if ($largeFiles) {
 
 Write-Host "📝 Ajout des fichiers..."
 git add .
+
+# Vérification LFS si des fichiers volumineux ont été détectés
+if ($largeFiles -and (Get-Command "git-lfs" -ErrorAction SilentlyContinue)) {
+    $lfsTracked = git lfs ls-files 2>&1
+    if ($lfsTracked) {
+        Write-Host "✅ Fichiers trackés par LFS :" -ForegroundColor Green
+        $lfsTracked | ForEach-Object { Write-Host "   $_" -ForegroundColor Gray }
+    } else {
+        Write-Host "⚠️  ATTENTION : Aucun fichier n'est tracké par LFS malgré la configuration." -ForegroundColor Red
+        Write-Host "   Les fichiers volumineux risquent de faire échouer le push." -ForegroundColor Yellow
+        Write-Host "   Essayez : git lfs install --force, puis relancez la commande." -ForegroundColor Yellow
+    }
+}
 
 # Vérifier s'il y a des changements
 $status = git status --porcelain
@@ -397,10 +401,21 @@ $repoUrl = "https://github.com/$githubUser/$RepoName.git"
 git remote add origin $repoUrl
 
 Write-Host "🚀 Push vers main..."
-git push -u origin main
+$pushOutput = git push -u origin main 2>&1
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Erreur lors du push." -ForegroundColor Red
+    Write-Host "❌ Erreur lors du push :" -ForegroundColor Red
+    $pushOutput | ForEach-Object { Write-Host "   $_" -ForegroundColor Gray }
+
+    # Diagnostic LFS si applicable
+    if ("$pushOutput" -match "LFS|lfs|large file|size exceeds|exceeds GitHub") {
+        Write-Host ""
+        Write-Host "💡 Le problème semble lié aux fichiers volumineux (LFS)." -ForegroundColor Yellow
+        Write-Host "   Vérifiez que Git LFS est correctement installé : git lfs install" -ForegroundColor Yellow
+        Write-Host "   Vérifiez le tracking : git lfs ls-files" -ForegroundColor Yellow
+        Write-Host "   Vérifiez votre quota LFS : https://github.com/settings/billing" -ForegroundColor Yellow
+    }
+
     exit 1
 }
 

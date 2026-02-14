@@ -3,16 +3,16 @@
 # Compatible PowerShell Core (pwsh)
 # ============================================
 
-# Force l'encodage UTF-8 pour l'affichage
-try {
-    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-} catch {}
-
 param(
     [switch]$Preview,
     [switch]$All,
     [string[]]$Exclude = @()
 )
+
+# Force l'encodage UTF-8 pour l'affichage
+try {
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+} catch {}
 
 # --- FONCTIONS UTILITAIRES ---
 
@@ -26,11 +26,15 @@ function Test-IsRoot {
 
 function Invoke-Elevated {
     param([string]$Command)
-    
+
+    $parts = $Command -split '\s+'
+    $exe = $parts[0]
+    $arguments = if ($parts.Length -gt 1) { $parts[1..($parts.Length-1)] } else { @() }
+
     if (Test-IsRoot) {
-        Invoke-Expression $Command
+        & $exe @arguments
     } else {
-        Invoke-Expression "sudo $Command"
+        & sudo $exe @arguments
     }
 }
 
@@ -108,32 +112,10 @@ function Show-Menu {
     return $Tasks
 }
 
-# --- DÉTECTION OS ---
-$isWindows = $false
-$isMacOS = $false
-$isLinux = $false
-$distro = ""
+# --- DETECTION OS (via common.ps1) ---
+. (Join-Path $PSScriptRoot "common.ps1")
 
-if (Test-Path variable:global:IsWindows) { $isWindows = $IsWindows }
-elseif ($env:OS -eq "Windows_NT") { $isWindows = $true }
-elseif ($PSVersionTable.Platform -eq "Win32NT") { $isWindows = $true }
-
-if (-not $isWindows) {
-    if ($PSVersionTable.Platform -eq "Unix") {
-        $uname = uname 2>$null
-        if ($uname -eq "Darwin" -or (Test-Path "/System/Library/CoreServices/SystemVersion.plist")) {
-            $isMacOS = $true
-        } elseif (Test-Path "/etc/os-release") {
-            $isLinux = $true
-            $osRelease = Get-Content "/etc/os-release" -Raw
-            if ($osRelease -match 'ID=([^\s]+)') {
-                $distro = $matches[1] -replace '"', ''
-            }
-        }
-    }
-}
-
-# --- VÉRIFICATION ADMIN (WINDOWS) ---
+# --- VERIFICATION ADMIN (WINDOWS) ---
 $isAdmin = $false
 if ($isWindows) {
     $currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
@@ -145,7 +127,7 @@ if ($isWindows) {
     }
 }
 
-# --- DÉFINITION DES TÂCHES ---
+# --- DEFINITION DES TACHES ---
 # Chaque tâche : { Name, Action (ScriptBlock), Default=$true }
 
 $taskList = [System.Collections.ArrayList]@()
@@ -175,6 +157,60 @@ if ($isWindows) {
             Name = "Système : SFC Scannow (Admin)"
             Action = { sfc /scannow }
             Selected = $true
+        })
+
+        $taskList.Add([PSCustomObject]@{
+            Name = "Systeme : Mise à jour des Pilotes (Windows Update)"
+            Action = { 
+                Write-Host "Recherche des pilotes via Windows Update..." -ForegroundColor Cyan
+                try {
+                    $Session = New-Object -ComObject Microsoft.Update.Session
+                    $Searcher = $Session.CreateUpdateSearcher()
+                    $Searcher.ServerSelection = 3 # Windows Update
+                    $Criteria = "IsInstalled=0 and Type='Driver' and IsHidden=0"
+                    $Result = $Searcher.Search($Criteria)
+                    
+                    if ($Result.Updates.Count -eq 0) {
+                        Write-Host "Aucun pilote a mettre a jour." -ForegroundColor Green
+                    } else {
+                        Write-Host "`nPilotes trouves ($($Result.Updates.Count)) :" -ForegroundColor Yellow
+                        $UpdatesToInstall = New-Object -ComObject Microsoft.Update.UpdateColl
+                        
+                        foreach ($update in $Result.Updates) {
+                            Write-Host " - $($update.Title)"
+                            $UpdatesToInstall.Add($update) | Out-Null
+                        }
+                        
+                        Write-Host ""
+                        $confirm = Read-Host "Voulez-vous installer ces pilotes ? (O/N)"
+                        if ($confirm -match "^[oO]") {
+                            Write-Host "Telechargement et installation en cours..." -ForegroundColor Cyan
+                            
+                            $Downloader = $Session.CreateUpdateDownloader()
+                            $Downloader.Updates = $UpdatesToInstall
+                            $Downloader.Download()
+                            
+                            $Installer = $Session.CreateUpdateInstaller()
+                            $Installer.Updates = $UpdatesToInstall
+                            $ResultInstall = $Installer.Install()
+                            
+                            if ($ResultInstall.ResultCode -eq 2) {
+                                Write-Host "Installation reussie !" -ForegroundColor Green
+                                if ($ResultInstall.RebootRequired) {
+                                    Write-Host "Un redemarrage est requis pour terminer l'installation." -ForegroundColor Magenta
+                                }
+                            } else {
+                                Write-Host "L'installation a termine avec le code : $($ResultInstall.ResultCode)" -ForegroundColor Yellow
+                            }
+                        } else {
+                            Write-Host "Installation annulee par l'utilisateur." -ForegroundColor Gray
+                        }
+                    }
+                } catch {
+                    Write-Host "Erreur lors de la recherche des pilotes : $_" -ForegroundColor Red
+                }
+            }
+            Selected = $false
         })
     }
 
@@ -436,7 +472,7 @@ $taskList.Add([PSCustomObject]@{
 })
 
 
-# --- EXÉCUTION DU PROGRAMME ---
+# --- EXECUTION DU PROGRAMME ---
 
 # 1. Mesure espace disque initial
 $startFreeSpace = 0
@@ -453,11 +489,11 @@ if (-not $All) {
 }
 
 # 3. Exécution des tâches sélectionnées
-Write-Host "`n===== DÉBUT DE LA MAINTENANCE =====" -ForegroundColor Magenta
+Write-Host "`n===== DEBUT DE LA MAINTENANCE =====" -ForegroundColor Magenta
 
 foreach ($task in $taskList) {
     if ($task.Selected) {
-        Write-Host "`n>>> EXÉCUTION : $($task.Name)" -ForegroundColor Cyan
+        Write-Host "`n>>> EXECUTION : $($task.Name)" -ForegroundColor Cyan
         
         if ($Preview) {
             Write-Host "    [Mode Preview] Simulation de l'action." -ForegroundColor Gray
@@ -492,4 +528,4 @@ try {
     }
 } catch {}
 
-Write-Host "`n===== MAINTENANCE TERMINÉE =====`n" -ForegroundColor Green
+Write-Host "`n===== MAINTENANCE TERMINEE =====`n" -ForegroundColor Green

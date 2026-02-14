@@ -40,7 +40,7 @@ SECRET_PATTERNS = [
     (r'(?i)(password|passwd|pwd)["\s:=]+([^\s"\']+)', '[REDACTED_PASSWORD]'),
     
     # Private keys
-    (r'-----BEGIN\s+(?:RSA\s+)?PRIVATE\s+KEY-----[/\s/\S]*?-----END\s+(?:RSA\s+)?PRIVATE\s+KEY-----', '[REDACTED_PRIVATE_KEY]'),
+    (r'-----BEGIN\s+(?:RSA\s+)?PRIVATE\s+KEY-----[\s\S]*?-----END\s+(?:RSA\s+)?PRIVATE\s+KEY-----', '[REDACTED_PRIVATE_KEY]'),
     
     # Database URLs
     (r'(?i)(postgres|mysql|mongodb|redis)://[^\s]+', '[REDACTED_DB_URL]'),
@@ -156,7 +156,7 @@ def redact_sensitive_data(text):
 # PROMPT BUILDING
 # ============================================================================ 
 
-def build_prompt(context, guidelines=None, language='fr'):
+def build_prompt(context, guidelines=None):
     """Construit un prompt structuré et détaillé"""
     
     # Format file list
@@ -204,9 +204,9 @@ DIFF (premiers 4000 chars):
 5. Pas de point final
 6. Sois précis et descriptif (pas générique comme "mise à jour")
 7. Longueur: 10-72 caractères
-8. Langue: Français (ou anglais si demandé)
-9. Pas d'emojis (sauf si présents dans les guidelines)
-10. Focus sur CE qui a changé et POURQUOI
+8. Pas d'emojis (sauf si présents dans les guidelines)
+9. Focus sur CE qui a changé et POURQUOI
+10. Langue: français
 11. Une seule ligne
 
 EXEMPLES VALIDES:
@@ -433,7 +433,7 @@ def main():
         sys.exit(0)
     
     # Build prompt
-    prompt = build_prompt(context, language='fr')
+    prompt = build_prompt(context)
     
     message = None
     

@@ -2,6 +2,9 @@
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::InputEncoding = [System.Text.Encoding]::UTF8
 
+# Charger la détection OS partagée
+. (Join-Path $PSScriptRoot "common.ps1")
+
 # 1. Nettoyer l'écran initialement
 Clear-Host
 
@@ -46,7 +49,7 @@ try {
     
     # --- GESTION SONORE INTELLIGENTE ---
     
-    if ($IsWindows) {
+    if ($isWindows) {
         # Cas 1: Windows Natif
         try { [Console]::Beep(3000, 1000) } catch {}
         Start-Sleep -Seconds 1

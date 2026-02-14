@@ -1,19 +1,28 @@
 # Script de packaging pour HE CLI
 # Crée une archive release.zip contenant tous les fichiers nécessaires
 
-$exclude = @(
+# Noms exacts à exclure
+$excludeExact = @(
     ".git",
     ".gitignore",
     ".gitattributes",
     "release.zip",
     "package.ps1",
     "tests",
+    "elo.txt"
+)
+
+# Patterns wildcard à exclure
+$excludeWildcard = @(
     "*.tmp",
     "*.log"
 )
 
-$files = Get-ChildItem -Path . -File | Where-Object { 
-    $_.Name -notin $exclude -and $_.Name -notmatch "^\." 
+$files = Get-ChildItem -Path . -File | Where-Object {
+    $name = $_.Name
+    $name -notin $excludeExact -and
+    $name -notmatch "^\." -and
+    -not ($excludeWildcard | Where-Object { $name -like $_ })
 }
 
 $zipPath = Join-Path -Path $PWD -ChildPath "release.zip"

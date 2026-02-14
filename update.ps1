@@ -62,7 +62,7 @@ $hasChanges = $modifiedFiles -and $modifiedFiles.Trim().Length -gt 0
 
 if ($hasChanges) {
     # Compter les fichiers modifiés
-    $fileCount = ($modifiedFiles -split "`n" | Where-Object { $_. Trim() -ne "" }).Count
+    $fileCount = ($modifiedFiles -split "`n" | Where-Object { $_.Trim() -ne "" }).Count
     
     Write-Host "Fichiers modifies detectes : $fileCount fichier(s)" -ForegroundColor Yellow
     Write-Host ""
@@ -70,7 +70,7 @@ if ($hasChanges) {
     # Afficher les fichiers modifiés
     git status --short | ForEach-Object {
         $line = $_
-        if ($line -match '^\s*M\s+(. +)$') {
+        if ($line -match '^\s*M\s+(.+)$') {
             Write-Host "  [Modifie]  " -ForegroundColor Yellow -NoNewline
             Write-Host $matches[1] -ForegroundColor Gray
         }
@@ -91,7 +91,7 @@ if ($hasChanges) {
     Write-Host ""
     
     # Demander le message de commit si non fourni
-    if (-not $message -or $message. Trim() -eq "") {
+    if (-not $message -or $message.Trim() -eq "") {
         
         # Mode auto-génération
         if ($a) {

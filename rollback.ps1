@@ -114,7 +114,7 @@ git diff --cached --name-status | ForEach-Object {
             default { $color = "Gray"; $statusText = $status }
         }
         
-        Write-Host "  [{$statusText}] " -ForegroundColor $color -NoNewline
+        Write-Host "  [$statusText] " -ForegroundColor $color -NoNewline
         Write-Host "$file" -ForegroundColor Gray
     }
     Write-Host ""

@@ -1,5 +1,9 @@
 import os
-import ollama
+try:
+    import ollama
+    OLLAMA_AVAILABLE = True
+except ImportError:
+    OLLAMA_AVAILABLE = False
 import shutil
 import fnmatch
 import sys
@@ -229,6 +233,11 @@ if __name__ == "__main__":
             prompt = base_prompt
 
         # 8. Génération Streaming
+        if not OLLAMA_AVAILABLE:
+            print("❌ Le package Python 'ollama' n'est pas installé.")
+            print("   Installez-le avec : pip install ollama")
+            sys.exit(1)
+
         print(f"\n🧠 Génération avec {MODEL}...")
         print("   (Ctrl + C pour annuler)\n")
         print("-" * 40)
@@ -262,3 +271,4 @@ if __name__ == "__main__":
         sys.exit(0)
     except Exception as e:
         print(f"\n❌ Erreur : {e}")
+        sys.exit(1)

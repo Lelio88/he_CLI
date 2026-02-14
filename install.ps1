@@ -139,7 +139,7 @@ try {
         Expand-Archive -Path $tempZip -DestinationPath $tempDir -Force
         
         # Déplacer les fichiers
-        sudo cp -r "$tempDir/*" "$installPath/"
+        sudo bash -c "cp -r '$tempDir'/* '$installPath/'"
         if ($LASTEXITCODE -ne 0) { throw "Erreur lors de la copie des fichiers" }
         
         # Nettoyage
@@ -401,5 +401,5 @@ Write-Host ""
 Write-Host "============================================================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Made with love by Lelio B" -ForegroundColor Magenta
-Write-Host "Version 1.0.0 - 2025-11-20" -ForegroundColor DarkGray
+Write-Host "Version 1.2.0 - 2025-12-10" -ForegroundColor DarkGray
 Write-Host ""

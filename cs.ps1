@@ -190,7 +190,7 @@ function Test-FlashReflex ($EnemiesCount, [ref]$Inventory, $FlashProb) {
     }
 }
 
-function Invoke-ManualClear ($Map, $Site, $EnemiesRemaining, $Reason, [ref]$Inventory) {
+function Invoke-ManualClear ($Map, $Site, $EnemiesRemaining, $Reason, $Inventory) {
     Write-Host "`n$Reason" -ForegroundColor Red
     Start-Sleep -Milliseconds 600
     Write-Host "🔥 MODE COMBAT MANUEL (1v$EnemiesRemaining)" -ForegroundColor Yellow -BackgroundColor Black
@@ -487,16 +487,17 @@ while ($ScoreUs -lt $WinLimit -and $ScoreThem -lt $WinLimit) {
             $validP = $false; while (-not $validP) { $p = Read-Host "🎯 Pose"; if ($p -match "^\d+$" -and [int]$p -lt $PosList.Count) { $UPN = $PosList[[int]$p]; $validP = $true } }
             Write-Host "🛡️  Tu tiens : $UPN" -ForegroundColor Cyan
             
+            $SmokeBonus = 0
             if ($UserInventory -eq "Smoke") {
                 $useSmoke = Read-Host "☁️  Utiliser Smoke pour tenir le site ? (o/n)"
-                if ($useSmoke -match "^o") { Write-Host "☁️  SMOKE POSÉE. Bonus défense +15%." -ForegroundColor Green; $WinChance += 15; $UserInventory = $null }
+                if ($useSmoke -match "^o") { Write-Host "☁️  SMOKE POSÉE. Bonus défense +15%." -ForegroundColor Green; $SmokeBonus = 15; $UserInventory = $null }
             }
 
             $RetakeCTs = 5 - $EnemiesOnSite
-            
+
             Write-Host "⚠️  RETAKE : $AlliesAlive T vs $RetakeCTs CT" -ForegroundColor Yellow
             $FM = Test-FlashReflex -EnemiesCount $RetakeCTs -Inventory ([ref]$UserInventory) -FlashProb $FlashProbability
-            $PPC = 50 + 10 + (($AlliesAlive - $RetakeCTs) * 10) - $FM
+            $PPC = 50 + 10 + (($AlliesAlive - $RetakeCTs) * 10) - $FM + $SmokeBonus
             if ($PPC -lt 5) { $PPC = 5 }
 
             Start-Sleep -Milliseconds 800
@@ -522,7 +523,7 @@ while ($ScoreUs -lt $WinLimit -and $ScoreThem -lt $WinLimit) {
     # LOGIQUE CT SIDE
     # --------------------------------------------------------------------------
     else {
-        $Roll = Get-Random -Max 101
+        $Roll = Get-Random -Minimum 1 -Maximum 101
         if ($Roll -le 60) { $BotsOnA = 2 } else { $BotsOnA = Get-Random -InputObject @(1, 3) } 
         $BotsOnB = 4 - $BotsOnA
         $BotSlots = @(); for ($k = 0; $k -lt $BotsOnA; $k++) { $BotSlots += "A" }; for ($k = 0; $k -lt $BotsOnB; $k++) { $BotSlots += "B" }
@@ -576,7 +577,8 @@ while ($ScoreUs -lt $WinLimit -and $ScoreThem -lt $WinLimit) {
             $Survivors = 0; if ($BotsOnLost -gt 0 -and (Get-Random -Max 100) -lt 20) { $Survivors = 1 } 
             $AlliesRetaking = $AlliesOnSite + $Survivors
             $EnemiesHolding = Get-Random -InputObject @(3, 4)
-            Test-FlashReflex -EnemiesCount $EnemiesHolding -Inventory ([ref]$UserInventory) -FlashProb $FlashProbability
+            $FlashMalus = Test-FlashReflex -EnemiesCount $EnemiesHolding -Inventory ([ref]$UserInventory) -FlashProb $FlashProbability
+            if ($FlashMalus -gt 0) { $AlliesRetaking = [Math]::Max(1, $AlliesRetaking - 1) }
             $RetakeWin = Invoke-RetakePhase -Map $FinalMap -Site $AttackSite -AlliesCount $AlliesRetaking -EnemiesCount $EnemiesHolding -Inventory ([ref]$UserInventory)
             if ($RetakeWin) { $ScoreUs++ } else { $ScoreThem++ }
         }

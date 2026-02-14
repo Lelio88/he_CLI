@@ -10,17 +10,8 @@ Write-Host ""
 Write-Host "Un outil CLI puissant pour gérer vos projets Git et GitHub" -ForegroundColor White
 Write-Host ""
 
-# Détecter l'OS pour afficher les commandes appropriées
-$isWindows = $false
-if (Test-Path variable:global:IsWindows) {
-    $isWindows = $IsWindows
-} elseif ($env:OS -eq "Windows_NT") {
-    $isWindows = $true
-} elseif ($PSVersionTable.Platform -eq "Win32NT") {
-    $isWindows = $true
-} elseif ($PSVersionTable.PSEdition -eq "Desktop") {
-    $isWindows = $true
-}
+# Charger la détection OS partagée
+. (Join-Path $PSScriptRoot "common.ps1")
 
 # Système détecté
 if ($isWindows) {
@@ -95,7 +86,7 @@ Write-Host ""
 Write-Host "    Exemples :" -ForegroundColor White
 Write-Host "      python generate_message.py --verbose" -ForegroundColor Cyan
 Write-Host "      python generate_message.py --strict --staged" -ForegroundColor Cyan
-Write-Host "      python generate_message.py --language en --verbose" -ForegroundColor Cyan
+Write-Host "      python generate_message.py --key VOTRE_CLE_GEMINI" -ForegroundColor Cyan
 Write-Host "      python generate_message.py --fast --staged" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "    Fonctionnalités :" -ForegroundColor White
@@ -104,7 +95,7 @@ Write-Host "      • Masquage automatique des secrets (.env, API keys, tokens)"
 Write-Host "      • Auto-correction (majuscules, points finaux, préfixes)" -ForegroundColor Gray
 Write-Host "      • Support de guidelines personnalisées (COMMIT_MESSAGE.md)" -ForegroundColor Gray
 Write-Host "      • Retry intelligent avec ajustement du prompt" -ForegroundColor Gray
-Write-Host "      • Multi-langues (français par défaut)" -ForegroundColor Gray
+Write-Host "      • Support Gemini API et Ollama (fallback automatique)" -ForegroundColor Gray
 Write-Host ""
 Write-Host "    Guidelines personnalisées :" -ForegroundColor White
 Write-Host "      Créez un fichier COMMIT_MESSAGE.md à la racine pour définir" -ForegroundColor Gray
