@@ -24,7 +24,7 @@ if (-not (Test-Path ".git")) {
 }
 
 # Verifier s'il y a des commits
-$hasCommits = git rev-parse HEAD 2>$null
+git rev-parse HEAD 2>$null | Out-Null
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Erreur : Aucun commit trouve dans ce depot !" -ForegroundColor Red
     Write-Host "Faites d'abord un commit avant de creer une branche." -ForegroundColor Yellow
