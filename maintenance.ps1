@@ -212,7 +212,266 @@ if ($isWindows) {
             }
             Selected = $false
         })
+
+        # --- GPU NVIDIA : Mise à jour pilote (style GeForce Experience) ---
+        $nvidiaGpu = Get-CimInstance Win32_VideoController -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'NVIDIA' }
+        if ($nvidiaGpu) {
+            $taskList.Add([PSCustomObject]@{
+                Name = "GPU : Mise a jour pilote NVIDIA"
+                Action = {
+                    Write-Host "Detection du GPU NVIDIA..." -ForegroundColor Cyan
+                    $gpu = Get-CimInstance Win32_VideoController | Where-Object { $_.Name -match 'NVIDIA' } | Select-Object -First 1
+                    $gpuName = $gpu.Name
+                    Write-Host "GPU detecte : $gpuName" -ForegroundColor Green
+
+                    # --- Version actuelle via nvidia-smi ---
+                    $nvidiaSmi = $null
+                    $smiPaths = @(
+                        "$env:ProgramFiles\NVIDIA Corporation\NVSMI\nvidia-smi.exe",
+                        "${env:SystemDrive}\Windows\System32\nvidia-smi.exe"
+                    )
+                    foreach ($p in $smiPaths) {
+                        if (Test-Path $p) { $nvidiaSmi = $p; break }
+                    }
+                    if (-not $nvidiaSmi) {
+                        $nvidiaSmi = Get-Command nvidia-smi -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
+                    }
+                    if (-not $nvidiaSmi) {
+                        Write-Host "nvidia-smi introuvable, impossible de determiner la version actuelle." -ForegroundColor Red
+                        return
+                    }
+
+                    $currentVersion = & $nvidiaSmi --query-gpu=driver_version --format=csv,noheader 2>$null | ForEach-Object { $_.Trim() }
+                    if (-not $currentVersion) {
+                        Write-Host "Impossible de lire la version du pilote actuel." -ForegroundColor Red
+                        return
+                    }
+                    Write-Host "Version installee : $currentVersion"
+
+                    # --- Identification de la serie GPU pour l'API NVIDIA ---
+                    $nvidiaSeriesMap = @{
+                        'RTX 50'  = @{ psid = 135; pfid = 1150 }
+                        'RTX 40'  = @{ psid = 129; pfid = 1045 }
+                        'RTX 30'  = @{ psid = 127; pfid = 946  }
+                        'RTX 20'  = @{ psid = 110; pfid = 883  }
+                        'GTX 16'  = @{ psid = 114; pfid = 916  }
+                        'GTX 10'  = @{ psid = 101; pfid = 816  }
+                        'GTX 9'   = @{ psid = 93;  pfid = 756  }
+                        'GTX 7'   = @{ psid = 79;  pfid = 708  }
+                        'MX'      = @{ psid = 112; pfid = 907  }
+                    }
+
+                    $seriesMatch = $null
+                    foreach ($key in $nvidiaSeriesMap.Keys) {
+                        if ($gpuName -match $key) {
+                            $seriesMatch = $nvidiaSeriesMap[$key]
+                            break
+                        }
+                    }
+
+                    # Fallback : interroger l'API XML NVIDIA pour determiner le psid/pfid
+                    if (-not $seriesMatch) {
+                        Write-Host "Serie GPU non reconnue dans la table locale, recherche via API NVIDIA..." -ForegroundColor Yellow
+                        try {
+                            $lookupUrl = "https://www.nvidia.com/Download/API/lookupValueSearch.aspx?TypeID=3"
+                            $xmlContent = (New-Object System.Net.WebClient).DownloadString($lookupUrl)
+                            $xml = [xml]$xmlContent
+                            $matchNode = $xml.LookupValueSearch.LookupValues.LookupValue | Where-Object {
+                                $gpuName -match [regex]::Escape($_.Name)
+                            } | Select-Object -First 1
+                            if ($matchNode) {
+                                $seriesMatch = @{ psid = [int]$matchNode.ParentID; pfid = [int]$matchNode.Value }
+                            }
+                        } catch {
+                            Write-Host "Erreur lors de la recherche API NVIDIA : $_" -ForegroundColor Red
+                        }
+                    }
+
+                    if (-not $seriesMatch) {
+                        Write-Host "Impossible de determiner la serie GPU pour la recherche de pilotes." -ForegroundColor Red
+                        return
+                    }
+
+                    # --- Requete API NVIDIA pour le dernier pilote ---
+                    Write-Host "Recherche du dernier pilote NVIDIA..." -ForegroundColor Cyan
+                    try {
+                        # WHQL Game Ready, Windows 10/11 64-bit, DCH
+                        $apiUrl = "https://gfwsl.geforce.com/services_toolkit/services/com/nvidia/services/AjaxDriverService.php" +
+                            "?func=DriverManualLookup" +
+                            "&psid=$($seriesMatch.psid)" +
+                            "&pfid=$($seriesMatch.pfid)" +
+                            "&osID=57" +
+                            "&languageCode=1036" +
+                            "&isWHQL=1" +
+                            "&dch=1" +
+                            "&sort1=0" +
+                            "&numberOfResults=1"
+
+                        $response = (New-Object System.Net.WebClient).DownloadString($apiUrl)
+                        $json = $response | ConvertFrom-Json
+
+                        if (-not $json.IDS -or -not $json.IDS[0].downloadInfo) {
+                            Write-Host "Aucun pilote trouve via l'API NVIDIA." -ForegroundColor Yellow
+                            return
+                        }
+
+                        $driverInfo = $json.IDS[0].downloadInfo
+                        $latestVersion = $driverInfo.Version
+                        $downloadUrl = $driverInfo.DownloadURL
+                        if ($downloadUrl -and -not $downloadUrl.StartsWith("http")) {
+                            $downloadUrl = "https:" + $downloadUrl
+                        }
+
+                        Write-Host "Derniere version disponible : $latestVersion"
+                    } catch {
+                        Write-Host "Erreur lors de la requete API NVIDIA : $_" -ForegroundColor Red
+                        return
+                    }
+
+                    # --- Comparaison de version ---
+                    if ([version]$currentVersion -ge [version]$latestVersion) {
+                        Write-Host "Le pilote NVIDIA est deja a jour ($currentVersion)." -ForegroundColor Green
+                        return
+                    }
+
+                    Write-Host "`nMise a jour disponible : $currentVersion -> $latestVersion" -ForegroundColor Yellow
+                    $confirm = Read-Host "Voulez-vous telecharger et installer le pilote ? (O/N)"
+                    if ($confirm -notmatch "^[oO]") {
+                        Write-Host "Mise a jour annulee par l'utilisateur." -ForegroundColor Gray
+                        return
+                    }
+
+                    # --- Telechargement ---
+                    $tempFile = Join-Path $env:TEMP "nvidia_driver_$latestVersion.exe"
+                    Write-Host "Telechargement en cours vers $tempFile ..." -ForegroundColor Cyan
+                    try {
+                        (New-Object System.Net.WebClient).DownloadFile($downloadUrl, $tempFile)
+                    } catch {
+                        Write-Host "Erreur lors du telechargement : $_" -ForegroundColor Red
+                        return
+                    }
+
+                    # Verification taille minimale (10 MB)
+                    $fileSize = (Get-Item $tempFile).Length
+                    if ($fileSize -lt 10MB) {
+                        Write-Host "Le fichier telecharge est trop petit ($([math]::Round($fileSize / 1MB, 1)) MB). Telechargement corrompu ?" -ForegroundColor Red
+                        Remove-Item $tempFile -Force -ErrorAction SilentlyContinue
+                        return
+                    }
+                    Write-Host "Telechargement termine ($([math]::Round($fileSize / 1MB, 0)) MB)." -ForegroundColor Green
+
+                    # --- Installation silencieuse ---
+                    Write-Host "Installation silencieuse en cours..." -ForegroundColor Cyan
+                    try {
+                        $process = Start-Process -FilePath $tempFile -ArgumentList "/s /noreboot /clean" -Wait -PassThru
+                        if ($process.ExitCode -eq 0) {
+                            Write-Host "Pilote NVIDIA $latestVersion installe avec succes !" -ForegroundColor Green
+                        } elseif ($process.ExitCode -eq 1) {
+                            Write-Host "Installation terminee, un redemarrage est recommande." -ForegroundColor Yellow
+                        } else {
+                            Write-Host "L'installeur a retourne le code de sortie : $($process.ExitCode)" -ForegroundColor Yellow
+                        }
+                    } catch {
+                        Write-Host "Erreur lors de l'installation : $_" -ForegroundColor Red
+                    }
+
+                    # --- Nettoyage ---
+                    Remove-Item $tempFile -Force -ErrorAction SilentlyContinue
+                    Write-Host "Fichier d'installation supprime." -ForegroundColor Gray
+                }
+                Selected = $false
+            })
+        }
     }
+
+    # --- BIOS : Informations et lien support ---
+    $taskList.Add([PSCustomObject]@{
+        Name = "BIOS : Verification version et support"
+        Action = {
+            Write-Host "=== Informations BIOS ===" -ForegroundColor Cyan
+
+            $bios = Get-CimInstance Win32_BIOS -ErrorAction SilentlyContinue
+            $board = Get-CimInstance Win32_BaseBoard -ErrorAction SilentlyContinue
+
+            if (-not $bios -or -not $board) {
+                Write-Host "Impossible de recuperer les informations BIOS." -ForegroundColor Red
+                return
+            }
+
+            $biosVersion = $bios.SMBIOSBIOSVersion
+            $biosDate = $bios.ReleaseDate
+            $manufacturer = $board.Manufacturer
+            $model = $board.Product
+
+            Write-Host "Carte mere     : $manufacturer $model" -ForegroundColor White
+            Write-Host "Version BIOS   : $biosVersion" -ForegroundColor White
+            if ($biosDate) {
+                Write-Host "Date BIOS      : $($biosDate.ToString('yyyy-MM-dd'))" -ForegroundColor White
+            }
+            Write-Host ""
+
+            # --- Generation de l'URL support fabricant ---
+            $supportUrl = $null
+            $mfr = $manufacturer.ToLower()
+
+            if ($mfr -match 'asus') {
+                $supportUrl = "https://www.asus.com/support/download-center/"
+                Write-Host "Fabricant ASUS detecte." -ForegroundColor Yellow
+                Write-Host "Recherchez '$model' sur la page support pour telecharger le BIOS." -ForegroundColor Gray
+                Write-Host "Methode de flash : ASUS EZ Flash (depuis le BIOS/UEFI) ou BIOS FlashBack (USB)." -ForegroundColor Gray
+            }
+            elseif ($mfr -match 'msi|micro-star') {
+                $supportUrl = "https://www.msi.com/support"
+                Write-Host "Fabricant MSI detecte." -ForegroundColor Yellow
+                Write-Host "Recherchez '$model' sur la page support pour telecharger le BIOS." -ForegroundColor Gray
+                Write-Host "Methode de flash : MSI M-FLASH (depuis le BIOS/UEFI)." -ForegroundColor Gray
+            }
+            elseif ($mfr -match 'gigabyte') {
+                $supportUrl = "https://www.gigabyte.com/support/consumer"
+                Write-Host "Fabricant Gigabyte detecte." -ForegroundColor Yellow
+                Write-Host "Recherchez '$model' sur la page support pour telecharger le BIOS." -ForegroundColor Gray
+                Write-Host "Methode de flash : Q-Flash (depuis le BIOS/UEFI) ou Q-Flash Plus (USB)." -ForegroundColor Gray
+            }
+            elseif ($mfr -match 'asrock') {
+                $supportUrl = "https://www.asrock.com/support/index.asp"
+                Write-Host "Fabricant ASRock detecte." -ForegroundColor Yellow
+                Write-Host "Recherchez '$model' sur la page support pour telecharger le BIOS." -ForegroundColor Gray
+                Write-Host "Methode de flash : Instant Flash (depuis le BIOS/UEFI)." -ForegroundColor Gray
+            }
+            elseif ($mfr -match 'lenovo') {
+                $supportUrl = "https://support.lenovo.com/solutions/ht003029"
+                Write-Host "Fabricant Lenovo detecte." -ForegroundColor Yellow
+                Write-Host "Utilisez Lenovo Vantage ou le Support automatique pour verifier les MaJ BIOS." -ForegroundColor Gray
+                Write-Host "Les MaJ BIOS Lenovo peuvent aussi arriver via Windows Update." -ForegroundColor Gray
+            }
+            elseif ($mfr -match 'dell') {
+                $supportUrl = "https://www.dell.com/support/home"
+                Write-Host "Fabricant Dell detecte." -ForegroundColor Yellow
+                Write-Host "Utilisez Dell SupportAssist ou recherchez votre modele sur le site support." -ForegroundColor Gray
+                Write-Host "Les MaJ BIOS Dell peuvent aussi arriver via Windows Update." -ForegroundColor Gray
+            }
+            elseif ($mfr -match 'hp|hewlett') {
+                $supportUrl = "https://support.hp.com/drivers"
+                Write-Host "Fabricant HP detecte." -ForegroundColor Yellow
+                Write-Host "Utilisez HP Support Assistant ou recherchez votre modele sur le site support." -ForegroundColor Gray
+                Write-Host "Les MaJ BIOS HP peuvent aussi arriver via Windows Update." -ForegroundColor Gray
+            }
+            else {
+                Write-Host "Fabricant '$manufacturer' non reconnu dans la table." -ForegroundColor Yellow
+                Write-Host "Consultez le site du fabricant de votre carte mere pour les MaJ BIOS." -ForegroundColor Gray
+            }
+
+            if ($supportUrl) {
+                Write-Host ""
+                Write-Host "Page support : $supportUrl" -ForegroundColor Green
+            }
+
+            Write-Host ""
+            Write-Host "[!] Ne mettez a jour le BIOS que si necessaire (correctif securite, compatibilite nouveau CPU)." -ForegroundColor Magenta
+            Write-Host "[!] Ne jamais interrompre un flash BIOS. Utilisez un onduleur si possible." -ForegroundColor Magenta
+        }
+        Selected = $false
+    })
 
     $taskList.Add([PSCustomObject]@{
         Name = "Système : Nettoyage fichiers temporaires"
@@ -370,6 +629,67 @@ if ($isLinux) {
                 Invoke-Elevated "pacman -Sc --noconfirm"
             }
             Selected = $true
+        })
+    }
+
+    # --- GPU NVIDIA : Mise à jour pilote Linux ---
+    $nvidiaLinuxCheck = bash -c "lspci 2>/dev/null | grep -i nvidia" 2>$null
+    if ($nvidiaLinuxCheck) {
+        $taskList.Add([PSCustomObject]@{
+            Name = "GPU : Mise a jour pilote NVIDIA"
+            Action = {
+                Write-Host "Detection du GPU NVIDIA..." -ForegroundColor Cyan
+                $gpuInfo = bash -c "lspci | grep -i nvidia" 2>$null
+                Write-Host "GPU detecte : $gpuInfo" -ForegroundColor Green
+
+                # Version actuelle
+                $currentVersion = $null
+                try {
+                    $currentVersion = bash -c "nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null" | ForEach-Object { $_.Trim() }
+                } catch {}
+                if (-not $currentVersion) {
+                    try {
+                        $currentVersion = bash -c "cat /sys/module/nvidia/version 2>/dev/null" | ForEach-Object { $_.Trim() }
+                    } catch {}
+                }
+                if ($currentVersion) {
+                    Write-Host "Version installee : $currentVersion"
+                } else {
+                    Write-Host "Aucun pilote NVIDIA installe actuellement." -ForegroundColor Yellow
+                }
+
+                # Mise à jour selon la distro
+                if ($distro -match "ubuntu|debian") {
+                    Write-Host "Mise a jour via ubuntu-drivers..." -ForegroundColor Cyan
+                    $recommended = bash -c "ubuntu-drivers devices 2>/dev/null | grep 'recommended'" 2>$null
+                    if ($recommended) {
+                        Write-Host "Pilote recommande : $recommended"
+                    }
+                    Invoke-Elevated "ubuntu-drivers install"
+                }
+                elseif ($distro -match "fedora|rhel|centos") {
+                    Write-Host "Mise a jour via dnf (RPM Fusion requis)..." -ForegroundColor Cyan
+                    Invoke-Elevated "dnf install -y akmod-nvidia"
+                }
+                elseif ($distro -match "arch|manjaro") {
+                    Write-Host "Mise a jour via pacman..." -ForegroundColor Cyan
+                    Invoke-Elevated "pacman -S nvidia nvidia-utils --noconfirm"
+                }
+                else {
+                    Write-Host "Distribution non supportee pour l'installation automatique du pilote NVIDIA." -ForegroundColor Yellow
+                    Write-Host "Consultez https://www.nvidia.com/en-us/drivers/unix/" -ForegroundColor Gray
+                    return
+                }
+
+                # Afficher la nouvelle version
+                $newVersion = bash -c "nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null" | ForEach-Object { $_.Trim() }
+                if ($newVersion) {
+                    Write-Host "Version apres mise a jour : $newVersion" -ForegroundColor Green
+                } else {
+                    Write-Host "Un redemarrage peut etre necessaire pour charger le nouveau pilote." -ForegroundColor Yellow
+                }
+            }
+            Selected = $false
         })
     }
 
