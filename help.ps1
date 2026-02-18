@@ -102,16 +102,24 @@ Write-Host "      Créez un fichier COMMIT_MESSAGE.md à la racine pour définir
 Write-Host "      vos propres règles (format, emojis, scopes, etc.)" -ForegroundColor Gray
 Write-Host ""
 
-Write-Host "  he fastpush <url> [-m] [message]" -ForegroundColor Yellow
-Write-Host "    Push rapide vers un repository existant" -ForegroundColor Gray
+Write-Host "  he firstpush <url> [-m] [message] [-Force]" -ForegroundColor Yellow
+Write-Host "    Premier push vers un repository distant" -ForegroundColor Gray
 Write-Host ""
 Write-Host "    Options :" -ForegroundColor White
-Write-Host "      -m             Spécifier un message de commit" -ForegroundColor Gray
-Write-Host "      (sans -m)      Utilise 'initial commit' par défaut" -ForegroundColor Gray
+Write-Host "      -m             Specifier un message de commit" -ForegroundColor Gray
+Write-Host "      -Force         Force le push si le remote a diverge" -ForegroundColor Gray
+Write-Host "      (sans -m)      Utilise 'initial commit' par defaut" -ForegroundColor Gray
+Write-Host ""
+Write-Host "    Fonctionnalites :" -ForegroundColor White
+Write-Host "      * Verifie et propose de creer un .gitignore" -ForegroundColor Gray
+Write-Host "      * Detecte les fichiers sensibles (.env, credentials, cles)" -ForegroundColor Gray
+Write-Host "      * Pull --rebase avant le push (compatibilite remote)" -ForegroundColor Gray
+Write-Host "      * Affiche un resume des fichiers avant l'envoi" -ForegroundColor Gray
 Write-Host ""
 Write-Host "    Exemples :" -ForegroundColor White
-Write-Host "      he fastpush https://github.com/user/repo.git" -ForegroundColor Cyan
-Write-Host "      he fastpush https://github.com/user/repo.git -m ""Premier commit""" -ForegroundColor Cyan
+Write-Host "      he firstpush https://github.com/user/repo.git" -ForegroundColor Cyan
+Write-Host "      he firstpush https://github.com/user/repo.git -m ""Premier commit""" -ForegroundColor Cyan
+Write-Host "      he firstpush https://github.com/user/repo.git -Force" -ForegroundColor Cyan
 Write-Host ""
 
 Write-Host "  he update [-m message] [-a] [-f]" -ForegroundColor Yellow
@@ -141,44 +149,72 @@ Write-Host "  HISTORIQUE ET GESTION" -ForegroundColor Cyan
 Write-Host "============================================================================" -ForegroundColor Cyan
 Write-Host ""
 
-Write-Host "  he rollback [-d]" -ForegroundColor Yellow
-Write-Host "    Annuler le dernier commit (soft reset - conserve les fichiers)" -ForegroundColor Gray
+Write-Host "  he rollback [-n <nombre>] [-d] [-r] [-hard]" -ForegroundColor Yellow
+Write-Host "    Annuler un ou plusieurs commits" -ForegroundColor Gray
 Write-Host ""
 Write-Host "    Options :" -ForegroundColor White
-Write-Host "      -d             Confirmation automatique (pas de prompts)" -ForegroundColor Gray
-Write-Host "      (sans -d)      Demande confirmation avant annulation" -ForegroundColor Gray
+Write-Host "      -n <nombre>    Nombre de commits a annuler (defaut: 1)" -ForegroundColor Gray
+Write-Host "      -d             Confirmation automatique (local seulement)" -ForegroundColor Gray
+Write-Host "      -r             Force push vers le remote automatiquement" -ForegroundColor Gray
+Write-Host "      -hard          Supprime les modifications (au lieu de les garder en staging)" -ForegroundColor Gray
 Write-Host ""
 Write-Host "    Exemples :" -ForegroundColor White
-Write-Host "      he rollback" -ForegroundColor Cyan
-Write-Host "      he rollback -d" -ForegroundColor Cyan
+Write-Host "      he rollback                # Annule le dernier commit (soft)" -ForegroundColor Cyan
+Write-Host "      he rollback -n 3           # Annule les 3 derniers commits" -ForegroundColor Cyan
+Write-Host "      he rollback -d             # Sans confirmation locale" -ForegroundColor Cyan
+Write-Host "      he rollback -r             # + push force automatique" -ForegroundColor Cyan
+Write-Host "      he rollback -hard          # Supprime les modifications" -ForegroundColor Cyan
+Write-Host "      he rollback -n 2 -d -r     # Annule 2 commits + push force auto" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "    Fonctionnalités :" -ForegroundColor White
-Write-Host "      • Annule le dernier commit localement (git reset --soft HEAD~1)" -ForegroundColor Gray
-Write-Host "      • Conserve tous les fichiers modifiés en staging" -ForegroundColor Gray
-Write-Host "      • Option pour annuler aussi sur GitHub (git push --force)" -ForegroundColor Gray
-Write-Host "      • Affiche l'état des fichiers après rollback" -ForegroundColor Gray
+Write-Host "    Fonctionnalites :" -ForegroundColor White
+Write-Host "      * Cree un tag de sauvegarde avant le rollback (restauration possible)" -ForegroundColor Gray
+Write-Host "      * Affiche les commits qui seront annules + le futur HEAD" -ForegroundColor Gray
+Write-Host "      * Verifie les contributeurs avant un force push" -ForegroundColor Gray
+Write-Host "      * Reponse par defaut 'Non' pour le push distant (securite)" -ForegroundColor Gray
 Write-Host ""
 
-Write-Host "  he logcommit [nombre]" -ForegroundColor Yellow
-Write-Host "    Afficher l'historique des commits" -ForegroundColor Gray
+Write-Host "  he logcommit [nombre] [-author <nom>] [-search <mot>] [-since <date>] [-s]" -ForegroundColor Yellow
+Write-Host "    Afficher l'historique des commits avec filtres" -ForegroundColor Gray
 Write-Host ""
 Write-Host "    Arguments :" -ForegroundColor White
-Write-Host "      [nombre]       Nombre de commits à afficher (défaut :  10)" -ForegroundColor Gray
+Write-Host "      [nombre]          Nombre de commits a afficher (defaut: 20)" -ForegroundColor Gray
+Write-Host ""
+Write-Host "    Options :" -ForegroundColor White
+Write-Host "      -author <nom>     Filtrer par auteur" -ForegroundColor Gray
+Write-Host "      -search <mot>     Rechercher dans les messages de commit" -ForegroundColor Gray
+Write-Host "      -since <date>     Commits depuis une date (ex: 2025-01-01, '2 weeks ago')" -ForegroundColor Gray
+Write-Host "      -s                Mode compact (graphe uniquement, sans details)" -ForegroundColor Gray
 Write-Host ""
 Write-Host "    Exemples :" -ForegroundColor White
-Write-Host "      he logcommit" -ForegroundColor Cyan
-Write-Host "      he logcommit 20" -ForegroundColor Cyan
-Write-Host "      he logcommit 5" -ForegroundColor Cyan
+Write-Host "      he logcommit                           # 20 derniers commits" -ForegroundColor Cyan
+Write-Host "      he logcommit 50                        # 50 derniers commits" -ForegroundColor Cyan
+Write-Host "      he logcommit -author ""Lelio""            # Commits de Lelio" -ForegroundColor Cyan
+Write-Host "      he logcommit -search ""fix""              # Commits contenant 'fix'" -ForegroundColor Cyan
+Write-Host "      he logcommit -since ""2025-06-01""        # Depuis le 1er juin 2025" -ForegroundColor Cyan
+Write-Host "      he logcommit -s                        # Mode compact" -ForegroundColor Cyan
+Write-Host "      he logcommit 0                         # Tous les commits" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "    Affichage :" -ForegroundColor White
-Write-Host "      • Hash du commit" -ForegroundColor Gray
-Write-Host "      • Auteur et date" -ForegroundColor Gray
-Write-Host "      • Message du commit" -ForegroundColor Gray
-Write-Host "      • Avec couleurs et formatage lisible" -ForegroundColor Gray
+
+Write-Host "  he newbranch [nom]" -ForegroundColor Yellow
+Write-Host "    Creer une nouvelle branche et la pusher" -ForegroundColor Gray
+Write-Host ""
+Write-Host "    Arguments :" -ForegroundColor White
+Write-Host "      [nom]          Nom de la branche (demande interactif si omis)" -ForegroundColor Gray
+Write-Host ""
+Write-Host "    Exemples :" -ForegroundColor White
+Write-Host "      he newbranch                    # Demande le nom interactivement" -ForegroundColor Cyan
+Write-Host "      he newbranch feature/login      # Cree directement la branche" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "    Fonctionnalites :" -ForegroundColor White
+Write-Host "      * Verifie que le nom n'existe pas (local + remote)" -ForegroundColor Gray
+Write-Host "      * Valide le format du nom de branche" -ForegroundColor Gray
+Write-Host "      * Cree la branche et bascule dessus" -ForegroundColor Gray
+Write-Host "      * Propose de commiter les changements en cours" -ForegroundColor Gray
+Write-Host "      * Push avec tracking (-u) vers origin" -ForegroundColor Gray
 Write-Host ""
 
 Write-Host "  he backup" -ForegroundColor Yellow
-Write-Host "    Créer une archive ZIP complète du projet" -ForegroundColor Gray
+Write-Host "    Creer une archive ZIP complete du projet" -ForegroundColor Gray
 Write-Host ""
 Write-Host "    Exemples :" -ForegroundColor White
 Write-Host "      he backup" -ForegroundColor Cyan

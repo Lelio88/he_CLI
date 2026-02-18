@@ -107,7 +107,7 @@ else
     # LISTE DE SECOURS (FALLBACK)
     FILES=(
         "he" "he.cmd" "manifest.txt"
-        "main.ps1" "readme.ps1" "createrepo.ps1" "fastpush.ps1"
+        "main.ps1" "readme.ps1" "createrepo.ps1" "firstpush.ps1" "newbranch.ps1"
         "update.ps1" "rollback.ps1" "logcommit.ps1" "backup.ps1"
         "selfupdate.ps1" "maintenance.ps1" "heian.ps1" "matrix.ps1" "flash.ps1"
         "help.ps1" "install.sh" "install.ps1" "uninstall.sh" "uninstall.bat"

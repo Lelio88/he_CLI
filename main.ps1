@@ -14,8 +14,11 @@ if ($args.Length -gt 1) {
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 switch ($command) {
-    "fastpush" { 
-        & (Join-Path $scriptPath "fastpush.ps1") @remainingArgs
+    "firstpush" {
+        & (Join-Path $scriptPath "firstpush.ps1") @remainingArgs
+    }
+    "newbranch" {
+        & (Join-Path $scriptPath "newbranch.ps1") @remainingArgs
     }
     "createrepo" { 
         & (Join-Path $scriptPath "createrepo.ps1") @remainingArgs

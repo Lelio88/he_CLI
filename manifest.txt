@@ -3,7 +3,8 @@ he
 uninstall.bat
 main.ps1
 createrepo.ps1
-fastpush.ps1
+firstpush.ps1
+newbranch.ps1
 update.ps1
 rollback.ps1
 logcommit.ps1

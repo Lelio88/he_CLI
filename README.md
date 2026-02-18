@@ -48,8 +48,10 @@ Un outil CLI puissant pour gérer vos projets Git et GitHub avec simplicité. Cr
 - ✅ **Création de repos GitHub** en une commande (avec GitHub Pages optionnel)
 - ✅ **Synchronisation automatique** (commit + pull + push)
 - ✅ **Génération de README automatique** avec IA (Ollama)
-- ✅ **Gestion de l'historique** Git (rollback, logs)
+- ✅ **Gestion de l'historique** Git (rollback multi-commits, logs avec filtres)
+- ✅ **Gestion des branches** (création + push en une commande)
 - ✅ **Backups automatiques** du projet
+- ✅ **Détection de fichiers sensibles** (.env, credentials, clés)
 - ✅ **Maintenance système** complète (Windows/Linux/macOS)
 - ✅ **Installation automatique** des dépendances
 - ✅ **Cross-platform** (Windows, Linux, macOS)
@@ -119,8 +121,9 @@ chmod +x install.sh
 | Commande | Description | Flags |
 |----------|-------------|-------|
 | `he createrepo <nom>` | Créer un nouveau repository GitHub | `-pr` (privé), `-pu` (public), `-d` (auto-delete branches), `-pages` (GitHub Pages) |
-| `he fastpush <url>` | Push rapide vers un repository existant | `-m <message>` (message de commit) |
+| `he firstpush <url>` | Premier push vers un repository distant | `-m <message>`, `-Force` |
 | `he update` | Commit + Pull + Push complet | `-m <message>` (message de commit) |
+| `he newbranch [nom]` | Creer une nouvelle branche et la pusher | Nom optionnel (demande interactive sinon) |
 
 **Exemples :**
 ```bash
@@ -130,11 +133,17 @@ he createrepo mon-site -pu -pages
 # Créer un repo avec auto-suppression des branches
 he createrepo mon-projet -pu -d
 
-# Push rapide avec message
-he fastpush https://github.com/user/repo.git -m "Initial commit"
+# Premier push avec message personnalisé
+he firstpush https://github.com/user/repo.git -m "Initial commit"
 
-**Synchronisation avec message**
+# Premier push forcé (si le remote a divergé)
+he firstpush https://github.com/user/repo.git -Force
+
+# Synchronisation avec message
 he update -m "feat: nouvelle fonctionnalité"
+
+# Créer une nouvelle branche
+he newbranch feature/login
 ```
 
 ---
@@ -250,17 +259,38 @@ Créez un fichier `COMMIT_MESSAGE.md` à la racine de votre projet :
 
 | Commande | Description | Arguments |
 |----------|-------------|-----------|
-| `he rollback` | Annuler le dernier commit (soft reset) | `-d` (confirmation auto) |
-| `he logcommit [nombre]` | Afficher l'historique des commits | Nombre de commits (défaut : 10) |
+| `he rollback` | Annuler un ou plusieurs commits | `-n <nombre>`, `-d` (confirm auto local), `-r` (push force auto), `-hard` |
+| `he logcommit [nombre]` | Afficher l'historique des commits | `-author`, `-search`, `-since`, `-s` (compact) |
 | `he backup` | Créer une archive ZIP du projet | Aucun |
 
 **Exemples :**
 ```bash
-# Annuler le dernier commit
+# Annuler le dernier commit (soft, fichiers conservés)
 he rollback
+
+# Annuler les 3 derniers commits
+he rollback -n 3
+
+# Annuler avec suppression des modifications
+he rollback -hard
+
+# Annuler sans confirmation + push force auto
+he rollback -d -r
 
 # Voir les 20 derniers commits
 he logcommit 20
+
+# Filtrer par auteur
+he logcommit -author "Lelio"
+
+# Rechercher dans les messages
+he logcommit -search "fix"
+
+# Commits depuis une date
+he logcommit -since "2025-06-01"
+
+# Mode compact (graphe uniquement)
+he logcommit -s
 
 # Créer un backup
 he backup
@@ -403,6 +433,9 @@ he createrepo mon-site -pu -pages
 git clone https://github.com/user/repo.git
 cd repo
 
+# Créer une branche pour la nouvelle feature
+he newbranch feature/login
+
 # Faire des modifications...
 echo "New feature" >> feature.js
 
@@ -412,10 +445,14 @@ he logcommit 5
 # Créer un backup avant modification importante
 he backup
 
-# Faire d'autres modifications... 
+# Synchroniser avec GitHub
+he update -m "feat: add login feature"
 
 # Annuler le dernier commit si erreur
 he rollback
+
+# Annuler les 2 derniers commits en mode hard
+he rollback -n 2 -hard
 ```
 
 ---

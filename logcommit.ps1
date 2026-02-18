@@ -1,11 +1,25 @@
-﻿param(
+param(
     [Parameter(Mandatory=$false, Position=0)]
-    [int]$limit = 20
+    [int]$limit = 20,
+
+    [Parameter(Mandatory=$false)]
+    [string]$author = "",
+
+    [Parameter(Mandatory=$false)]
+    [string]$search = "",
+
+    [Parameter(Mandatory=$false)]
+    [string]$since = "",
+
+    [Parameter(Mandatory=$false)]
+    [switch]$s
 )
 
 # Commande logcommit - Affiche l'historique des commits avec graphe ASCII
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-[Console]::InputEncoding = [System.Text.Encoding]::UTF8
+try {
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+    [Console]::InputEncoding = [System.Text.Encoding]::UTF8
+} catch {}
 
 Write-Host ""
 Write-Host "========================================================================" -ForegroundColor Cyan
@@ -13,7 +27,7 @@ Write-Host "  LOGCOMMIT - Historique des commits" -ForegroundColor Cyan
 Write-Host "========================================================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Vérifier si on est dans un dépôt Git
+# Verifier si on est dans un depot Git
 if (-not (Test-Path ".git")) {
     Write-Host "Erreur : Vous n'etes pas dans un depot Git !" -ForegroundColor Red
     Write-Host "Initialisez d'abord Git avec 'git init' ou deplacez-vous dans un projet Git." -ForegroundColor Yellow
@@ -21,7 +35,7 @@ if (-not (Test-Path ".git")) {
     exit 1
 }
 
-# Vérifier s'il y a des commits
+# Verifier s'il y a des commits
 $hasCommits = git rev-parse HEAD 2>$null
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Erreur : Aucun commit trouve dans ce depot !" -ForegroundColor Red
@@ -30,7 +44,29 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# Afficher le nombre de commits à afficher
+# Construire les filtres actifs
+$filters = @()
+
+if (-not [string]::IsNullOrWhiteSpace($author)) {
+    $filters += "Auteur: $author"
+}
+if (-not [string]::IsNullOrWhiteSpace($search)) {
+    $filters += "Recherche: '$search'"
+}
+if (-not [string]::IsNullOrWhiteSpace($since)) {
+    $filters += "Depuis: $since"
+}
+
+# Afficher les filtres actifs
+if ($filters.Count -gt 0) {
+    Write-Host "Filtres actifs :" -ForegroundColor Magenta
+    foreach ($f in $filters) {
+        Write-Host "  $f" -ForegroundColor Magenta
+    }
+    Write-Host ""
+}
+
+# Afficher le nombre de commits a afficher
 if ($limit -gt 0) {
     Write-Host "Affichage des $limit derniers commits" -ForegroundColor Yellow
 } else {
@@ -49,16 +85,35 @@ if ($totalCommits) {
 Write-Host "========================================================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Afficher le graphe des commits (SANS PAGER pour éviter le blocage)
+# Construire la commande git log
+$gitArgs = @("--no-pager", "log", "--oneline", "--graph", "--all", "--decorate", "--color=always")
+
+# Ajouter la limite
+if ($limit -gt 0) {
+    $gitArgs += "-n"
+    $gitArgs += "$limit"
+}
+
+# Ajouter le filtre auteur
+if (-not [string]::IsNullOrWhiteSpace($author)) {
+    $gitArgs += "--author=$author"
+}
+
+# Ajouter le filtre recherche dans le message
+if (-not [string]::IsNullOrWhiteSpace($search)) {
+    $gitArgs += "--grep=$search"
+    $gitArgs += "-i"
+}
+
+# Ajouter le filtre date
+if (-not [string]::IsNullOrWhiteSpace($since)) {
+    $gitArgs += "--since=$since"
+}
+
+# Afficher le graphe des commits
 try {
-    if ($limit -gt 0) {
-        # Avec limite - utiliser --no-pager pour afficher directement
-        git --no-pager log --oneline --graph --all --decorate -n $limit --color=always
-    } else {
-        # Sans limite (tous les commits) - utiliser --no-pager
-        git --no-pager log --oneline --graph --all --decorate --color=always
-    }
-    
+    & git @gitArgs
+
     if ($LASTEXITCODE -ne 0) {
         throw "Erreur lors de l'affichage des commits"
     }
@@ -71,6 +126,17 @@ catch {
 }
 
 Write-Host ""
+
+# Mode compact : s'arreter ici
+if ($s) {
+    # Juste afficher la note de limite si applicable
+    if ($limit -gt 0 -and $totalCommits -gt $limit) {
+        Write-Host "($limit/$totalCommits commits affiches - 'he logcommit 0' pour tout voir)" -ForegroundColor Gray
+        Write-Host ""
+    }
+    exit 0
+}
+
 Write-Host "========================================================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -80,7 +146,7 @@ $currentBranch = git branch --show-current 2>$null
 if ($currentBranch) {
     Write-Host "Branche actuelle : " -ForegroundColor Yellow -NoNewline
     Write-Host "$currentBranch" -ForegroundColor Green
-    
+
     # Compter les commits sur la branche actuelle
     $branchCommits = git rev-list --count $currentBranch 2>$null
     if ($branchCommits) {
@@ -98,23 +164,7 @@ Write-Host ""
 Write-Host "========================================================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Afficher les commandes utiles
-Write-Host "Commandes utiles :" -ForegroundColor Yellow
-Write-Host ""
-Write-Host "  Afficher plus de commits :" -ForegroundColor Gray
-Write-Host "    he logcommit 50" -ForegroundColor White
-Write-Host ""
-Write-Host "  Afficher tous les commits :" -ForegroundColor Gray
-Write-Host "    he logcommit 0" -ForegroundColor White
-Write-Host ""
-Write-Host "  Voir les details d'un commit :" -ForegroundColor Gray
-Write-Host "    git show <hash>" -ForegroundColor White
-Write-Host ""
-Write-Host "  Voir les differences entre deux commits :" -ForegroundColor Gray
-Write-Host "    git diff <hash1> <hash2>" -ForegroundColor White
-Write-Host ""
-
-# Afficher un message si on a limité l'affichage
+# Afficher un message si on a limite l'affichage
 if ($limit -gt 0 -and $totalCommits -gt $limit) {
     Write-Host "Note : " -ForegroundColor Yellow -NoNewline
     Write-Host "Seulement $limit commits affiches sur $totalCommits au total." -ForegroundColor Gray

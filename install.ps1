@@ -366,7 +366,8 @@ Write-Host "Commandes principales :" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "  GESTION DE REPOSITORY :" -ForegroundColor Cyan
 Write-Host "    he createrepo <nom> [-pr|-pu]  - Creer un nouveau repo" -ForegroundColor Gray
-Write-Host "    he fastpush [message]          - Push rapide (add+commit+push)" -ForegroundColor Gray
+Write-Host "    he firstpush <url> [-m]        - Premier push vers un repository" -ForegroundColor Gray
+Write-Host "    he newbranch [nom]            - Creer une nouvelle branche" -ForegroundColor Gray
 Write-Host "    he update [-m <message>]       - Commit + Pull + Push complet" -ForegroundColor Gray
 Write-Host ""
 Write-Host "  HISTORIQUE ET GESTION :" -ForegroundColor Cyan
@@ -393,7 +394,7 @@ Write-Host "  he createrepo mon-projet -pu" -ForegroundColor White
 Write-Host ""
 Write-Host "  # Modifications rapides" -ForegroundColor Gray
 Write-Host "  # ... modifier des fichiers ..." -ForegroundColor White
-Write-Host "  he fastpush \"feat: nouvelle fonctionnalite\"" -ForegroundColor White
+Write-Host "  he firstpush https://github.com/user/repo.git -m \"Premier commit\"" -ForegroundColor White
 Write-Host ""
 Write-Host "  # Mettre a jour HE CLI" -ForegroundColor Gray
 Write-Host "  he selfupdate" -ForegroundColor White
