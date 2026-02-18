@@ -1,0 +1,63 @@
+name: Build release.zip
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'release.zip'
+      - '.github/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build release.zip
+        run: |
+          # Mêmes exclusions que package.ps1
+          EXCLUDE=(
+            ".git"
+            ".gitignore"
+            ".gitattributes"
+            "release.zip"
+            "package.ps1"
+            "tests"
+            "elo.txt"
+            ".github"
+          )
+
+          # Collecter les fichiers à inclure (fichiers à la racine uniquement, pas les dossiers cachés)
+          FILES=()
+          for f in *; do
+            [ ! -f "$f" ] && continue
+            skip=false
+            for ex in "${EXCLUDE[@]}"; do
+              if [ "$f" = "$ex" ]; then skip=true; break; fi
+            done
+            # Exclure les fichiers cachés, .tmp et .log
+            case "$f" in
+              .*|*.tmp|*.log) skip=true ;;
+            esac
+            if [ "$skip" = false ]; then
+              FILES+=("$f")
+            fi
+          done
+
+          echo "Fichiers inclus dans release.zip :"
+          printf '  %s\n' "${FILES[@]}"
+
+          rm -f release.zip
+          zip release.zip "${FILES[@]}"
+
+      - name: Commit release.zip
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add release.zip
+          if git diff --cached --quiet; then
+            echo "release.zip inchangé, rien à committer."
+          else
+            git commit -m "chore: update release.zip [skip ci]"
+            git push
+          fi

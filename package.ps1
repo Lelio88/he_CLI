@@ -4,6 +4,7 @@
 # Noms exacts à exclure
 $excludeExact = @(
     ".git",
+    ".github",
     ".gitignore",
     ".gitattributes",
     "release.zip",
