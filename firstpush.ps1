@@ -28,7 +28,7 @@ Write-Host ""
 # un motif sans joker doit correspondre exactement, "*.pem" vise l'extension.
 # (Un "*.key*" sur le chemin signalait aussi "keyboard-guide.md".)
 $sensitivePatterns = @(
-    ".env", ".env.*",
+    ".env", ".env.*", "*.env",
     "*.pem", "*.key", "*.p12", "*.pfx", "*.secret",
     "id_rsa", "id_ed25519",
     "credentials.json", "secrets.json", "token.json", "auth.json"
@@ -199,7 +199,9 @@ Write-Host ""
 # --untracked-files=all : sans lui, un dossier non suivi s'affiche en une
 # ligne ("config/") et un .env range dedans echappe a la detection
 $allFiles = git status --porcelain --untracked-files=all 2>$null
-$fileList = ($allFiles -split "`n" | Where-Object { $_.Trim() -ne "" })
+# @(...) : avec un seul fichier, le pipeline rend une chaine et non un tableau,
+# et $fileList[0] donnerait son premier caractere au lieu de la ligne
+$fileList = @($allFiles -split "`n" | Where-Object { $_.Trim() -ne "" })
 $fileCount = $fileList.Count
 
 Write-Host "Fichiers qui seront ajoutes : $fileCount fichier(s)" -ForegroundColor Yellow
