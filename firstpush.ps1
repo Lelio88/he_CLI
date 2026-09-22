@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Mandatory=$true)]
     [string] $RepoUrl,
 
@@ -24,8 +24,40 @@ Write-Host "  FIRSTPUSH - Premier push vers un repository" -ForegroundColor Cyan
 Write-Host "========================================================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Liste des fichiers sensibles a detecter
-$sensitivePatterns = @(".env", ".env.local", ".env.production", "credentials.json", "secrets.json", "id_rsa", "id_ed25519", ".pem", ".key", "token.json", "auth.json")
+# Fichiers sensibles a detecter, compares au NOM du fichier et non au chemin :
+# un motif sans joker doit correspondre exactement, "*.pem" vise l'extension.
+# (Un "*.key*" sur le chemin signalait aussi "keyboard-guide.md".)
+$sensitivePatterns = @(
+    ".env", ".env.*",
+    "*.pem", "*.key", "*.p12", "*.pfx", "*.secret",
+    "id_rsa", "id_ed25519",
+    "credentials.json", "secrets.json", "token.json", "auth.json"
+)
+# Modeles publies par convention (.env.example...) : jamais signales
+$safeSuffixes = @(".example", ".sample", ".template", ".dist")
+
+# Chemin d'une ligne "git status --porcelain" : deux colonnes de statut, un
+# espace, le chemin ("?? .env", "A  .env", "R  ancien -> nouveau")
+function Get-PorcelainPath {
+    param([string]$Line)
+    $path = if ($Line.Length -gt 3) { $Line.Substring(3) } else { $Line }
+    $arrow = $path.IndexOf(" -> ")
+    if ($arrow -ge 0) { $path = $path.Substring($arrow + 4) }
+    return $path.Trim()
+}
+
+function Test-SensitiveFile {
+    param([string]$Path)
+    if ([string]::IsNullOrWhiteSpace($Path)) { return $false }
+    $leaf = Split-Path $Path.Trim('"') -Leaf
+    foreach ($suffix in $safeSuffixes) {
+        if ($leaf.EndsWith($suffix, [System.StringComparison]::OrdinalIgnoreCase)) { return $false }
+    }
+    foreach ($pattern in $sensitivePatterns) {
+        if ($leaf -like $pattern) { return $true }
+    }
+    return $false
+}
 
 # Gestion du message de commit
 $commitMessage = "initial commit"
@@ -47,7 +79,9 @@ if ($m) {
 
 Write-Host "Initialisation du depot..." -ForegroundColor Yellow
 
-# Init si pas deja fait
+# Init si pas deja fait. Test-Path et non rev-parse : on veut savoir si CE
+# dossier est la racine d'un depot. Un dossier parent versionne ne doit pas
+# empecher le git init.
 if (-not (Test-Path ".git")) {
     git init
     if ($LASTEXITCODE -ne 0) {
@@ -162,7 +196,9 @@ Write-Host "  Analyse des fichiers" -ForegroundColor Cyan
 Write-Host "========================================================================" -ForegroundColor Cyan
 Write-Host ""
 
-$allFiles = git status --porcelain 2>$null
+# --untracked-files=all : sans lui, un dossier non suivi s'affiche en une
+# ligne ("config/") et un .env range dedans echappe a la detection
+$allFiles = git status --porcelain --untracked-files=all 2>$null
 $fileList = ($allFiles -split "`n" | Where-Object { $_.Trim() -ne "" })
 $fileCount = $fileList.Count
 
@@ -172,11 +208,9 @@ Write-Host ""
 # Detecter les fichiers sensibles
 $sensitiveFound = @()
 foreach ($file in $fileList) {
-    $fileName = ($file -replace '^\s*\??\??\s*', '').Trim()
-    foreach ($pattern in $sensitivePatterns) {
-        if ($fileName -like "*$pattern*") {
-            $sensitiveFound += $fileName
-        }
+    $fileName = Get-PorcelainPath $file
+    if (Test-SensitiveFile $fileName) {
+        $sensitiveFound += $fileName
     }
 }
 
@@ -184,15 +218,8 @@ foreach ($file in $fileList) {
 $displayCount = [Math]::Min($fileCount, 30)
 for ($i = 0; $i -lt $displayCount; $i++) {
     $line = $fileList[$i]
-    $isSensitive = $false
-    $cleanName = ($line -replace '^\s*\??\??\s*', '').Trim()
-
-    foreach ($pattern in $sensitivePatterns) {
-        if ($cleanName -like "*$pattern*") {
-            $isSensitive = $true
-            break
-        }
-    }
+    $cleanName = Get-PorcelainPath $line
+    $isSensitive = Test-SensitiveFile $cleanName
 
     if ($isSensitive) {
         Write-Host "  [SENSIBLE] " -ForegroundColor Red -NoNewline

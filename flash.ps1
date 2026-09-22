@@ -49,7 +49,7 @@ try {
     
     # --- GESTION SONORE INTELLIGENTE ---
     
-    if ($isWindows) {
+    if ($heIsWindows) {
         # Cas 1: Windows Natif
         try { [Console]::Beep(3000, 1000) } catch {}
         Start-Sleep -Seconds 1

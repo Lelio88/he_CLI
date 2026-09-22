@@ -6,13 +6,23 @@ param (
 # 0. GESTION DE L'ELO & FICHIERS
 # ==============================================================================
 
-$EloFile = Join-Path $HOME "he-tools\elo.txt"
+# Le score est une donnée utilisateur : il vit hors du dossier d'installation
+# (he-tools), que install, uninstall et selfupdate ne connaissent que par leur
+# manifeste. Rien ne le supprime, et une mise à jour ne le remet pas à zéro.
+$EloDir = Join-Path $HOME ".he"
+$EloFile = Join-Path $EloDir "elo.txt"
+# Expression reprise telle quelle de l'ancien code : sur Linux/macOS elle
+# désignait un fichier littéralement nommé "he-tools\elo.txt", à migrer aussi
+$LegacyEloFile = Join-Path $HOME "he-tools\elo.txt"
 
-# Création du fichier par défaut s'il n'existe pas
+# Création du fichier s'il n'existe pas, en reprenant le score d'avant le déménagement
 if (-not (Test-Path $EloFile)) {
-    $Dir = Join-Path $HOME "he-tools"
-    if (-not (Test-Path $Dir)) { New-Item -ItemType Directory -Path $Dir -Force | Out-Null }
-    Set-Content -Path $EloFile -Value "10000"
+    if (-not (Test-Path $EloDir)) { New-Item -ItemType Directory -Path $EloDir -Force | Out-Null }
+    if (Test-Path $LegacyEloFile) {
+        Move-Item -Path $LegacyEloFile -Destination $EloFile
+    } else {
+        Set-Content -Path $EloFile -Value "10000"
+    }
 }
 
 # Lecture et Configuration de la difficulté

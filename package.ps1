@@ -1,4 +1,4 @@
-# Script de packaging pour HE CLI
+﻿# Script de packaging pour HE CLI
 # Crée une archive release.zip contenant tous les fichiers nécessaires
 
 # Noms exacts à exclure

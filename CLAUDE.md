@@ -34,7 +34,7 @@ Topologie rapide :
 
 ## IV. Garde-Fous non négociables
 
-1. **Encodage UTF-8** — chaque script débute par `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8` (et `InputEncoding` idem)
+1. **Encodage UTF-8** — chaque script débute par `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8` (et `InputEncoding` idem) et est enregistré **avec BOM** : sans lui, PowerShell 5.1 lit le fichier en ANSI et affiche `RÃ©seau`. Seule exception : `install.ps1`, exécuté par `irm | iex` qui refuse un BOM
 2. **Compatibilité cross-platform** — tout nouveau script fonctionne sur Windows (PS 5.1+) ET Linux/macOS (pwsh) ; pour toute logique OS-dépendante, dot-sourcer `common.ps1` plutôt que de re-détecter l'OS
 3. **Autonomie des commandes** — chaque `*.ps1` valide ses prérequis (`.git`, `origin`, `gh`), gère ses erreurs et affiche ses propres messages ; aucun état partagé implicite
 4. **Vérifier `$LASTEXITCODE`** après chaque appel à `git` ou `gh` — PowerShell ne propage pas les codes de sortie natifs (helper `Run-Git` recommandé pour les enchaînements)

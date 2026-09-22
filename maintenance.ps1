@@ -1,4 +1,4 @@
-# ============================================
+﻿# ============================================
 # Script de maintenance Windows + Linux + macOS
 # Compatible PowerShell Core (pwsh)
 # ============================================
@@ -17,7 +17,7 @@ try {
 # --- FONCTIONS UTILITAIRES ---
 
 function Test-IsRoot {
-    if ($IsWindows) { return $false }
+    if ($heIsWindows) { return $false }
     try {
         $uid = id -u
         return $uid -eq 0
@@ -117,7 +117,7 @@ function Show-Menu {
 
 # --- VERIFICATION ADMIN (WINDOWS) ---
 $isAdmin = $false
-if ($isWindows) {
+if ($heIsWindows) {
     $currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
     $isAdmin = $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
     if (-not $isAdmin) {
@@ -133,7 +133,7 @@ if ($isWindows) {
 $taskList = [System.Collections.ArrayList]@()
 
 # === WINDOWS TASKS ===
-if ($isWindows) {
+if ($heIsWindows) {
     $taskList.Add([PSCustomObject]@{
         Name = "Winget : Mise à jour des sources"
         Action = { winget source update }
@@ -474,10 +474,17 @@ if ($isWindows) {
     })
 
     $taskList.Add([PSCustomObject]@{
-        Name = "Système : Nettoyage fichiers temporaires"
+        Name = "Système : Nettoyage fichiers temporaires (plus de 7 jours)"
         Action = {
-            Get-ChildItem "C:\Windows\Temp" -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue
-            Get-ChildItem "$env:TEMP" -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -Recurse -ErrorAction SilentlyContinue
+            # Seuls les fichiers intacts depuis 7 jours partent : un installateur ou
+            # un logiciel ouvert peut encore se servir des plus récents (même règle
+            # que le Nettoyage de disque de Windows). Les dossiers vides restent.
+            $limit = (Get-Date).AddDays(-7)
+            foreach ($tempDir in @((Join-Path $env:SystemRoot "Temp"), $env:TEMP)) {
+                Get-ChildItem $tempDir -Recurse -File -ErrorAction SilentlyContinue |
+                    Where-Object { $_.LastWriteTime -lt $limit } |
+                    Remove-Item -Force -ErrorAction SilentlyContinue
+            }
         }
         Selected = $true
     })
@@ -555,7 +562,7 @@ if ($isWindows) {
 }
 
 # === MACOS TASKS ===
-if ($isMacOS) {
+if ($heIsMacOS) {
     if (Get-Command brew -ErrorAction SilentlyContinue) {
         $taskList.Add([PSCustomObject]@{
             Name = "Homebrew : Update & Upgrade"
@@ -584,7 +591,7 @@ if ($isMacOS) {
 }
 
 # === LINUX TASKS ===
-if ($isLinux) {
+if ($heIsLinux) {
     if ($distro -match "ubuntu|debian") {
         $taskList.Add([PSCustomObject]@{
             Name = "APT : Update & Upgrade"
@@ -736,7 +743,7 @@ if (Get-Command npm -ErrorAction SilentlyContinue) {
     $taskList.Add([PSCustomObject]@{
         Name = "NPM : Mise à jour globale"
         Action = {
-            if ($isWindows) { npm update -g }
+            if ($heIsWindows) { npm update -g }
             else { Invoke-Elevated "npm update -g" }
         }
         Selected = $true
@@ -761,7 +768,7 @@ if (Get-Command yarn -ErrorAction SilentlyContinue) {
     $taskList.Add([PSCustomObject]@{
         Name = "Yarn : Upgrade Global"
         Action = { 
-            if ($isWindows) { cmd /c "yarn global upgrade --latest" 2>&1 | Out-Null }
+            if ($heIsWindows) { cmd /c "yarn global upgrade --latest" 2>&1 | Out-Null }
             else { yarn global upgrade --latest 2>&1 | Out-Null }
         }
         Selected = $true
@@ -781,9 +788,9 @@ if (Get-Command pnpm -ErrorAction SilentlyContinue) {
 $taskList.Add([PSCustomObject]@{
     Name = "Système : Vider la corbeille"
     Action = {
-        if ($isWindows) { Clear-RecycleBin -Force -ErrorAction SilentlyContinue }
-        elseif ($isMacOS) { rm -rf ~/.Trash/* }
-        elseif ($isLinux) { 
+        if ($heIsWindows) { Clear-RecycleBin -Force -ErrorAction SilentlyContinue }
+        elseif ($heIsMacOS) { rm -rf ~/.Trash/* }
+        elseif ($heIsLinux) { 
             $tp = "$env:HOME/.local/share/Trash"
             if (Test-Path $tp) { Remove-Item "$tp/*" -Recurse -Force -ErrorAction SilentlyContinue }
         }
@@ -797,7 +804,7 @@ $taskList.Add([PSCustomObject]@{
 # 1. Mesure espace disque initial
 $startFreeSpace = 0
 try {
-    if ($isWindows) { $startFreeSpace = (Get-PSDrive C -ErrorAction SilentlyContinue).Free }
+    if ($heIsWindows) { $startFreeSpace = (Get-PSDrive C -ErrorAction SilentlyContinue).Free }
     else { $startFreeSpace = (Get-PSDrive '/' -PSProvider FileSystem -ErrorAction SilentlyContinue).Free }
 } catch {}
 
@@ -832,7 +839,7 @@ foreach ($task in $taskList) {
 # 4. Rapport final
 try {
     $endFreeSpace = 0
-    if ($isWindows) { $endFreeSpace = (Get-PSDrive C -ErrorAction SilentlyContinue).Free }
+    if ($heIsWindows) { $endFreeSpace = (Get-PSDrive C -ErrorAction SilentlyContinue).Free }
     else { $endFreeSpace = (Get-PSDrive '/' -PSProvider FileSystem -ErrorAction SilentlyContinue).Free }
 
     if ($startFreeSpace -gt 0 -and $endFreeSpace -gt 0) {

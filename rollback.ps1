@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Mandatory=$false)]
     [switch]$d,
 
@@ -24,8 +24,9 @@ Write-Host "  ROLLBACK - Annulation de commit(s)" -ForegroundColor Cyan
 Write-Host "========================================================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Verifier si on est dans un depot Git
-if (-not (Test-Path ".git")) {
+# Verifier si on est dans un depot Git (fonctionne aussi depuis un sous-dossier)
+$insideRepo = git rev-parse --is-inside-work-tree 2>$null
+if ($LASTEXITCODE -ne 0 -or $insideRepo -ne "true") {
     Write-Host "Erreur : Vous n'etes pas dans un depot Git !" -ForegroundColor Red
     Write-Host "Initialisez d'abord Git avec 'git init' ou deplacez-vous dans un projet Git." -ForegroundColor Yellow
     Write-Host ""
@@ -205,7 +206,7 @@ if ($r) {
 } elseif (-not $d) {
     # Mode interactif (seulement si -d n'est pas present non plus)
     Write-Host "Veux-tu aussi modifier l'espace distant GitHub ?" -ForegroundColor Yellow
-    Write-Host "ATTENTION : Cela va reecrire l'historique distant (git push --force)" -ForegroundColor Red
+    Write-Host "ATTENTION : Cela va reecrire l'historique distant (git push --force-with-lease)" -ForegroundColor Red
     Write-Host ""
 
     # Verifier si d'autres contributeurs pourraient etre affectes
@@ -245,7 +246,9 @@ if ($pushToGitHub) {
         Write-Host "Erreur : Impossible de determiner la branche actuelle !" -ForegroundColor Red
         Write-Host ""
     } else {
-        git push --force origin $currentBranch 2>&1 | Out-Null
+        # --force-with-lease et non --force : refuse d'ecraser des commits
+        # pousses par quelqu'un d'autre depuis notre dernier fetch
+        git push --force-with-lease origin $currentBranch 2>&1 | Out-Null
 
         if ($LASTEXITCODE -eq 0) {
             Write-Host "Espace distant GitHub modifie avec succes !" -ForegroundColor Green
@@ -253,8 +256,10 @@ if ($pushToGitHub) {
         } else {
             Write-Host ""
             Write-Host "Erreur : Impossible de modifier l'espace distant !" -ForegroundColor Red
-            Write-Host "Verifiez que vous avez les droits d'ecriture sur le depot." -ForegroundColor Yellow
-            Write-Host "Ou essayez manuellement : git push --force origin $currentBranch" -ForegroundColor Yellow
+            Write-Host "Soit vous n'avez pas les droits d'ecriture sur le depot," -ForegroundColor Yellow
+            Write-Host "soit quelqu'un a pousse sur '$currentBranch' depuis votre dernier fetch :" -ForegroundColor Yellow
+            Write-Host "lancez 'git fetch' et examinez ses commits avant de reessayer." -ForegroundColor Yellow
+            Write-Host "Pour reessayer manuellement : git push --force-with-lease origin $currentBranch" -ForegroundColor Yellow
         }
     }
     Write-Host ""
@@ -264,7 +269,7 @@ if ($pushToGitHub) {
     Write-Host "Le(s) commit(s) existe(nt) toujours sur GitHub." -ForegroundColor Gray
     Write-Host ""
     Write-Host "Pour le(s) supprimer plus tard :" -ForegroundColor Gray
-    Write-Host "  git push --force" -ForegroundColor White
+    Write-Host "  git push --force-with-lease" -ForegroundColor White
     Write-Host ""
 }
 
