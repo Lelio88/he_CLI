@@ -68,7 +68,12 @@ Write-Host ""
 Write-Host "Analyse des fichiers à sauvegarder..." -ForegroundColor Yellow
 
 $filesToBackup = @()
-$isGitRepo = Test-Path ".git"
+# Detecte aussi un sous-dossier de depot ; git est facultatif pour un backup
+$isGitRepo = $false
+if (Get-Command git -ErrorAction SilentlyContinue) {
+    $insideRepo = git rev-parse --is-inside-work-tree 2>$null
+    $isGitRepo = ($LASTEXITCODE -eq 0 -and $insideRepo -eq "true")
+}
 
 if ($isGitRepo) {
     Write-Host "✅ Dépôt Git détecté : Utilisation du .gitignore" -ForegroundColor Green

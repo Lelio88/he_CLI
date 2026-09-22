@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Mandatory=$false, Position=0)]
     [string]$BranchName = ""
 )
@@ -15,8 +15,9 @@ Write-Host "  NEWBRANCH - Creer une nouvelle branche" -ForegroundColor Cyan
 Write-Host "========================================================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Verifier si on est dans un depot Git
-if (-not (Test-Path ".git")) {
+# Verifier si on est dans un depot Git (fonctionne aussi depuis un sous-dossier)
+$insideRepo = git rev-parse --is-inside-work-tree 2>$null
+if ($LASTEXITCODE -ne 0 -or $insideRepo -ne "true") {
     Write-Host "Erreur : Vous n'etes pas dans un depot Git !" -ForegroundColor Red
     Write-Host "Initialisez d'abord Git avec 'git init' ou deplacez-vous dans un projet Git." -ForegroundColor Yellow
     Write-Host ""
@@ -191,7 +192,8 @@ if ($hasChanges) {
 
         Write-Host ""
         Write-Host "Ajout des fichiers..." -ForegroundColor Yellow
-        git add .
+        # -A et non "." : depuis un sous-dossier, "." n'ajouterait que ce sous-dossier
+        git add -A
 
         if ($LASTEXITCODE -ne 0) {
             Write-Host "Erreur lors de l'ajout des fichiers !" -ForegroundColor Red

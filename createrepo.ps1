@@ -48,7 +48,7 @@ if (-not $ghInstalled) {
     Write-Host "📥 Lancement de l'installation automatique..." -ForegroundColor Cyan
     Write-Host ""
     
-    if ($isWindows) {
+    if ($heIsWindows) {
         # ========== Windows : winget ==========
         $wingetInstalled = Get-Command winget -ErrorAction SilentlyContinue
         
@@ -71,7 +71,7 @@ if (-not $ghInstalled) {
     }
     else {
         # ========== Linux/macOS (détection via common.ps1) ==========
-        if ($isMacOS) {
+        if ($heIsMacOS) {
             # macOS : Homebrew
             if (Get-Command brew -ErrorAction SilentlyContinue) {
                 Write-Host "Installation via Homebrew..." -ForegroundColor Cyan
@@ -223,6 +223,8 @@ else {
 Write-Host ""
 Write-Host "📦 Initialisation du dépôt local..."
 
+# Test-Path et non rev-parse : on veut savoir si CE dossier est la racine d'un
+# dépôt. Un dossier parent versionné ne doit pas empêcher le git init.
 if (-not (Test-Path ".git")) {
     git init
     if ($LASTEXITCODE -ne 0) { throw "Erreur git init" }

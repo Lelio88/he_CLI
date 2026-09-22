@@ -87,7 +87,7 @@ Le projet cible deux plateformes (Windows natif via PowerShell 5.1+, Linux/macOS
 | `selfupdate.ps1` | Met à jour HE CLI depuis GitHub |
 | `heian.ps1` | Affiche le logo ASCII art Heian Enterprise |
 | `matrix.ps1` | Effet visuel Matrix dans le terminal |
-| `cs.ps1` | Mini-jeu dans le terminal |
+| `cs.ps1` | Mini-jeu dans le terminal — score Elo conservé dans `~/.he/elo.txt`, hors du dossier d'installation |
 | `flash.ps1` | Effet visuel grenade flash |
 | `help.ps1` | Affiche l'aide complète de toutes les commandes |
 | `package.ps1` | Crée `release.zip` en excluant `.git`, `.github`, tests, logs |
@@ -135,7 +135,9 @@ Write-Host "====================================================================
 Write-Host ""
 
 # Validation des prérequis (dépôt Git, remote, etc.)
-if (-not (Test-Path ".git")) {
+# rev-parse et non Test-Path ".git" : la commande marche aussi depuis un sous-dossier
+$insideRepo = git rev-parse --is-inside-work-tree 2>$null
+if ($LASTEXITCODE -ne 0 -or $insideRepo -ne "true") {
     Write-Host "Erreur : Vous n'etes pas dans un depot Git !" -ForegroundColor Red
     exit 1
 }
@@ -153,8 +155,10 @@ Tout script nécessitant la détection de l'OS doit dot-sourcer `common.ps1` :
 
 ```powershell
 . (Join-Path $PSScriptRoot "common.ps1")
-# Variables disponibles : $isWindows, $isLinux, $isMacOS, $distro
+# Variables disponibles : $heIsWindows, $heIsLinux, $heIsMacOS, $distro
 ```
+
+Le préfixe `he` n'est pas cosmétique : sous PowerShell 7, `$IsWindows`, `$IsLinux` et `$IsMacOS` sont des variables automatiques en lecture seule, et PowerShell ignore la casse des noms.
 
 ### Convention de couleurs terminal
 
@@ -216,6 +220,11 @@ Ce pattern est recommandé pour toute commande qui enchaîne plusieurs opératio
 ## Anti-patterns à éviter
 
 - **Ne pas dupliquer la logique de validation** — si un pattern de validation (vérifier `.git`, vérifier `origin`) est copié dans 3+ scripts, envisager un module partagé
+- **Ne pas tester un dépôt avec `Test-Path ".git"`** — le test échoue depuis un sous-dossier ; utiliser `git rev-parse --is-inside-work-tree`. Seules exceptions : `createrepo.ps1` et `firstpush.ps1`, qui demandent si *ce* dossier est la racine d'un dépôt avant un `git init` — un dossier parent versionné ne doit pas l'empêcher
+- **Ne pas affecter `$isWindows`, `$isLinux` ou `$isMacOS`** — variables automatiques en lecture seule sous PowerShell 7 : l'affectation affiche une erreur à chaque exécution. Utiliser `$heIs*` de `common.ps1`
+- **Ne pas enregistrer un `.ps1` sans BOM UTF-8** — PowerShell 5.1 (celui de `he.cmd`) lit un fichier sans BOM en ANSI : « Réseau » s'affiche `RÃ©seau`. Exception obligatoire : `install.ps1`, exécuté par `irm | iex` — `irm` conserve le BOM et `iex` refuse un script commençant par U+FEFF
+- **Ne pas finir une chaîne entre guillemets doubles par un backtick** — il échappe le guillemet fermant, et tout le reste du fichier est lu de travers (`he help` a ainsi été cassé partout)
+- **Ne pas ranger de données utilisateur dans le dossier d'installation** — install, uninstall et selfupdate le réécrivent ; les données persistantes vont dans `~/.he/` (ex. le score de `he cs`)
 - **Ne pas oublier `$LASTEXITCODE`** — PowerShell ne propage pas les codes de sortie des exécutables natifs automatiquement ; toujours vérifier après `git` ou `gh`
 - **Ne pas utiliser `Write-Host` avec interpolation de variables non-contrôlées** — risque d'injection de séquences ANSI
 - **Ne pas hardcoder le chemin d'installation** — utiliser `$MyInvocation.MyCommand.Path` ou `$PSScriptRoot` pour résoudre le chemin des scripts

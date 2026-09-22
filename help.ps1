@@ -14,7 +14,7 @@ Write-Host ""
 . (Join-Path $PSScriptRoot "common.ps1")
 
 # Système détecté
-if ($isWindows) {
+if ($heIsWindows) {
     Write-Host "Système détecté : " -ForegroundColor Gray -NoNewline
     Write-Host "Windows" -ForegroundColor Green
 } else {
@@ -69,7 +69,7 @@ Write-Host ""
 
 Write-Host "  Configuration Gemini (Optionnel)" -ForegroundColor Yellow
 Write-Host "    Pour utiliser Gemini (plus rapide), définissez la variable d'environnement :" -ForegroundColor Gray
-Write-Host "    Windows : `$env:GEMINI_API_KEY = 'votre_cle'`" -ForegroundColor White
+Write-Host "    Windows : `$env:GEMINI_API_KEY = 'votre_cle'" -ForegroundColor White
 Write-Host "    Linux/Mac : export GEMINI_API_KEY='votre_cle'" -ForegroundColor White
 Write-Host ""
 
@@ -277,12 +277,12 @@ Write-Host "      he maintenance --exclude numpy tensorflow torch" -ForegroundCo
 Write-Host "      he maintenance --preview --exclude pandas" -ForegroundColor Cyan
 Write-Host ""
 
-if ($isWindows) {
+if ($heIsWindows) {
     Write-Host "    Opérations Windows :" -ForegroundColor White
     Write-Host "      • Mise à jour Winget et applications" -ForegroundColor Gray
     Write-Host "      • DISM /RestoreHealth (nécessite admin)" -ForegroundColor Gray
     Write-Host "      • SFC /Scannow (nécessite admin)" -ForegroundColor Gray
-    Write-Host "      • Nettoyage fichiers temporaires" -ForegroundColor Gray
+    Write-Host "      • Nettoyage fichiers temporaires (plus de 7 jours)" -ForegroundColor Gray
     Write-Host "      • Flush DNS et reset réseau" -ForegroundColor Gray
     Write-Host "      • Nettoyage Windows Update" -ForegroundColor Gray
     Write-Host "      • CHKDSK /scan" -ForegroundColor Gray
@@ -357,7 +357,7 @@ Write-Host ""
 
 Write-Host "Chemin d'installation :" -ForegroundColor Gray
 
-if ($isWindows) {
+if ($heIsWindows) {
     $installPath = "$env:USERPROFILE\he-tools"
     Write-Host "  $installPath" -ForegroundColor White
 } else {

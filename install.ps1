@@ -1,5 +1,7 @@
 # Script d'installation de HE CLI - HE Command Line Interface
-# Encodage UTF-8
+# Encodage UTF-8 mais SANS BOM, et c'est voulu : ce script s'installe par
+# "irm ... | iex", or irm garde le BOM et iex refuse un script qui commence
+# par U+FEFF. Les accents ne s'affichent donc correctement que par cette voie.
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::InputEncoding = [System.Text.Encoding]::UTF8
 
@@ -10,28 +12,28 @@ Write-Host "====================================================================
 Write-Host ""
 
 # Détection OS robuste
-$isWindows = $false
-$isLinux = $false
-$isMacOS = $false
+$heIsWindows = $false
+$heIsLinux = $false
+$heIsMacOS = $false
 
 # 1. Priorité aux variables d'environnement Windows standard (plus fiable sur Windows)
 if ($env:OS -eq "Windows_NT" -or $PSVersionTable.Platform -eq "Win32NT") {
-    $isWindows = $true
+    $heIsWindows = $true
 }
 # 2. Sinon, vérification via la variable PowerShell Core
 elseif (Test-Path variable:global:IsWindows) {
     if ($IsWindows) {
-        $isWindows = $true
+        $heIsWindows = $true
     }
 }
 
 # 3. Si ce n'est pas Windows, on détermine si c'est macOS ou Linux
-if (-not $isWindows) {
+if (-not $heIsWindows) {
     if (Test-Path "/System/Library/CoreServices/SystemVersion.plist") {
-        $isMacOS = $true
+        $heIsMacOS = $true
     }
     else {
-        $isLinux = $true
+        $heIsLinux = $true
     }
 }
 
@@ -39,7 +41,7 @@ if (-not $isWindows) {
 $installPath = ""
 $needSudo = $false
 
-if ($isWindows) {
+if ($heIsWindows) {
     Write-Host "Système détecté : Windows" -ForegroundColor Green
     Write-Host ""
     
@@ -58,7 +60,7 @@ if ($isWindows) {
 }
 else {
     # Linux ou macOS
-    if ($isMacOS) {
+    if ($heIsMacOS) {
         Write-Host "Système détecté : macOS" -ForegroundColor Green
     }
     else {
@@ -186,7 +188,7 @@ catch {
 Write-Host ""
 
 # Rendre le script 'he' exécutable sur Linux/macOS
-if (-not $isWindows) {
+if (-not $heIsWindows) {
     Write-Host "[3/5] Configuration des permissions..." -ForegroundColor Yellow
     
     if ($needSudo) {
@@ -218,10 +220,10 @@ if ($gitInstalled) {
 else {
     Write-Host "      Git n'est pas installe" -ForegroundColor Red
     
-    if ($isWindows) {
+    if ($heIsWindows) {
         Write-Host "      Veuillez installer Git depuis : https://git-scm.com/download/win" -ForegroundColor Yellow
     }
-    elseif ($isMacOS) {
+    elseif ($heIsMacOS) {
         Write-Host "      Installez Git avec : brew install git" -ForegroundColor Yellow
     }
     else {
@@ -245,7 +247,7 @@ Write-Host ""
 # Ajouter au PATH
 Write-Host "Configuration du PATH..." -ForegroundColor Yellow
 
-if ($isWindows) {
+if ($heIsWindows) {
     # Windows : Modifier le PATH utilisateur dans le registre
     $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
     $pathsArray = $userPath -split ";"
@@ -321,7 +323,7 @@ Write-Host "====================================================================
 Write-Host ""
 
 # TENTATIVE DE REFRESHENV (CHOCOLATEY)
-if ($isWindows) {
+if ($heIsWindows) {
     if ($env:ChocolateyInstall -or (Get-Command choco -ErrorAction SilentlyContinue)) {
         Write-Host "Chocolatey détecté. Tentative de rafraîchissement de l'environnement..." -ForegroundColor Yellow
         try {
@@ -339,7 +341,7 @@ if ($isWindows) {
 Write-Host "Prochaines etapes :" -ForegroundColor Yellow
 Write-Host ""
 
-if ($isWindows) {
+if ($heIsWindows) {
     Write-Host "⚠️  IMPORTANT : REDEMARREZ VOTRE TERMINAL MAINTENANT !" -ForegroundColor Red -BackgroundColor Black
     Write-Host "    Si vous ne le faites pas, la commande 'he' ne sera pas reconnue." -ForegroundColor Red
     Write-Host ""

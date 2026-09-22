@@ -8,6 +8,7 @@ import urllib.request
 import urllib.error
 from pathlib import Path
 from collections import Counter
+from typing import List, Optional
 
 sys.stdout.reconfigure(encoding='utf-8')
 
@@ -27,6 +28,13 @@ MAX_LENGTH_PARTIAL = 100
 MIN_DESCRIPTIVE_LENGTH = 15
 MIN_GENERIC_LENGTH = 20
 
+# Le diff envoyé au modèle est tronqué à 4000 caractères : inutile de lire un
+# fichier non suivi volumineux, ni de continuer à lancer un `git diff` par
+# fichier une fois le double de ce budget accumulé (un dossier non suivi de
+# milliers de fichiers ferait sinon autant de processus)
+MAX_UNTRACKED_FILE_BYTES = 100_000
+UNTRACKED_DIFF_BUDGET_CHARS = 8_000
+
 SECRET_PATTERNS = [
     # API Keys
     (r'(?i)(api[_-]?key|apikey|api[_-]?secret)["\s:=]+([^\s"\']+)', '[REDACTED_API_KEY]'),
@@ -40,7 +48,7 @@ SECRET_PATTERNS = [
     (r'(?i)(password|passwd|pwd)["\s:=]+([^\s"\']+)', '[REDACTED_PASSWORD]'),
     
     # Private keys
-    (r'-----BEGIN\s+(?:RSA\s+)?PRIVATE\s+KEY-----[\s\S]*?-----END\s+(?:RSA\s+)?PRIVATE\s+KEY-----', '[REDACTED_PRIVATE_KEY]'),
+    (r'-----BEGIN\s+(?:[A-Z]+\s+)?PRIVATE\s+KEY-----[\s\S]*?-----END\s+(?:[A-Z]+\s+)?PRIVATE\s+KEY-----', '[REDACTED_PRIVATE_KEY]'),
     
     # Database URLs
     (r'(?i)(postgres|mysql|mongodb|redis)://[^\s]+', '[REDACTED_DB_URL]'),
@@ -63,13 +71,15 @@ def get_git_context(staged_only=False):
         else:
             status_cmd = ['git', 'status', '--porcelain']
         
+        # rstrip et non strip : l'espace de tête de " M fichier" fait partie du
+        # code de statut, l'enlever décalait le nom du premier fichier d'un caractère
         status_output = subprocess.run(
             status_cmd,
-            capture_output=True, 
-            text=True, 
-            encoding='utf-8', 
+            capture_output=True,
+            text=True,
+            encoding='utf-8',
             errors='replace'
-        ).stdout.strip()
+        ).stdout.rstrip()
         
         # Parse files
         files = []
@@ -104,7 +114,14 @@ def get_git_context(staged_only=False):
             encoding='utf-8',
             errors='replace'
         ).stdout
-        
+
+        if not staged_only:
+            diff_output += get_untracked_diff()
+
+        # Masquer AVANT de tronquer : une clé privée coupée en deux (BEGIN sans
+        # END) échapperait au motif qui la reconnaît
+        diff_output, _ = redact_sensitive_data(diff_output)
+
         # Limit to 4000 chars
         diff_sample = diff_output[:4000]
         
@@ -117,6 +134,49 @@ def get_git_context(staged_only=False):
     except Exception as e:
         print(f"Erreur lors de la récupération du contexte Git: {e}", file=sys.stderr)
         sys.exit(1)
+
+
+def _run_git(args: List[str], cwd: Optional[str] = None) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ['git', *args],
+        capture_output=True,
+        text=True,
+        encoding='utf-8',
+        errors='replace',
+        cwd=cwd
+    )
+
+
+def get_untracked_diff() -> str:
+    """Diff des fichiers non suivis, au format de `git diff`.
+
+    `git diff HEAD` les ignore, alors que `he update` les ajoute au commit
+    (`git add .`) : sans eux, le modèle lirait des fichiers « Ajouté » dans la
+    liste sans jamais en voir le contenu.
+    """
+    root = _run_git(['rev-parse', '--show-toplevel']).stdout.strip()
+    if not root:
+        return ''
+
+    # -z : noms bruts, sans les guillemets qu'ajoute git aux chemins accentués
+    listing = _run_git(['ls-files', '--others', '--exclude-standard', '-z'], cwd=root).stdout
+    chunks = []
+    total = 0
+    for path in filter(None, listing.split('\0')):
+        if total >= UNTRACKED_DIFF_BUDGET_CHARS:
+            break
+        try:
+            too_big = os.path.getsize(os.path.join(root, path)) > MAX_UNTRACKED_FILE_BYTES
+        except OSError:
+            continue
+        if too_big:
+            chunks.append(f"diff --git a/{path} b/{path}\nnew file (contenu omis : fichier volumineux)\n")
+            continue
+        # --no-index sort en code 1 dès que les fichiers diffèrent : c'est le cas nominal
+        chunk = _run_git(['diff', '--no-index', '--unified=3', '--', '/dev/null', path], cwd=root).stdout
+        chunks.append(chunk)
+        total += len(chunk)
+    return ''.join(chunks)
 
 
 def redact_sensitive_data(text):

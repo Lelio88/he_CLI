@@ -1,4 +1,4 @@
-param(
+﻿param(
     [Parameter(Mandatory=$false, Position=0)]
     [int]$limit = 20,
 
@@ -27,8 +27,9 @@ Write-Host "  LOGCOMMIT - Historique des commits" -ForegroundColor Cyan
 Write-Host "========================================================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Verifier si on est dans un depot Git
-if (-not (Test-Path ".git")) {
+# Verifier si on est dans un depot Git (fonctionne aussi depuis un sous-dossier)
+$insideRepo = git rev-parse --is-inside-work-tree 2>$null
+if ($LASTEXITCODE -ne 0 -or $insideRepo -ne "true") {
     Write-Host "Erreur : Vous n'etes pas dans un depot Git !" -ForegroundColor Red
     Write-Host "Initialisez d'abord Git avec 'git init' ou deplacez-vous dans un projet Git." -ForegroundColor Yellow
     Write-Host ""
