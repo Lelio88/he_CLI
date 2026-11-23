@@ -44,3 +44,6 @@ Write-Host " ======" -ForegroundColor Cyan
 Write-Host "======                                                                                 ======" -ForegroundColor Cyan
 Write-Host "=============================================================================================" -ForegroundColor Cyan
 Write-Host "=============================================================================================" -ForegroundColor DarkCyan
+
+# Code de sortie explicite : sans lui, "he" renverrait celui du dernier git lancé
+exit 0

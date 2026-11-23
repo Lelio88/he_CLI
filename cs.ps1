@@ -626,3 +626,6 @@ if ($ScoreUs -ge $WinLimit) {
 }
 Write-Host "=========================================" -ForegroundColor DarkGray
 Write-Host "`n🚀 Retour au menu..." -ForegroundColor Cyan
+
+# Code de sortie explicite : sans lui, "he" renverrait celui du dernier git lancé
+exit 0

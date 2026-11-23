@@ -851,3 +851,6 @@ try {
 } catch {}
 
 Write-Host "`n===== MAINTENANCE TERMINEE =====`n" -ForegroundColor Green
+
+# Code de sortie explicite : sans lui, "he" renverrait celui du dernier git lancé
+exit 0

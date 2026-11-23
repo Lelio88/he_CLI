@@ -453,3 +453,6 @@ if ($pages) {
 
 Write-Host ""
 Write-Host "✨ Succès ! URL:  https://github.com/$githubUser/$RepoName"
+
+# Code de sortie explicite : sans lui, "he" renverrait celui du dernier git lancé
+exit 0

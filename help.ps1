@@ -441,3 +441,6 @@ Write-Host "====================================================================
 Write-Host ""
 Write-Host "Made with ❤️  by Lelio B" -ForegroundColor Magenta
 Write-Host ""
+
+# Code de sortie explicite : sans lui, "he" renverrait celui du dernier git lancé
+exit 0

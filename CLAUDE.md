@@ -37,7 +37,7 @@ Topologie rapide :
 
 1. **Encodage UTF-8** — chaque script de commande débute par `. (Join-Path $PSScriptRoot "common.ps1")` (juste après son `param()`), qui règle la console en UTF-8, et est enregistré **avec BOM** : sans lui, PowerShell 5.1 lit le fichier en ANSI et affiche `RÃ©seau`. Hors commandes, `package.ps1` (outil de dev) s'en passe. Seule exception au BOM : `install.ps1`, autonome (exécuté par `irm | iex` avant toute installation), sans BOM car `iex` le refuse, et qui règle lui-même l'encodage
 2. **Compatibilité cross-platform** — tout nouveau script fonctionne sur Windows (PS 5.1+) ET Linux/macOS (pwsh) ; pour toute logique OS-dépendante, dot-sourcer `common.ps1` plutôt que de re-détecter l'OS
-3. **Autonomie des commandes** — chaque `*.ps1` valide ses prérequis (`.git`, `origin`, `gh`), gère ses erreurs et affiche ses propres messages ; aucun état partagé implicite
+3. **Autonomie des commandes** — chaque `*.ps1` valide ses prérequis (`.git`, `origin`, `gh`), gère ses erreurs et affiche ses propres messages ; aucun état partagé implicite. Elle quitte par `exit 1` sur tout échec et par `exit 0` en fin de script : `main.ps1` en fait le code de sortie de `he`
 4. **Vérifier `$LASTEXITCODE`** après chaque appel à `git` ou `gh` — PowerShell ne propage pas les codes de sortie natifs (helper `Run-Git` recommandé pour les enchaînements)
 5. **Langue française** — toute sortie utilisateur est en français, avec accents corrects
 6. **Enregistrer toute nouvelle commande** dans les 3 fichiers : `main.ps1` (`$heCommands`), `help.ps1` (bloc `$commandHelp` + `$helpCategories`) ET `README.md`
@@ -78,5 +78,5 @@ powershell -File package.ps1
 
 ## VIII. Contexte de Session
 
-- **Dernier focus** : 1.3.0 — `he version`, aide par commande, socle `common.ps1`, backup direct, README borné, empreinte SHA-256 de `release.zip`.
+- **Dernier focus** : 1.3.1 — codes de sortie fiables (exit explicite dans chaque commande, relayé par `main.ps1`) ; 1.3.0 : version, aide par commande, socle `common.ps1`, backup direct, empreinte SHA-256.
 - **Focus immédiat** : essayer `install.sh` sur un vrai Linux/macOS (seule la syntaxe est vérifiée).

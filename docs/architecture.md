@@ -145,7 +145,14 @@ Assert-HeHasCommit "Faites d'abord un commit."
 
 # Résumé final avec couleurs
 Write-Host "Operation terminee avec succes !" -ForegroundColor Green
+
+# Code de sortie explicite (voir « Codes de sortie » ci-dessous)
+exit 0
 ```
+
+### Codes de sortie
+
+`main.ps1` rend le code de la commande (`exit $LASTEXITCODE`), si bien que `he update -a && ...` n'enchaîne qu'après une réussite. Ce n'est fiable que parce que **chaque commande quitte par un `exit` explicite** : `exit 1` sur tout échec, `exit 0` en fin de script. Sans `exit 0`, `$LASTEXITCODE` garderait le code du dernier `git` lancé, souvent non nul alors que tout a réussi (un `git rev-parse` qui répond « non » à une question). Un échec partiel compte comme un échec (`rollback` dont le push distant échoue). Seule exception : `install.ps1`, qui tourne aussi par `irm | iex`, où un `exit` final fermerait la console de l'utilisateur ; `selfupdate.ps1` remet donc `$LASTEXITCODE` à 0 avant de l'appeler.
 
 ### Détection OS partagée
 
@@ -227,6 +234,7 @@ Ce pattern est recommandé pour toute commande qui enchaîne plusieurs opératio
 - **Ne pas finir une chaîne entre guillemets doubles par un backtick** — il échappe le guillemet fermant, et tout le reste du fichier est lu de travers (`he help` a ainsi été cassé partout)
 - **Ne pas ranger de données utilisateur dans le dossier d'installation** — install, uninstall et selfupdate le réécrivent ; les données persistantes vont dans `~/.he/` (ex. le score de `he cs`)
 - **Ne pas oublier `$LASTEXITCODE`** — PowerShell ne propage pas les codes de sortie des exécutables natifs automatiquement ; toujours vérifier après `git` ou `gh`
+- **Ne pas finir une commande sans `exit 0`, ni signaler un échec sans `exit 1`** — le code de sortie de `he` serait celui du dernier `git` lancé, ou 0 malgré l'échec
 - **Ne pas utiliser `Write-Host` avec interpolation de variables non-contrôlées** — risque d'injection de séquences ANSI
 - **Ne pas hardcoder le chemin d'installation** — utiliser `$MyInvocation.MyCommand.Path` ou `$PSScriptRoot` pour résoudre le chemin des scripts
 - **Ne pas mélanger `Out-Null` et `2>$null`** — `Out-Null` capture stdout PowerShell, `2>$null` capture stderr natif ; choisir selon le contexte

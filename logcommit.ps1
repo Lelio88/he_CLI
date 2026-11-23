@@ -151,3 +151,6 @@ if ($limit -gt 0 -and $totalCommits -gt $limit) {
     Write-Host "       Utilisez 'he logcommit 0' pour voir tous les commits." -ForegroundColor Gray
     Write-Host ""
 }
+
+# Code de sortie explicite : sans lui, "he" renverrait celui du dernier git lancé
+exit 0

@@ -130,3 +130,6 @@ finally {
     Write-Host "                                            - Morpheus" -ForegroundColor DarkGray
     Write-Host ""
 }
+
+# Code de sortie explicite : sans lui, "he" renverrait celui du dernier git lancé
+exit 0

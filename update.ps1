@@ -326,3 +326,6 @@ if ($hasChanges) {
 
 Write-Host "Votre projet est synchronise avec GitHub !" -ForegroundColor Green
 Write-Host ""
+
+# Code de sortie explicite : sans lui, "he" renverrait celui du dernier git lancé
+exit 0
