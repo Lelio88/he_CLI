@@ -1,67 +1,53 @@
-﻿[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+﻿# main.ps1 - Dispatcher de HE CLI : "he <commande> [args]" exécute <commande>.ps1
+#
+# Une commande = un script à la racine, déclaré dans $heCommands. Le
+# dispatcher traite lui-même deux cas, avant tout script :
+#   he --version | -v            -> version.ps1
+#   he <commande> -h | --help    -> l'aide de cette seule commande (help.ps1)
+# L'aide est interceptée ici, et non dans chaque script : plusieurs commandes
+# ont un paramètre obligatoire (firstpush, createrepo) qui avalerait "--help",
+# et "-h" serait pris pour un préfixe de "-hard" par rollback.
+. (Join-Path $PSScriptRoot "common.ps1")
 
-# Récupérer tous les arguments passés au script
-$command = $args[0]
+$heCommands = [ordered]@{
+    "firstpush"   = "firstpush.ps1"
+    "newbranch"   = "newbranch.ps1"
+    "createrepo"  = "createrepo.ps1"
+    "backup"      = "backup.ps1"
+    "rollback"    = "rollback.ps1"
+    "logcommit"   = "logcommit.ps1"
+    "update"      = "update.ps1"
+    "maintenance" = "maintenance.ps1"
+    "selfupdate"  = "selfupdate.ps1"
+    "cs"          = "cs.ps1"
+    "readme"      = "readme.ps1"
+    "matrix"      = "matrix.ps1"
+    "heian"       = "heian.ps1"
+    "flash"       = "flash.ps1"
+    "version"     = "version.ps1"
+    "help"        = "help.ps1"
+}
+$helpFlags = @("-h", "--help", "-help", "/?")
 
-# Les arguments restants (tout sauf la commande)
-if ($args.Length -gt 1) {
-    $remainingArgs = $args[1..($args.Length - 1)]
-} else {
-    $remainingArgs = @()
+$command = if ($args.Length -gt 0) { [string]$args[0] } else { "" }
+# @(...) autour du if : un "if" en expression déballe un tableau d'un seul
+# élément, et @remainingArgs éclaterait alors la chaîne lettre par lettre.
+$remainingArgs = @(if ($args.Length -gt 1) { $args[1..($args.Length - 1)] })
+
+if ($command -in @("--version", "-v", "-version")) { $command = "version" }
+if ($command -eq "" -or $command -in $helpFlags) { $command = "help" }
+
+if (-not $heCommands.Contains($command)) {
+    Write-Host "❌ Commande inconnue : $command" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Tapez 'he help' pour voir les commandes disponibles" -ForegroundColor Yellow
+    exit 1
 }
 
-# Get the directory where this script is located (cross-platform)
-$scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
-
-switch ($command) {
-    "firstpush" {
-        & (Join-Path $scriptPath "firstpush.ps1") @remainingArgs
-    }
-    "newbranch" {
-        & (Join-Path $scriptPath "newbranch.ps1") @remainingArgs
-    }
-    "createrepo" { 
-        & (Join-Path $scriptPath "createrepo.ps1") @remainingArgs
-    }
-    "backup" {
-        & (Join-Path $scriptPath "backup.ps1") @remainingArgs
-    }
-    "rollback" {
-        & (Join-Path $scriptPath "rollback.ps1") @remainingArgs
-    }
-    "logcommit" {
-        & (Join-Path $scriptPath "logcommit.ps1") @remainingArgs
-    }
-    "update" {
-        & (Join-Path $scriptPath "update.ps1") @remainingArgs
-    }
-    "maintenance" {
-        & (Join-Path $scriptPath "maintenance.ps1") @remainingArgs
-    }
-    "selfupdate" {
-        & (Join-Path $scriptPath "selfupdate.ps1")
-    }
-    "cs" {
-        & (Join-Path $scriptPath "cs.ps1") @remainingArgs
-    }
-    "readme"{
-        & (Join-Path $scriptPath "readme.ps1") @remainingArgs 
-    }
-    "matrix"{
-        & (Join-Path $scriptPath "matrix.ps1")
-    }
-    "heian" {
-        & (Join-Path $scriptPath "heian.ps1")
-    }
-    "flash" {
-        & (Join-Path $scriptPath "flash.ps1")
-    }
-    "help" {
-        & (Join-Path $scriptPath "help.ps1")
-    }
-    default { 
-        Write-Host "❌ Commande inconnue : $command" -ForegroundColor Red
-        Write-Host ""
-        Write-Host "Tapez 'he help' pour voir les commandes disponibles" -ForegroundColor Yellow
-    }
+# "he <commande> --help" : l'aide de la commande, sans l'exécuter
+if ($command -ne "help" -and @($remainingArgs | Where-Object { $_ -in $helpFlags }).Count -gt 0) {
+    & (Join-Path $PSScriptRoot "help.ps1") $command
+    exit 0
 }
+
+& (Join-Path $PSScriptRoot $heCommands[$command]) @remainingArgs

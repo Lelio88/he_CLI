@@ -11,7 +11,14 @@ import sys
 # --- CONFIGURATION ---
 OUTPUT_FILENAME = "README.md"  # Nom du fichier généré
 MODEL = "qwen2.5-coder" 
-MAX_FILE_SIZE = 25000 
+MAX_FILE_SIZE = 25000      # caractères : au-delà, le fichier est cité sans son contenu
+MAX_FILE_BYTES = 100_000   # octets : au-delà, le fichier n'est même pas lu
+MAX_TODOS = 50
+# Part du contexte du modèle réservée au code (le reste : consignes, ancien
+# README, réponse). Une fois dépassée, les fichiers suivants ne sont plus que
+# nommés : l'arborescence reste complète, la mémoire du poste reste bornée.
+CODE_SHARE_OF_CONTEXT = 0.6
+CHARS_PER_TOKEN = 3.5
 
 # Extensions à scanner
 EXTENSIONS = {
@@ -43,11 +50,13 @@ def get_optimal_ctx():
 def parse_gitignore(root_path):
     """Lit le .gitignore."""
     gitignore_path = os.path.join(root_path, '.gitignore')
-    patterns = ['.git', 'node_modules', 'venv', '__pycache__', 'dist', 'build', '.idea', '.vscode', '.next', 'target']
+    patterns = ['.git', 'node_modules', 'venv', '.venv', '__pycache__', 'dist', 'build', '.idea', '.vscode',
+                '.next', 'target', 'coverage', '.dart_tool', '.gradle',
+                '*.min.js', '*.min.css', '*.map', 'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml']
     
     if os.path.exists(gitignore_path):
         try:
-            with open(gitignore_path, 'r', encoding='utf-8') as f:
+            with open(gitignore_path, 'r', encoding='utf-8', errors='replace') as f:
                 for line in f:
                     line = line.strip()
                     if line and not line.startswith('#'):
@@ -68,50 +77,83 @@ def is_ignored(path, root_path, patterns):
             return True
     return False
 
-def get_project_code_and_todos(path, patterns):
-    code_content = ""
+def read_text_file(file_path):
+    """Contenu texte du fichier, ou None s'il est binaire.
+
+    UTF-8 d'abord, puis latin-1 (qui accepte tout octet) : un vieux script
+    enregistré en ANSI se lit au lieu de faire échouer l'analyse.
+    """
+    with open(file_path, 'rb') as f:
+        data = f.read()
+    if b'\0' in data[:8192]:
+        return None
+    try:
+        return data.decode('utf-8')
+    except UnicodeDecodeError:
+        return data.decode('latin-1')
+
+
+def get_project_code_and_todos(path, patterns, char_budget):
+    parts = []
+    used_chars = 0
     todo_list = []
     files_scanned = 0
     ignored_files = []
-    
+    unread_files = []
+
     for root, dirs, files in os.walk(path):
         dirs[:] = [d for d in dirs if not is_ignored(os.path.join(root, d), path, patterns)]
-        
+
         for file in files:
             file_path = os.path.join(root, file)
             if is_ignored(file_path, path, patterns): continue
-            
+
             # Vérif extension + Cas spéciaux
             is_valid = any(file.endswith(ext) for ext in EXTENSIONS) or file in ['Dockerfile', 'Makefile', 'Gemfile']
-            
-            if is_valid and file != OUTPUT_FILENAME:
-                try:
-                    with open(file_path, 'r', encoding='utf-8') as f:
-                        lines = f.readlines()
-                        content = "".join(lines)
-                        size = len(content)
-                        
-                        rel_path = os.path.relpath(file_path, path).replace(os.sep, '/')
-                        code_content += f"\n\n--- FICHIER: {rel_path} ---\n"
-                        if size < MAX_FILE_SIZE:
-                            code_content += content
-                            files_scanned += 1
-                        else:
-                            # Affiche le nom du fichier trop gros !
-                            print(f"⚠️  Trop gros (> {MAX_FILE_SIZE} car.) : {file}")
-                            code_content += f"// [INFO] Fichier ignoré car trop volumineux ({size} car.)."
-                            ignored_files.append(file)
+            if not is_valid or file == OUTPUT_FILENAME:
+                continue
 
-                        for line in lines:
-                            if "TODO" in line or "FIXME" in line:
-                                clean = line.strip().replace('//', '').replace('#', '').strip()
-                                todo_list.append(f"- [{file}] {clean}")
-                except Exception: pass
-                
+            rel_path = os.path.relpath(file_path, path).replace(os.sep, '/')
+            try:
+                if os.path.getsize(file_path) > MAX_FILE_BYTES:
+                    print(f"⚠️  Trop gros (> {MAX_FILE_BYTES // 1000} Ko) : {rel_path}")
+                    ignored_files.append(rel_path)
+                    parts.append(f"\n\n--- FICHIER: {rel_path} ---\n// [INFO] Fichier ignoré car trop volumineux.")
+                    continue
+                content = read_text_file(file_path)
+            except OSError:
+                continue
+            if content is None:
+                continue  # binaire
+
+            for line in content.splitlines():
+                if len(todo_list) >= MAX_TODOS: break
+                if "TODO" in line or "FIXME" in line:
+                    clean = line.strip().replace('//', '').replace('#', '').strip()
+                    todo_list.append(f"- [{file}] {clean}")
+
+            header = f"\n\n--- FICHIER: {rel_path} ---\n"
+            if len(content) >= MAX_FILE_SIZE:
+                print(f"⚠️  Trop gros (> {MAX_FILE_SIZE} car.) : {rel_path}")
+                ignored_files.append(rel_path)
+                parts.append(header + f"// [INFO] Fichier ignoré car trop volumineux ({len(content)} car.).")
+            elif used_chars + len(content) > char_budget:
+                unread_files.append(rel_path)
+            else:
+                parts.append(header + content)
+                used_chars += len(content)
+                files_scanned += 1
+
+    if unread_files:
+        parts.append("\n\n--- AUTRES FICHIERS (contenu non inclus, limite de contexte atteinte) ---\n"
+                     + "\n".join(unread_files))
+
     print(f"--> {files_scanned} fichiers analysés.")
     if ignored_files:
         print(f"--> {len(ignored_files)} fichiers tronqués.")
-    return code_content, "\n".join(todo_list)
+    if unread_files:
+        print(f"--> {len(unread_files)} fichiers seulement nommés (limite de contexte atteinte).")
+    return "".join(parts), "\n".join(todo_list)
 
 # --- MAIN ---
 
@@ -142,7 +184,7 @@ if __name__ == "__main__":
             print(f"\n📜 '{OUTPUT_FILENAME}' existe déjà.")
             choice = input("   S'en inspirer ? [o/n] : ").strip().lower()
             if choice in ['o', 'y', 'oui', 'yes', '']:
-                with open(readme_path, 'r', encoding='utf-8') as f: old_readme_content = f.read()
+                with open(readme_path, 'r', encoding='utf-8', errors='replace') as f: old_readme_content = f.read()
                 use_old_readme = True
 
         # 4. Questions
@@ -154,11 +196,12 @@ if __name__ == "__main__":
 
         # 5. Scan
         print("\nAnalyse en cours...")
-        full_code, todos_content = get_project_code_and_todos(project_path, ignore_patterns)
+        char_budget = int(CTX_LIMIT * CHARS_PER_TOKEN * CODE_SHARE_OF_CONTEXT)
+        full_code, todos_content = get_project_code_and_todos(project_path, ignore_patterns, char_budget)
 
         # 6. Statistiques Mémoire (LE RETOUR !)
         total_chars = len(full_code) + len(old_readme_content) + len(custom_note)
-        estimated_tokens = total_chars / 3.5
+        estimated_tokens = total_chars / CHARS_PER_TOKEN
         percentage = (estimated_tokens / CTX_LIMIT) * 100
         
         print(f"\n📊 Remplissage Mémoire : ~{int(estimated_tokens)} tokens ({round(percentage, 1)}%)")

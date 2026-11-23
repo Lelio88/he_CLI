@@ -1,12 +1,7 @@
 ﻿# Commande selfupdate - Met à jour HE CLI vers la dernière version
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-[Console]::InputEncoding = [System.Text.Encoding]::UTF8
+. (Join-Path $PSScriptRoot "common.ps1")
 
-Write-Host ""
-Write-Host "========================================================================" -ForegroundColor Cyan
-Write-Host "  SELFUPDATE - Mise a jour de HE CLI" -ForegroundColor Cyan
-Write-Host "========================================================================" -ForegroundColor Cyan
-Write-Host ""
+Write-HeBanner "SELFUPDATE - Mise a jour de HE CLI"
 
 Write-Host "Telechargement de la derniere version depuis GitHub..." -ForegroundColor Yellow
 Write-Host ""

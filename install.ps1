@@ -121,49 +121,69 @@ Write-Host ""
 # Télécharger release.zip depuis GitHub
 Write-Host "[2/5] Telechargement de l'archive..." -ForegroundColor Yellow
 
-$repoUrl = "https://raw.githubusercontent.com/Lelio88/he_CLI/main"
+$repoBase = "https://raw.githubusercontent.com/Lelio88/he_CLI"
 $zipFile = "release.zip"
-$zipPath = Join-Path $installPath $zipFile
+
+# L'archive et son empreinte (release.zip.sha256, publiée par la CI dans le
+# même commit) sont lues au même commit : par "main", le cache de GitHub
+# pourrait servir une archive neuve avec l'empreinte précédente.
+$ref = "main"
+try {
+    $sha = Invoke-RestMethod -Uri "https://api.github.com/repos/Lelio88/he_CLI/commits/main" -Headers @{ Accept = "application/vnd.github.sha" } -ErrorAction Stop
+    if ("$sha".Trim() -match '^[0-9a-f]{40}$') { $ref = "$sha".Trim() }
+}
+catch {
+    Write-Host "      API GitHub indisponible : lecture directe de la branche main" -ForegroundColor DarkGray
+}
+
+$tempZip = Join-Path ([System.IO.Path]::GetTempPath()) "he_release_$([Guid]::NewGuid().ToString()).zip"
+$tempSha = "$tempZip.sha256"
+$tempDir = $null
 
 try {
-    $url = "$repoUrl/$zipFile"
+    $url = "$repoBase/$ref/$zipFile"
     Write-Host "      Telechargement de $zipFile..." -ForegroundColor Gray
-    
+    Invoke-WebRequest -Uri $url -OutFile $tempZip -UseBasicParsing -ErrorAction Stop
+    Invoke-WebRequest -Uri "$url.sha256" -OutFile $tempSha -UseBasicParsing -ErrorAction Stop
+
+    # Vérification d'intégrité : sans empreinte valide, rien n'est installé
+    $expected = ((Get-Content -Path $tempSha -Raw).Trim() -split '\s+')[0]
+    if ($expected -notmatch '^[0-9a-fA-F]{64}$') {
+        throw "empreinte SHA-256 illisible ($zipFile.sha256)"
+    }
+    $actual = (Get-FileHash -Path $tempZip -Algorithm SHA256).Hash
+    if ($actual -ne $expected) {
+        throw "l'empreinte SHA-256 de $zipFile ne correspond pas : archive refusée"
+    }
+    Write-Host "      Empreinte SHA-256 vérifiée" -ForegroundColor Green
+
+    Write-Host "      Extraction de l'archive..." -ForegroundColor Gray
     if ($needSudo) {
-        $tempZip = [System.IO.Path]::GetTempFileName()
-        Invoke-WebRequest -Uri $url -OutFile $tempZip -ErrorAction Stop
-        
-        # Extraction avec sudo (compliqué avec Expand-Archive qui n'a pas sudo)
-        # On extrait dans temp puis on déplace
+        # Expand-Archive n'a pas de sudo : extraction en temp puis copie
         $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ([Guid]::NewGuid().ToString())
         New-Item -ItemType Directory -Path $tempDir | Out-Null
-        
         Expand-Archive -Path $tempZip -DestinationPath $tempDir -Force
-        
-        # Déplacer les fichiers
+
         sudo bash -c "cp -r '$tempDir'/* '$installPath/'"
         if ($LASTEXITCODE -ne 0) { throw "Erreur lors de la copie des fichiers" }
-        
-        # Nettoyage
-        Remove-Item $tempZip -Force
-        Remove-Item $tempDir -Recurse -Force
     }
     else {
-        Invoke-WebRequest -Uri $url -OutFile $zipPath -ErrorAction Stop
-        
-        Write-Host "      Extraction de l'archive..." -ForegroundColor Gray
-        Expand-Archive -Path $zipPath -DestinationPath $installPath -Force
-        
-        # Supprimer le zip après extraction
-        Remove-Item $zipPath -Force
+        Expand-Archive -Path $tempZip -DestinationPath $installPath -Force
     }
-    
+
     Write-Host "      Installation reussie" -ForegroundColor Green
 }
 catch {
     Write-Host "      Erreur lors du telechargement ou de l'extraction : $_" -ForegroundColor Red
-    Write-Host "      Verifiez que 'release.zip' existe sur le depot." -ForegroundColor Yellow
+    Write-Host "      Réessayez dans quelques minutes ; si l'erreur persiste, ouvrez une issue :" -ForegroundColor Yellow
+    Write-Host "      https://github.com/Lelio88/he_CLI/issues" -ForegroundColor Yellow
     exit 1
+}
+finally {
+    foreach ($tempPath in @($tempZip, $tempSha)) {
+        if (Test-Path $tempPath) { Remove-Item $tempPath -Force -ErrorAction SilentlyContinue }
+    }
+    if ($tempDir -and (Test-Path $tempDir)) { Remove-Item $tempDir -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
 try {
@@ -404,5 +424,10 @@ Write-Host ""
 Write-Host "============================================================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Made with love by Lelio B" -ForegroundColor Magenta
-Write-Host "Version 1.2.0 - 2025-12-10" -ForegroundColor DarkGray
+# Source unique de la version : le fichier VERSION livré dans l'archive
+$versionFile = Join-Path $installPath "VERSION"
+if (Test-Path $versionFile) {
+    $versionLines = @(Get-Content $versionFile | Where-Object { $_.Trim() })
+    Write-Host "Version $($versionLines -join ' - ')" -ForegroundColor DarkGray
+}
 Write-Host ""

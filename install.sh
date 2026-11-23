@@ -144,21 +144,53 @@ install_to_directory() {
     # Téléchargement de l'archive
     echo "[2/4] Téléchargement de l'archive..."
     
-    REPO_URL="https://raw.githubusercontent.com/Lelio88/he_CLI/main"
     ZIP_FILE="release.zip"
-    
+
+    # L'archive et son empreinte (release.zip.sha256, publiée par la CI dans le
+    # même commit) sont lues au même commit : par "main", le cache de GitHub
+    # pourrait servir une archive neuve avec l'empreinte précédente.
+    REF="main"
+    SHA=$(curl -fsSL -H "Accept: application/vnd.github.sha" \
+        "https://api.github.com/repos/Lelio88/he_CLI/commits/main" 2>/dev/null || true)
+    if [[ "$SHA" =~ ^[0-9a-f]{40}$ ]]; then
+        REF="$SHA"
+    else
+        echo "      API GitHub indisponible : lecture directe de la branche main"
+    fi
+    REPO_URL="https://raw.githubusercontent.com/Lelio88/he_CLI/$REF"
+
     # Télécharger dans un dossier temporaire
     TEMP_DIR=$(mktemp -d)
-    
+
     echo "      Téléchargement de $ZIP_FILE..."
-    curl -fsSL "$REPO_URL/$ZIP_FILE" -o "$TEMP_DIR/$ZIP_FILE"
-    
-    if [ ! -f "$TEMP_DIR/$ZIP_FILE" ]; then
-        echo "❌ Erreur de téléchargement. Vérifiez que $ZIP_FILE existe sur le dépôt."
+    if ! curl -fsSL "$REPO_URL/$ZIP_FILE" -o "$TEMP_DIR/$ZIP_FILE" \
+        || ! curl -fsSL "$REPO_URL/$ZIP_FILE.sha256" -o "$TEMP_DIR/$ZIP_FILE.sha256"; then
+        echo "❌ Erreur de téléchargement. Réessayez dans quelques minutes."
         rm -rf "$TEMP_DIR"
         exit 1
     fi
-    
+
+    # Vérification d'intégrité : sans empreinte valide, rien n'est installé
+    EXPECTED=$(awk '{print $1; exit}' "$TEMP_DIR/$ZIP_FILE.sha256" | tr 'A-F' 'a-f')
+    if command -v sha256sum &> /dev/null; then
+        ACTUAL=$(sha256sum "$TEMP_DIR/$ZIP_FILE" | awk '{print $1}')
+    elif command -v shasum &> /dev/null; then
+        ACTUAL=$(shasum -a 256 "$TEMP_DIR/$ZIP_FILE" | awk '{print $1}')
+    else
+        echo "❌ Ni 'sha256sum' ni 'shasum' : impossible de vérifier l'archive."
+        echo "   Installez coreutils (Linux) ou perl (shasum), puis relancez l'installation."
+        rm -rf "$TEMP_DIR"
+        exit 1
+    fi
+    if [[ ! "$EXPECTED" =~ ^[0-9a-f]{64}$ ]] || [ "$ACTUAL" != "$EXPECTED" ]; then
+        echo "❌ L'empreinte SHA-256 de $ZIP_FILE ne correspond pas : archive refusée."
+        echo "   Réessayez dans quelques minutes ; si l'erreur persiste, ouvrez une issue :"
+        echo "   https://github.com/Lelio88/he_CLI/issues"
+        rm -rf "$TEMP_DIR"
+        exit 1
+    fi
+    echo "      Empreinte SHA-256 vérifiée"
+
     echo "      Extraction..."
     unzip -q "$TEMP_DIR/$ZIP_FILE" -d "$TEMP_DIR/extracted"
     

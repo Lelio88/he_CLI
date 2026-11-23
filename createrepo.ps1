@@ -15,13 +15,9 @@
     [switch] $pages
 )
 
-# Configuration complète de l'encodage
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-[Console]::InputEncoding = [System.Text.Encoding]::UTF8
-$PSDefaultParameterValues['*:Encoding'] = 'utf8'
-
-# Charger la détection OS partagée
+# Encodage UTF-8 et détection OS partagés
 . (Join-Path $PSScriptRoot "common.ps1")
+$PSDefaultParameterValues['*:Encoding'] = 'utf8'
 
 # ==========================================
 # GESTION DE GITHUB CLI (Installation Auto)

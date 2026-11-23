@@ -1,17 +1,23 @@
 ﻿param(
     [Parameter(Mandatory=$false)]
-    [string]$n = ""
+    [string]$n = "",
+
+    # Motifs exclus en plus, séparés par des virgules : "*.mp4,data/*"
+    [Parameter(Mandatory=$false)]
+    [string[]]$x = @()
 )
 
-# Commande backup - Crée une archive ZIP externe avec support .gitignore
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-[Console]::InputEncoding = [System.Text.Encoding]::UTF8
+# Commande backup - Crée une archive ZIP du projet dans le dossier backups/ voisin
+# Usage : he backup [-n <nom>] [-x <motifs>]
+#
+# Dans un dépôt Git, la liste vient de "git ls-files" (fichiers suivis et non
+# suivis non ignorés) : le .gitignore fait foi et node_modules n'est jamais
+# parcouru. Hors Git, le parcours élague les dossiers lourds connus au lieu
+# de tout lister puis filtrer. Chaque fichier est écrit directement dans le
+# zip, sans copie dans un dossier temporaire.
+. (Join-Path $PSScriptRoot "common.ps1")
 
-Write-Host ""
-Write-Host "========================================================================" -ForegroundColor Cyan
-Write-Host "  BACKUP - Sauvegarde intelligente" -ForegroundColor Cyan
-Write-Host "========================================================================" -ForegroundColor Cyan
-Write-Host ""
+Write-HeBanner "BACKUP - Sauvegarde intelligente"
 
 # 1. Configuration des chemins (SORTIR DU PROJET)
 $currentDir = Get-Location
@@ -64,10 +70,12 @@ $zipPath = Join-Path $backupFolder $zipName
 Write-Host "Fichier cible : $zipName" -ForegroundColor Green
 Write-Host ""
 
-# 4. Sélection intelligente des fichiers (.gitignore)
+# 4. Sélection des fichiers (chemins relatifs au dossier courant, séparés par "/")
 Write-Host "Analyse des fichiers à sauvegarder..." -ForegroundColor Yellow
 
-$filesToBackup = @()
+$root = (Get-Location).ProviderPath
+$relativeFiles = New-Object System.Collections.Generic.List[string]
+
 # Detecte aussi un sous-dossier de depot ; git est facultatif pour un backup
 $isGitRepo = $false
 if (Get-Command git -ErrorAction SilentlyContinue) {
@@ -77,27 +85,21 @@ if (Get-Command git -ErrorAction SilentlyContinue) {
 
 if ($isGitRepo) {
     Write-Host "✅ Dépôt Git détecté : Utilisation du .gitignore" -ForegroundColor Green
-    
-    # On demande à Git la liste des fichiers "propres" :
-    # -c : cached (fichiers déjà suivis)
-    # -o : others (fichiers non suivis mais présents)
-    # --exclude-standard : applique les règles du .gitignore
-    $gitOutput = git ls-files -c -o --exclude-standard 2>$null
-    
+
+    # -c : fichiers suivis, -o : non suivis, --exclude-standard : applique le .gitignore
+    # -z et core.quotepath=false : chemins bruts, accents compris (sinon Git les
+    # renvoie entre guillemets, en octal, et ils ne correspondent à aucun fichier)
+    $gitOutput = git -c core.quotepath=false ls-files -z -c -o --exclude-standard 2>$null
+
     if ($LASTEXITCODE -eq 0) {
-        # Git renvoie des chemins relatifs avec des slashes /. On doit les convertir.
-        $allowedFiles = New-Object System.Collections.Generic.HashSet[string]
-        
-        foreach ($relativePath in $gitOutput) {
-            # Normaliser le chemin pour l'OS actuel (Windows utilise \)
-            $normPath = $relativePath -replace '/', [System.IO.Path]::DirectorySeparatorChar
-            $fullPath = Join-Path $currentDir $normPath
-            $allowedFiles.Add($fullPath) | Out-Null
-        }
-        
-        # Récupérer les objets fichiers correspondants
-        $filesToBackup = Get-ChildItem -Path $currentDir -Recurse -File | Where-Object {
-            $allowedFiles.Contains($_.FullName) -and $_.FullName -ne $zipPath
+        $seen = New-Object System.Collections.Generic.HashSet[string]
+        foreach ($relativePath in (($gitOutput -join "") -split [char]0)) {
+            if (-not $relativePath -or -not $seen.Add($relativePath)) { continue }
+            # Un fichier suivi mais supprimé du disque reste listé par Git
+            $fullPath = [System.IO.Path]::Combine($root, $relativePath)
+            if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
+                $relativeFiles.Add($relativePath)
+            }
         }
     } else {
         Write-Host "⚠️ Erreur Git, bascule sur la méthode standard." -ForegroundColor Red
@@ -107,82 +109,105 @@ if ($isGitRepo) {
 
 if (-not $isGitRepo) {
     Write-Host "ℹ️ Pas de Git/.gitignore : Utilisation des exclusions par défaut" -ForegroundColor Yellow
-    
-    # Exclusions "en dur" classiques
-    $sep = [System.IO.Path]::DirectorySeparatorChar
-    $filesToBackup = Get-ChildItem -Path $currentDir -Recurse -File | Where-Object {
-        $_.FullName -notlike "*${sep}.git${sep}*" -and
-        $_.FullName -notlike "*${sep}node_modules${sep}*" -and
-        $_.FullName -notlike "*${sep}obj${sep}*" -and
-        $_.FullName -notlike "*${sep}bin${sep}*" -and
-        $_.FullName -notlike "*${sep}venv${sep}*" -and
-        $_.FullName -notlike "*${sep}dist${sep}*" -and
-        $_.FullName -notlike "*${sep}build${sep}*" -and
-        $_.FullName -ne $zipPath
+
+    # Dossiers élagués : ni eux ni leur contenu ne sont parcourus
+    $skippedDirs = @(".git", "node_modules", "obj", "bin", "venv", "dist", "build")
+    $rootLength = $root.TrimEnd('\', '/').Length + 1
+    $pending = New-Object System.Collections.Generic.Stack[System.IO.DirectoryInfo]
+    $pending.Push((New-Object System.IO.DirectoryInfo $root))
+    while ($pending.Count -gt 0) {
+        $dir = $pending.Pop()
+        try {
+            foreach ($entry in $dir.EnumerateFileSystemInfos()) {
+                if ($entry -is [System.IO.DirectoryInfo]) {
+                    # Les liens symboliques de dossier ne sont pas suivis (boucles)
+                    $isLink = ($entry.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0
+                    if (-not $isLink -and $entry.Name -notin $skippedDirs) { $pending.Push($entry) }
+                } else {
+                    $relativeFiles.Add($entry.FullName.Substring($rootLength).Replace('\', '/'))
+                }
+            }
+        } catch {
+            Write-Host "⚠️ Dossier illisible ignoré : $($dir.FullName)" -ForegroundColor Yellow
+        }
     }
 }
 
-$totalFiles = ($filesToBackup | Measure-Object).Count
-$totalSize = ($filesToBackup | Measure-Object -Property Length -Sum).Sum
+# Exclusions de l'utilisateur (-x), comparées au chemin relatif et au nom du fichier
+$userPatterns = @($x | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+if ($userPatterns.Count -gt 0) {
+    Write-Host "Exclusions ajoutées : $($userPatterns -join ', ')" -ForegroundColor Cyan
+    $kept = New-Object System.Collections.Generic.List[string]
+    foreach ($relativePath in $relativeFiles) {
+        $fileName = Split-Path -Leaf $relativePath
+        $excluded = $false
+        foreach ($pattern in $userPatterns) {
+            if ($relativePath -like $pattern -or $fileName -like $pattern) { $excluded = $true; break }
+        }
+        if (-not $excluded) { $kept.Add($relativePath) }
+    }
+    $relativeFiles = $kept
+}
 
+$totalFiles = $relativeFiles.Count
 if ($totalFiles -eq 0) {
     Write-Host "❌ Aucun fichier à sauvegarder !" -ForegroundColor Red
     exit 1
+}
+
+$totalSize = 0
+foreach ($relativePath in $relativeFiles) {
+    $totalSize += (New-Object System.IO.FileInfo ([System.IO.Path]::Combine($root, $relativePath))).Length
 }
 
 Write-Host "Fichiers sélectionnés : $totalFiles" -ForegroundColor Cyan
 Write-Host "Taille estimée : $([math]::Round($totalSize / 1MB, 2)) MB" -ForegroundColor Cyan
 Write-Host ""
 
-# 5. Création de l'archive
-$tempFolder = Join-Path ([System.IO.Path]::GetTempPath()) "he_backup_$([guid]::NewGuid().ToString())"
-New-Item -ItemType Directory -Path $tempFolder -Force | Out-Null
+# 5. Création de l'archive : chaque fichier va directement dans le zip
+Add-Type -AssemblyName System.IO.Compression
+Add-Type -AssemblyName System.IO.Compression.FileSystem
 
+$skippedFiles = New-Object System.Collections.Generic.List[string]
+$archive = $null
+$completed = $false
 try {
-    Write-Host "Préparation de l'archive..." -ForegroundColor Yellow
-    
-    $progressCount = 0
-    
-    foreach ($file in $filesToBackup) {
-        $progressCount++
-        if ($progressCount % 10 -eq 0) { # Mise à jour UI tous les 10 fichiers pour perf
-            $percent = [math]::Round(($progressCount / $totalFiles) * 100)
-            Write-Progress -Activity "Copie des fichiers" -Status "$percent% complet" -PercentComplete $percent
-        }
-        
-        # Calcul du chemin relatif pour recréer la structure
-        $relativePath = $file.FullName.Substring($currentDir.Path.Length + 1)
-        $destPath = Join-Path $tempFolder $relativePath
-        
-        # Créer le dossier parent
-        $destDir = Split-Path -Parent $destPath
-        if (-not (Test-Path $destDir)) {
-            New-Item -ItemType Directory -Path $destDir -Force | Out-Null
-        }
-        
-        Copy-Item -Path $file.FullName -Destination $destPath -Force
-    }
-    
-    Write-Progress -Activity "Copie des fichiers" -Completed
-    
     Write-Host "Compression en cours..." -ForegroundColor Yellow
-    
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    [System.IO.Compression.ZipFile]::CreateFromDirectory($tempFolder, $zipPath, [System.IO.Compression.CompressionLevel]::Optimal, $false)
-    
-    if (Test-Path $zipPath) {
-        $finalSize = (Get-Item $zipPath).Length
-        
-        Write-Host ""
-        Write-Host "========================================================================" -ForegroundColor Cyan
-        Write-Host "  ✅ Sauvegarde terminée !" -ForegroundColor Green
-        Write-Host "========================================================================" -ForegroundColor Cyan
-        Write-Host ""
-        Write-Host "Fichier : $zipName" -ForegroundColor White
-        Write-Host "Dossier : $backupFolder" -ForegroundColor Yellow
-        Write-Host "Taille  : $([math]::Round($finalSize / 1MB, 2)) MB" -ForegroundColor Cyan
-        Write-Host ""
+    $archive = [System.IO.Compression.ZipFile]::Open($zipPath, [System.IO.Compression.ZipArchiveMode]::Create)
+
+    $progressCount = 0
+    foreach ($relativePath in $relativeFiles) {
+        $progressCount++
+        if ($progressCount % 25 -eq 0 -or $progressCount -eq $totalFiles) {
+            $percent = [math]::Round(($progressCount / $totalFiles) * 100)
+            Write-Progress -Activity "Compression des fichiers" -Status "$progressCount / $totalFiles" -PercentComplete $percent
+        }
+        $fullPath = [System.IO.Path]::Combine($root, $relativePath)
+        try {
+            [void][System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
+                $archive, $fullPath, $relativePath, [System.IO.Compression.CompressionLevel]::Optimal)
+        } catch {
+            # Fichier verrouillé ou disparu entre-temps : on continue sans lui
+            $skippedFiles.Add($relativePath)
+        }
     }
+    Write-Progress -Activity "Compression des fichiers" -Completed
+    $archive.Dispose()
+    $archive = $null
+    $completed = $true
+
+    $finalSize = (Get-Item -LiteralPath $zipPath).Length
+
+    Write-HeBanner "✅ Sauvegarde terminée !"
+    Write-Host "Fichier : $zipName" -ForegroundColor White
+    Write-Host "Dossier : $backupFolder" -ForegroundColor Yellow
+    Write-Host "Taille  : $([math]::Round($finalSize / 1MB, 2)) MB" -ForegroundColor Cyan
+    if ($skippedFiles.Count -gt 0) {
+        Write-Host ""
+        Write-Host "⚠️ $($skippedFiles.Count) fichier(s) illisible(s), absent(s) de l'archive :" -ForegroundColor Yellow
+        $skippedFiles | Select-Object -First 10 | ForEach-Object { Write-Host "   $_" -ForegroundColor DarkGray }
+    }
+    Write-Host ""
 }
 catch {
     Write-Host ""
@@ -190,7 +215,10 @@ catch {
     exit 1
 }
 finally {
-    if (Test-Path $tempFolder) {
-        Remove-Item -Path $tempFolder -Recurse -Force -ErrorAction SilentlyContinue
+    # finally et non catch : Ctrl+C saute le catch. Une archive à moitié écrite
+    # ne doit pas passer pour une sauvegarde (ni compter dans la numérotation).
+    if ($archive) { $archive.Dispose() }
+    if (-not $completed -and (Test-Path -LiteralPath $zipPath)) {
+        Remove-Item -LiteralPath $zipPath -Force -ErrorAction SilentlyContinue
     }
 }

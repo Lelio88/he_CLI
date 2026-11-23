@@ -15,8 +15,9 @@ Résolvez les problèmes sans introduire de régression ni de dette technique ar
 
 Topologie rapide :
 - `he.cmd` (Windows) / `he` (bash, Linux/macOS) — wrappers d'invocation → `main.ps1`
-- `main.ps1` — dispatcher central (`switch`/`case` sur `$args[0]`)
-- `common.ps1` — détection OS partagée, dot-sourcé par les scripts qui en ont besoin
+- `main.ps1` — dispatcher central (table `$heCommands`) ; traite `--version` et `<commande> --help`
+- `common.ps1` — socle dot-sourcé en tête de chaque commande : encodage, détection OS, bannière, vérifications de dépôt, version
+- `VERSION` — source unique du numéro et de la date de version
 - `*.ps1` (racine) — une commande = un script auto-suffisant
 - `generate_message.py` / `generate_readme.py` — compagnons Python (IA : commits, README)
 - `install.{ps1,sh,bat}` / `uninstall.{sh,bat}` / `package.ps1` — installation & packaging
@@ -29,17 +30,17 @@ Topologie rapide :
 - **Scripts compagnons** : Bash (install/uninstall, wrapper `he`), Python 3.7+ (génération IA)
 - **Prérequis runtime** : Git, GitHub CLI (`gh`)
 - **IA optionnelle** : Google Gemini (cloud, via `GEMINI_API_KEY`) ou Ollama (local) — commits et README
-- **CI/CD** : GitHub Actions (`build-release.yml`) — reconstruit `release.zip` à chaque push sur `main`
-- **Distribution** : téléchargement direct depuis GitHub raw (`install.ps1` / `install.sh`)
+- **CI/CD** : GitHub Actions (`build-release.yml`) — reconstruit `release.zip` et `release.zip.sha256` à chaque push sur `main`
+- **Distribution** : téléchargement direct depuis GitHub raw (`install.ps1` / `install.sh`), empreinte SHA-256 vérifiée avant extraction
 
 ## IV. Garde-Fous non négociables
 
-1. **Encodage UTF-8** — chaque script débute par `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8` (et `InputEncoding` idem) et est enregistré **avec BOM** : sans lui, PowerShell 5.1 lit le fichier en ANSI et affiche `RÃ©seau`. Seule exception : `install.ps1`, exécuté par `irm | iex` qui refuse un BOM
+1. **Encodage UTF-8** — chaque script de commande débute par `. (Join-Path $PSScriptRoot "common.ps1")` (juste après son `param()`), qui règle la console en UTF-8, et est enregistré **avec BOM** : sans lui, PowerShell 5.1 lit le fichier en ANSI et affiche `RÃ©seau`. Hors commandes, `package.ps1` (outil de dev) s'en passe. Seule exception au BOM : `install.ps1`, autonome (exécuté par `irm | iex` avant toute installation), sans BOM car `iex` le refuse, et qui règle lui-même l'encodage
 2. **Compatibilité cross-platform** — tout nouveau script fonctionne sur Windows (PS 5.1+) ET Linux/macOS (pwsh) ; pour toute logique OS-dépendante, dot-sourcer `common.ps1` plutôt que de re-détecter l'OS
 3. **Autonomie des commandes** — chaque `*.ps1` valide ses prérequis (`.git`, `origin`, `gh`), gère ses erreurs et affiche ses propres messages ; aucun état partagé implicite
 4. **Vérifier `$LASTEXITCODE`** après chaque appel à `git` ou `gh` — PowerShell ne propage pas les codes de sortie natifs (helper `Run-Git` recommandé pour les enchaînements)
 5. **Langue française** — toute sortie utilisateur est en français, avec accents corrects
-6. **Enregistrer toute nouvelle commande** dans les 3 fichiers : `main.ps1` (dispatcher), `help.ps1` (aide) ET `README.md`
+6. **Enregistrer toute nouvelle commande** dans les 3 fichiers : `main.ps1` (`$heCommands`), `help.ps1` (bloc `$commandHelp` + `$helpCategories`) ET `README.md`
 
 ## V. Flux de Travail (Explore → Plan → Code → Verify)
 
@@ -72,10 +73,10 @@ powershell -File package.ps1
 | Nouvelle commande ajoutée | `main.ps1`, `help.ps1`, `README.md` |
 | Changement de signature d'une commande | `help.ps1`, `README.md` |
 | Nouvel anti-pattern découvert | Section « Anti-patterns » de `docs/architecture.md` |
-| Changement de version | `README.md`, `help.ps1`, `install.ps1` (pied de page) |
-| Changement du set de fichiers packagés | `package.ps1` ET `.github/workflows/build-release.yml` (garder synchrones) |
+| Changement de version | `VERSION` seul (lu par `he version`, `help.ps1` et `install.ps1`) |
+| Changement du set de fichiers packagés, ou de l'empreinte | `package.ps1` ET `.github/workflows/build-release.yml` (garder synchrones) ; la vérification vit dans `install.ps1` ET `install.sh` |
 
 ## VIII. Contexte de Session
 
-- **Dernier focus** : —
-- **Focus immédiat** : —
+- **Dernier focus** : 1.3.0 — `he version`, aide par commande, socle `common.ps1`, backup direct, README borné, empreinte SHA-256 de `release.zip`.
+- **Focus immédiat** : essayer `install.sh` sur un vrai Linux/macOS (seule la syntaxe est vérifiée).

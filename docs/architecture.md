@@ -73,15 +73,17 @@ Le projet cible deux plateformes (Windows natif via PowerShell 5.1+, Linux/macOS
 
 | Script | Rôle |
 |---|---|
-| `main.ps1` | Dispatcher central — route `$args[0]` vers le script correspondant via `switch` |
-| `common.ps1` | Module partagé — détection OS (Windows/Linux/macOS/distro), dot-sourcé par les autres scripts |
+| `main.ps1` | Dispatcher central — table `$heCommands` (commande → script) ; traite lui-même `--version` et `<commande> --help` |
+| `common.ps1` | Socle partagé, dot-sourcé en tête de chaque commande — encodage UTF-8, détection OS, `Write-HeBanner`, `Assert-HeGitRepo`, `Assert-HeHasCommit`, `Get-HeVersion` |
+| `VERSION` | Source unique de la version (ligne 1 : numéro, ligne 2 : date), lue par `Get-HeVersion` et le pied de page d'`install.ps1` |
+| `version.ps1` | Affiche la version (`he version`, `he --version`, `he -v`) |
 | `createrepo.ps1` | Crée un repo GitHub (vérifie `gh`, authentifie, init git, crée le repo, push). Flags : `-pr`, `-pu`, `-d`, `-pages` |
 | `firstpush.ps1` | Premier push vers un remote — détecte les fichiers sensibles, propose `.gitignore`, pull rebase avant push |
 | `update.ps1` | Synchronisation complète : `git add .` → commit → pull → push. Supporte la génération IA de commits (`-a`, `-f`) |
 | `rollback.ps1` | Annule N commits (`git reset --soft HEAD~N`) avec tag de sauvegarde, option hard et force-push |
 | `logcommit.ps1` | Historique avec graphe ASCII coloré, filtres par auteur/mot-clé/date, mode compact |
 | `newbranch.ps1` | Crée une branche, vérifie l'unicité (local + remote), bascule et push avec tracking |
-| `backup.ps1` | Archive ZIP numérotée du projet (exclut `.git`, `node_modules`, `backups`) |
+| `backup.ps1` | Archive ZIP numérotée dans `../backups/` — liste de `git ls-files` (suit le `.gitignore`) ou parcours élagué hors Git, écriture directe dans le zip, exclusions `-x` |
 | `readme.ps1` | Génère un README.md via Ollama (modèle `qwen2.5-coder`), backup automatique |
 | `maintenance.ps1` | Maintenance système cross-platform (winget/DISM/SFC sur Windows, apt/dnf/pacman sur Linux, brew sur macOS) |
 | `selfupdate.ps1` | Met à jour HE CLI depuis GitHub |
@@ -89,23 +91,23 @@ Le projet cible deux plateformes (Windows natif via PowerShell 5.1+, Linux/macOS
 | `matrix.ps1` | Effet visuel Matrix dans le terminal |
 | `cs.ps1` | Mini-jeu dans le terminal — score Elo conservé dans `~/.he/elo.txt`, hors du dossier d'installation |
 | `flash.ps1` | Effet visuel grenade flash |
-| `help.ps1` | Affiche l'aide complète de toutes les commandes |
-| `package.ps1` | Crée `release.zip` en excluant `.git`, `.github`, tests, logs |
+| `help.ps1` | Aide : un bloc par commande dans `$commandHelp`, rangé par catégorie dans `$helpCategories` ; `help.ps1 <commande>` n'affiche que le sien |
+| `package.ps1` | Crée `release.zip` et son empreinte `release.zip.sha256`, en excluant `.git`, `.github`, tests, logs |
 
 ### Scripts Python compagnons
 
 | Script | Rôle |
 |---|---|
 | `generate_message.py` | Génère un message de commit via Gemini (cloud) ou Ollama (local) — appelé par `update.ps1 -a` |
-| `generate_readme.py` | Génère un README.md complet via Ollama — appelé par `readme.ps1` |
+| `generate_readme.py` | Génère un README.md complet via Ollama — appelé par `readme.ps1`. Le code envoyé est borné par le contexte du modèle (au-delà, les fichiers sont seulement nommés) ; binaires écartés, fichiers non UTF-8 lus en latin-1 |
 
 ### Scripts d'installation / désinstallation
 
 | Script | Rôle |
 |---|---|
 | `he.cmd` | Point d'entrée Windows (batch) — invoque `main.ps1` |
-| `install.ps1` | Installation Windows — télécharge depuis GitHub, configure le PATH |
-| `install.sh` | Installation Linux/macOS — installe pwsh si absent, télécharge, configure le PATH |
+| `install.ps1` | Installation Windows — télécharge `release.zip`, vérifie son SHA-256, configure le PATH |
+| `install.sh` | Installation Linux/macOS — installe pwsh si absent, télécharge, vérifie le SHA-256, configure le PATH |
 | `install.bat` | Variante batch de l'installation Windows |
 | `uninstall.sh` | Supprime les fichiers et nettoie le PATH (Linux/macOS) |
 | `uninstall.bat` | Supprime les fichiers et nettoie le PATH (Windows) |
@@ -114,7 +116,11 @@ Le projet cible deux plateformes (Windows natif via PowerShell 5.1+, Linux/macOS
 
 | Fichier | Rôle |
 |---|---|
-| `.github/workflows/build-release.yml` | GitHub Actions — recrée `release.zip` à chaque push sur `main` (exclut les mêmes fichiers que `package.ps1`) |
+| `.github/workflows/build-release.yml` | GitHub Actions — recrée `release.zip` et `release.zip.sha256` à chaque push sur `main`, dans un même commit (exclut les mêmes fichiers que `package.ps1`) |
+
+### Intégrité de l'archive
+
+Les installeurs lisent `release.zip` et `release.zip.sha256` **au même commit** : ils demandent d'abord le SHA de `main` à l'API GitHub, puis téléchargent les deux fichiers à ce commit. Par `main`, le cache de `raw.githubusercontent.com` (quelques minutes) pourrait servir une archive neuve avec l'empreinte précédente. Si l'API ne répond pas, ils lisent `main` directement. Une empreinte absente, illisible ou différente bloque l'installation. L'empreinte, servie par le même dépôt, protège d'un téléchargement corrompu ou tronqué, pas d'une compromission du dépôt lui-même (il faudrait une signature).
 
 ## Patterns imposés
 
@@ -123,24 +129,16 @@ Le projet cible deux plateformes (Windows natif via PowerShell 5.1+, Linux/macOS
 Chaque nouveau script de commande doit suivre ce squelette :
 
 ```powershell
-# En-tête : encodage UTF-8
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-[Console]::InputEncoding = [System.Text.Encoding]::UTF8
+# Rôle, usage et options du script en commentaire d'en-tête
+# En-tête : encodage UTF-8, détection OS et helpers (juste après un éventuel param())
+. (Join-Path $PSScriptRoot "common.ps1")
 
 # Bannière
-Write-Host ""
-Write-Host "========================================================================" -ForegroundColor Cyan
-Write-Host "  NOM_COMMANDE - Description courte" -ForegroundColor Cyan
-Write-Host "========================================================================" -ForegroundColor Cyan
-Write-Host ""
+Write-HeBanner "NOM_COMMANDE - Description courte"
 
-# Validation des prérequis (dépôt Git, remote, etc.)
-# rev-parse et non Test-Path ".git" : la commande marche aussi depuis un sous-dossier
-$insideRepo = git rev-parse --is-inside-work-tree 2>$null
-if ($LASTEXITCODE -ne 0 -or $insideRepo -ne "true") {
-    Write-Host "Erreur : Vous n'etes pas dans un depot Git !" -ForegroundColor Red
-    exit 1
-}
+# Validation des prérequis (dépôt Git, commits, remote...)
+Assert-HeGitRepo
+Assert-HeHasCommit "Faites d'abord un commit."
 
 # Logique principale
 # ...
@@ -151,7 +149,7 @@ Write-Host "Operation terminee avec succes !" -ForegroundColor Green
 
 ### Détection OS partagée
 
-Tout script nécessitant la détection de l'OS doit dot-sourcer `common.ps1` :
+`common.ps1` étant dot-sourcé en tête de chaque commande, la détection est toujours disponible :
 
 ```powershell
 . (Join-Path $PSScriptRoot "common.ps1")
@@ -175,11 +173,11 @@ Le préfixe `he` n'est pas cosmétique : sous PowerShell 7, `$IsWindows`, `$IsLi
 ### Enregistrement d'une nouvelle commande (checklist)
 
 1. Créer `<commande>.ps1` à la racine en suivant le squelette ci-dessus
-2. Ajouter le `case` dans `main.ps1` :
+2. Ajouter l'entrée dans la table `$heCommands` de `main.ps1` :
    ```powershell
-   "<commande>" { & (Join-Path $scriptPath "<commande>.ps1") @remainingArgs }
+   "<commande>" = "<commande>.ps1"
    ```
-3. Ajouter l'entrée dans `help.ps1`
+3. Ajouter son bloc `$commandHelp["<commande>"]` dans `help.ps1`, et son nom dans `$helpCategories` — `he <commande> --help` en dépend
 4. Documenter dans `README.md`
 
 > L'installation télécharge `release.zip` (construit automatiquement par GitHub Actions via `package.ps1`). Tout fichier à la racine est inclus sauf ceux explicitement exclus dans `package.ps1`.
@@ -205,7 +203,7 @@ Ce pattern est recommandé pour toute commande qui enchaîne plusieurs opératio
 
 1. L'utilisateur tape `he update -m "feat: ajout login"`
 2. **`he.cmd`** (Windows) invoque `powershell -File main.ps1 update -m "feat: ajout login"`
-3. **`main.ps1`** matche `"update"` dans le `switch` → exécute `update.ps1` avec les arguments restants
+3. **`main.ps1`** trouve `"update"` dans `$heCommands` → exécute `update.ps1` avec les arguments restants (avec `-h` ou `--help` parmi eux, il affiche l'aide de `update` à la place)
 4. **`update.ps1`** :
    - Vérifie la présence de `.git`
    - Vérifie la présence d'un remote `origin`
@@ -219,7 +217,10 @@ Ce pattern est recommandé pour toute commande qui enchaîne plusieurs opératio
 
 ## Anti-patterns à éviter
 
-- **Ne pas dupliquer la logique de validation** — si un pattern de validation (vérifier `.git`, vérifier `origin`) est copié dans 3+ scripts, envisager un module partagé
+- **Ne pas dupliquer la logique de validation** — bannière, dépôt et premier commit passent par `Write-HeBanner`, `Assert-HeGitRepo` et `Assert-HeHasCommit` de `common.ps1` ; tout nouveau contrôle répété dans 3+ scripts y rejoint les autres
+- **Ne pas écrire la version en dur** — elle vit dans `VERSION` seul ; scripts et installeur la lisent
+- **Ne pas affecter un `if` en expression à un tableau qu'on éclate ensuite** — `$a = if (...) { @($x) }` déballe un tableau d'un seul élément en chaîne, et `@a` passe alors la chaîne lettre par lettre ; écrire `$a = @(if (...) { $x })`
+- **Ne pas lire `git ls-files` sans `-z` ni `core.quotepath=false`** — Git y renvoie les chemins accentués entre guillemets et en octal, qui ne correspondent plus à aucun fichier
 - **Ne pas tester un dépôt avec `Test-Path ".git"`** — le test échoue depuis un sous-dossier ; utiliser `git rev-parse --is-inside-work-tree`. Seules exceptions : `createrepo.ps1` et `firstpush.ps1`, qui demandent si *ce* dossier est la racine d'un dépôt avant un `git init` — un dossier parent versionné ne doit pas l'empêcher
 - **Ne pas affecter `$isWindows`, `$isLinux` ou `$isMacOS`** — variables automatiques en lecture seule sous PowerShell 7 : l'affectation affiche une erreur à chaque exécution. Utiliser `$heIs*` de `common.ps1`
 - **Ne pas enregistrer un `.ps1` sans BOM UTF-8** — PowerShell 5.1 (celui de `he.cmd`) lit un fichier sans BOM en ANSI : « Réseau » s'affiche `RÃ©seau`. Exception obligatoire : `install.ps1`, exécuté par `irm | iex` — `irm` conserve le BOM et `iex` refuse un script commençant par U+FEFF
@@ -229,7 +230,7 @@ Ce pattern est recommandé pour toute commande qui enchaîne plusieurs opératio
 - **Ne pas utiliser `Write-Host` avec interpolation de variables non-contrôlées** — risque d'injection de séquences ANSI
 - **Ne pas hardcoder le chemin d'installation** — utiliser `$MyInvocation.MyCommand.Path` ou `$PSScriptRoot` pour résoudre le chemin des scripts
 - **Ne pas mélanger `Out-Null` et `2>$null`** — `Out-Null` capture stdout PowerShell, `2>$null` capture stderr natif ; choisir selon le contexte
-- **Ne pas ajouter un script sans mettre à jour les fichiers d'installation** — `install.ps1` et `install.sh` maintiennent une liste explicite des fichiers à télécharger
+- **Ne pas ajouter à la racine un fichier qui ne doit pas être livré sans l'exclure** — `release.zip` embarque tout fichier de la racine : l'exclusion se déclare dans `package.ps1` ET dans `build-release.yml`
 
 ## Stratégie de test
 

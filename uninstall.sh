@@ -111,6 +111,7 @@ else
         "update.ps1" "rollback.ps1" "logcommit.ps1" "backup.ps1"
         "selfupdate.ps1" "maintenance.ps1" "heian.ps1" "matrix.ps1" "flash.ps1"
         "help.ps1" "install.sh" "install.ps1" "uninstall.sh" "uninstall.bat"
+        "cs.ps1" "common.ps1" "version.ps1" "VERSION" "generate_message.py" "generate_readme.py"
     )
     
     for file in "${FILES[@]}"; do

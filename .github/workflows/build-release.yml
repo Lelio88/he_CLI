@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths-ignore:
       - 'release.zip'
+      - 'release.zip.sha256'
       - '.github/**'
 
 jobs:
@@ -21,6 +22,7 @@ jobs:
             ".gitignore"
             ".gitattributes"
             "release.zip"
+            "release.zip.sha256"
             "package.ps1"
             "tests"
             "elo.txt"
@@ -50,11 +52,15 @@ jobs:
           rm -f release.zip
           zip release.zip "${FILES[@]}"
 
-      - name: Commit release.zip
+          # Empreinte vérifiée par install.ps1 / install.sh avant toute extraction
+          sha256sum release.zip > release.zip.sha256
+          cat release.zip.sha256
+
+      - name: Commit release.zip et son empreinte
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add release.zip
+          git add release.zip release.zip.sha256
           if git diff --cached --quiet; then
             echo "release.zip inchangé, rien à committer."
           else

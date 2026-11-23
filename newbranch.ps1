@@ -4,34 +4,13 @@
 )
 
 # Commande newbranch - Creer une nouvelle branche et push
-try {
-    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-    [Console]::InputEncoding = [System.Text.Encoding]::UTF8
-} catch {}
+. (Join-Path $PSScriptRoot "common.ps1")
 
-Write-Host ""
-Write-Host "========================================================================" -ForegroundColor Cyan
-Write-Host "  NEWBRANCH - Creer une nouvelle branche" -ForegroundColor Cyan
-Write-Host "========================================================================" -ForegroundColor Cyan
-Write-Host ""
+Write-HeBanner "NEWBRANCH - Creer une nouvelle branche"
 
-# Verifier si on est dans un depot Git (fonctionne aussi depuis un sous-dossier)
-$insideRepo = git rev-parse --is-inside-work-tree 2>$null
-if ($LASTEXITCODE -ne 0 -or $insideRepo -ne "true") {
-    Write-Host "Erreur : Vous n'etes pas dans un depot Git !" -ForegroundColor Red
-    Write-Host "Initialisez d'abord Git avec 'git init' ou deplacez-vous dans un projet Git." -ForegroundColor Yellow
-    Write-Host ""
-    exit 1
-}
+Assert-HeGitRepo
 
-# Verifier s'il y a des commits
-git rev-parse HEAD 2>$null | Out-Null
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Erreur : Aucun commit trouve dans ce depot !" -ForegroundColor Red
-    Write-Host "Faites d'abord un commit avant de creer une branche." -ForegroundColor Yellow
-    Write-Host ""
-    exit 1
-}
+Assert-HeHasCommit "Faites d'abord un commit avant de creer une branche."
 
 # Afficher la branche actuelle
 $currentBranch = git branch --show-current 2>$null
