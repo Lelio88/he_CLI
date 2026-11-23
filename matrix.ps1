@@ -1,6 +1,5 @@
 ﻿# Commande matrix - Effet Matrix dans le terminal
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-[Console]::InputEncoding = [System.Text.Encoding]::UTF8
+. (Join-Path $PSScriptRoot "common.ps1")
 
 # Effacer l'écran immédiatement pour partir d'un terminal vierge
 Clear-Host

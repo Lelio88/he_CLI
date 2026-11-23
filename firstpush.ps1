@@ -13,16 +13,9 @@
 )
 
 # Commande firstpush - Premier push vers un repository distant
-try {
-    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-    [Console]::InputEncoding = [System.Text.Encoding]::UTF8
-} catch {}
+. (Join-Path $PSScriptRoot "common.ps1")
 
-Write-Host ""
-Write-Host "========================================================================" -ForegroundColor Cyan
-Write-Host "  FIRSTPUSH - Premier push vers un repository" -ForegroundColor Cyan
-Write-Host "========================================================================" -ForegroundColor Cyan
-Write-Host ""
+Write-HeBanner "FIRSTPUSH - Premier push vers un repository"
 
 # Fichiers sensibles a detecter, compares au NOM du fichier et non au chemin :
 # un motif sans joker doit correspondre exactement, "*.pem" vise l'extension.

@@ -2,7 +2,6 @@
 
 Un outil CLI pour gérer vos projets Git et GitHub avec simplicité. Créez des repos, synchronisez votre code, gérez vos commits et créez des backups — le tout en une commande.
 
-[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/Lelio88/he_CLI)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![PowerShell](https://img.shields.io/badge/PowerShell-5.1+-blue.svg)](https://github.com/PowerShell/PowerShell)
 
@@ -48,6 +47,8 @@ curl -fsSL https://raw.githubusercontent.com/Lelio88/he_CLI/main/install.sh | ba
 
 Chemin d'installation : `/usr/local/bin` (système) ou `~/.local/bin` (utilisateur)
 
+Les deux installeurs vérifient l'empreinte SHA-256 de `release.zip` (fichier `release.zip.sha256`, publié par la CI dans le même commit) et refusent d'installer une archive qui ne correspond pas.
+
 ---
 
 ## Commandes
@@ -67,7 +68,7 @@ Chemin d'installation : `/usr/local/bin` (système) ou `~/.local/bin` (utilisate
 |----------|-------------|
 | `he rollback [-n N] [-d] [-r] [-hard]` | Annuler un ou plusieurs commits |
 | `he logcommit [nombre] [-author] [-search] [-since] [-s]` | Afficher l'historique des commits avec filtres |
-| `he backup` | Créer une archive ZIP du projet |
+| `he backup [-n nom] [-x motifs]` | Créer une archive ZIP du projet (suit le `.gitignore`, exclusions en plus avec `-x "*.mp4,data/*"`) |
 
 ### Documentation
 
@@ -86,7 +87,9 @@ Chemin d'installation : `/usr/local/bin` (système) ou `~/.local/bin` (utilisate
 
 | Commande | Description |
 |----------|-------------|
-| `he help` | Afficher l'aide complète |
+| `he help [commande]` | Afficher l'aide complète, ou celle d'une commande |
+| `he <commande> --help` | Aide d'une seule commande (ou `-h`) |
+| `he version` | Afficher la version installée (ou `he --version`, `he -v`) |
 | `he heian` | Afficher le logo Heian Enterprise |
 | `he matrix` | Effet Matrix dans le terminal |
 | `he cs` | Mini-jeu dans le terminal |
@@ -206,4 +209,4 @@ MIT License - Copyright (c) 2025 Lelio B — voir [LICENSE](LICENSE)
 
 ---
 
-**Auteur** : Lelio B ([@Lelio88](https://github.com/Lelio88)) — Version 1.2.0
+**Auteur** : Lelio B ([@Lelio88](https://github.com/Lelio88)) — Version : `he version`

@@ -8,6 +8,7 @@ $excludeExact = @(
     ".gitignore",
     ".gitattributes",
     "release.zip",
+    "release.zip.sha256",
     "package.ps1",
     "tests",
     "elo.txt"
@@ -36,7 +37,12 @@ Write-Host "Création de release.zip..." -ForegroundColor Cyan
 
 try {
     Compress-Archive -Path $files.FullName -DestinationPath $zipPath -CompressionLevel Optimal
+    # Empreinte vérifiée par install.ps1 / install.sh avant toute extraction
+    # (format de sha256sum : "<empreinte>  release.zip", fins de ligne LF)
+    $hash = (Get-FileHash -Path $zipPath -Algorithm SHA256).Hash.ToLower()
+    [System.IO.File]::WriteAllText((Join-Path $PWD "release.zip.sha256"), "$hash  release.zip`n")
     Write-Host "✅ release.zip créé avec succès !" -ForegroundColor Green
+    Write-Host "   SHA-256 : $hash" -ForegroundColor Gray
     Write-Host "   Taille : $(("{0:N2} KB" -f ((Get-Item $zipPath).Length / 1kb)))" -ForegroundColor Gray
 }
 catch {

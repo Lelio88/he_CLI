@@ -13,34 +13,13 @@
 )
 
 # Commande rollback - Annule les derniers commits en gardant les fichiers modifies
-try {
-    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-    [Console]::InputEncoding = [System.Text.Encoding]::UTF8
-} catch {}
+. (Join-Path $PSScriptRoot "common.ps1")
 
-Write-Host ""
-Write-Host "========================================================================" -ForegroundColor Cyan
-Write-Host "  ROLLBACK - Annulation de commit(s)" -ForegroundColor Cyan
-Write-Host "========================================================================" -ForegroundColor Cyan
-Write-Host ""
+Write-HeBanner "ROLLBACK - Annulation de commit(s)"
 
-# Verifier si on est dans un depot Git (fonctionne aussi depuis un sous-dossier)
-$insideRepo = git rev-parse --is-inside-work-tree 2>$null
-if ($LASTEXITCODE -ne 0 -or $insideRepo -ne "true") {
-    Write-Host "Erreur : Vous n'etes pas dans un depot Git !" -ForegroundColor Red
-    Write-Host "Initialisez d'abord Git avec 'git init' ou deplacez-vous dans un projet Git." -ForegroundColor Yellow
-    Write-Host ""
-    exit 1
-}
+Assert-HeGitRepo
 
-# Verifier s'il y a des commits
-$hasCommits = git rev-parse HEAD 2>$null
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Erreur : Aucun commit trouve dans ce depot !" -ForegroundColor Red
-    Write-Host "Il n'y a rien a annuler." -ForegroundColor Yellow
-    Write-Host ""
-    exit 1
-}
+Assert-HeHasCommit "Il n'y a rien a annuler."
 
 # Verifier que n est valide
 $totalCommits = git rev-list --count HEAD 2>$null

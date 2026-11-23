@@ -1,8 +1,4 @@
 ﻿# Commande flash - Grenade Flashbang CS et écran blanc avec SON
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-[Console]::InputEncoding = [System.Text.Encoding]::UTF8
-
-# Charger la détection OS partagée
 . (Join-Path $PSScriptRoot "common.ps1")
 
 # 1. Nettoyer l'écran initialement

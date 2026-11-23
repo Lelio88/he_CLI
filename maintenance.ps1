@@ -9,10 +9,8 @@ param(
     [string[]]$Exclude = @()
 )
 
-# Force l'encodage UTF-8 pour l'affichage
-try {
-    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-} catch {}
+# Encodage UTF-8 et détection OS partagés
+. (Join-Path $PSScriptRoot "common.ps1")
 
 # --- FONCTIONS UTILITAIRES ---
 
@@ -111,9 +109,6 @@ function Show-Menu {
     Clear-Host
     return $Tasks
 }
-
-# --- DETECTION OS (via common.ps1) ---
-. (Join-Path $PSScriptRoot "common.ps1")
 
 # --- VERIFICATION ADMIN (WINDOWS) ---
 $isAdmin = $false

@@ -1,5 +1,4 @@
-﻿[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-[Console]::InputEncoding = [System.Text.Encoding]::UTF8
+﻿. (Join-Path $PSScriptRoot "common.ps1")
 
 Write-Host ""
 Write-Host "=============================================================================================" -ForegroundColor DarkCyan
