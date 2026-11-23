@@ -92,7 +92,7 @@ function Invoke-HeReadme {
             Start-Process "https://www.python.org/downloads/"
         }
         Write-Warning "Abandon : installez Python puis relancez la commande."
-        return
+        exit 1
     }
     else {
         Write-Host "🐍 Python détecté : $python"
@@ -107,7 +107,7 @@ function Invoke-HeReadme {
             & $python -m pip install --upgrade ollama
             if ($LASTEXITCODE -ne 0) {
                 Write-Warning "Échec de l'installation de 'ollama'. Veuillez l'installer manuellement."
-                return
+                exit 1
             }
             else {
                 Write-Host "✅ 'ollama' installé."
@@ -136,14 +136,14 @@ function Invoke-HeReadme {
             "1" {
                 Start-Process "https://ollama.com/docs/installation"
                 Write-Host "Après installation, relancez la commande."
-                return
+                exit 1
             }
             "2" {
                 Write-Warning "Vous avez choisi de continuer sans binaire Ollama; la génération risque d'échouer."
             }
             default {
                 Write-Host "Abandon."
-                return
+                exit 1
             }
         }
     }
@@ -184,7 +184,7 @@ function Invoke-HeReadme {
     $confirm = Read-Host "Continuer ? [o/N]"
     if (-not ($confirm -match '^[oOyY]')) {
         Write-Host "Abandon par l'utilisateur."
-        return
+        exit 1
     }
 
     # 6) Lancer generate_readme.py
@@ -195,7 +195,8 @@ function Invoke-HeReadme {
         if ($c -match '^[oOyY]') {
             New-BasicReadme -Path $projectPath
         }
-        return
+        $script:heReadmeFailed = $true
+        exit 1
     }
 
     Push-Location $projectPath
@@ -212,6 +213,7 @@ function Invoke-HeReadme {
             }
             else {
                 Write-Warning "Le script s'est terminé correctement mais le README.md est introuvable."
+                $script:heReadmeFailed = $true
             }
         }
         else {
@@ -219,6 +221,7 @@ function Invoke-HeReadme {
             Write-Host "Proposition : créer un README basique en fallback."
             $c = Read-Host "Créer un README basique maintenant ? [o/N]"
             if ($c -match '^[oOyY]') { New-BasicReadme -Path $projectPath }
+            $script:heReadmeFailed = $true
         }
     }
     catch {
@@ -232,4 +235,8 @@ function Invoke-HeReadme {
         Pop-Location
     }
 }
+# Abandons : exit 1 dans la fonction ; échec de la génération : drapeau
+$heReadmeFailed = $false
 Invoke-HeReadme @args
+if ($heReadmeFailed) { exit 1 }
+exit 0

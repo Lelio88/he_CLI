@@ -11,3 +11,6 @@ if ($heVersion.Date) {
 } else {
     Write-Host ""
 }
+
+# Code de sortie explicite : sans lui, "he" renverrait celui du dernier git lancé
+exit 0

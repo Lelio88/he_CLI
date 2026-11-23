@@ -51,3 +51,7 @@ if ($command -ne "help" -and @($remainingArgs | Where-Object { $_ -in $helpFlags
 }
 
 & (Join-Path $PSScriptRoot $heCommands[$command]) @remainingArgs
+# Chaque commande finit par un exit explicite (0 ou 1) : son code devient
+# celui de "he", utilisable en script ("he update -a && ...").
+if (-not $?) { exit 1 }
+exit $LASTEXITCODE

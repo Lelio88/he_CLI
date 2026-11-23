@@ -222,3 +222,6 @@ finally {
         Remove-Item -LiteralPath $zipPath -Force -ErrorAction SilentlyContinue
     }
 }
+
+# Code de sortie explicite : sans lui, "he" renverrait celui du dernier git lancé
+exit 0

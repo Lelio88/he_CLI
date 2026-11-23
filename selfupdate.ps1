@@ -22,8 +22,12 @@ try {
         Write-Host "========================================================================" -ForegroundColor Cyan
         Write-Host ""
         
-        # Exécuter le script d'installation PowerShell
+        # Exécuter le script d'installation PowerShell ; il quitte par "exit 1"
+        # en cas d'échec et n'a pas d'exit final (il tourne aussi par irm | iex,
+        # où un exit fermerait la console) : on part donc de 0.
+        $global:LASTEXITCODE = 0
         & $tempInstallScript
+        $installExitCode = $LASTEXITCODE
         
         # Nettoyer le fichier temporaire
         if (Test-Path $tempInstallScript) {
@@ -50,6 +54,7 @@ try {
         
         # Exécuter le script d'installation bash
         bash $tempInstallScript
+        $installExitCode = $LASTEXITCODE
         
         # Nettoyer le fichier temporaire
         if (Test-Path $tempInstallScript) {
@@ -79,3 +84,5 @@ catch {
     Write-Host ""
     exit 1
 }
+
+exit $installExitCode

@@ -18,6 +18,7 @@
 Write-HeBanner "ROLLBACK - Annulation de commit(s)"
 
 Assert-HeGitRepo
+$remoteFailed = $false
 
 Assert-HeHasCommit "Il n'y a rien a annuler."
 
@@ -224,6 +225,7 @@ if ($pushToGitHub) {
         Write-Host ""
         Write-Host "Erreur : Impossible de determiner la branche actuelle !" -ForegroundColor Red
         Write-Host ""
+        $remoteFailed = $true
     } else {
         # --force-with-lease et non --force : refuse d'ecraser des commits
         # pousses par quelqu'un d'autre depuis notre dernier fetch
@@ -235,6 +237,7 @@ if ($pushToGitHub) {
         } else {
             Write-Host ""
             Write-Host "Erreur : Impossible de modifier l'espace distant !" -ForegroundColor Red
+            $remoteFailed = $true
             Write-Host "Soit vous n'avez pas les droits d'ecriture sur le depot," -ForegroundColor Yellow
             Write-Host "soit quelqu'un a pousse sur '$currentBranch' depuis votre dernier fetch :" -ForegroundColor Yellow
             Write-Host "lancez 'git fetch' et examinez ses commits avant de reessayer." -ForegroundColor Yellow
@@ -273,5 +276,13 @@ Write-Host ""
 Write-Host "  Pour supprimer le point de sauvegarde :" -ForegroundColor Gray
 Write-Host "    git tag -d $backupTagName" -ForegroundColor White
 Write-Host ""
+if ($remoteFailed) {
+    Write-Host "Rollback local effectue, mais l'espace distant n'a pas ete modifie (voir ci-dessus)." -ForegroundColor Yellow
+    Write-Host ""
+    exit 1
+}
 Write-Host "Operation terminee avec succes !" -ForegroundColor Green
 Write-Host ""
+
+# Code de sortie explicite : sans lui, "he" renverrait celui du dernier git lancé
+exit 0
